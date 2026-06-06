@@ -1,0 +1,67 @@
+import enum
+import uuid
+from datetime import datetime
+
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, String, Table, Text, func
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.core.database import Base
+
+
+class ContentType(str, enum.Enum):
+    article = "article"
+    podcast = "podcast"
+    video = "video"
+    thread = "thread"
+    blog = "blog"
+    announcement = "announcement"
+    other = "other"
+
+
+class IngestStatus(str, enum.Enum):
+    pending = "pending"
+    processing = "processing"
+    completed = "completed"
+    failed = "failed"
+
+
+item_tags = Table(
+    "item_tags",
+    Base.metadata,
+    Column("item_id", UUID(as_uuid=True), ForeignKey("items.id", ondelete="CASCADE"), primary_key=True),
+    Column("tag_id", UUID(as_uuid=True), ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True),
+)
+
+
+class Item(Base):
+    __tablename__ = "items"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    title: Mapped[str | None] = mapped_column(String(500))
+    content_type: Mapped[ContentType] = mapped_column(
+        Enum(ContentType, name="content_type_enum"), nullable=False, default=ContentType.article
+    )
+    raw_content: Mapped[str | None] = mapped_column(Text)
+    summary: Mapped[str | None] = mapped_column(Text)
+    metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB, default=dict)
+    ingest_status: Mapped[IngestStatus] = mapped_column(
+        Enum(IngestStatus, name="ingest_status_enum"),
+        nullable=False,
+        default=IngestStatus.pending,
+        index=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="items")  # noqa: F821
+    tags: Mapped[list["Tag"]] = relationship("Tag", secondary="item_tags", back_populates="items")  # noqa: F821
+    embedding: Mapped["Embedding | None"] = relationship(  # noqa: F821
+        "Embedding", back_populates="item", uselist=False, cascade="all, delete-orphan"
+    )

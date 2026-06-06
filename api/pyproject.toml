@@ -1,0 +1,36 @@
+[tool.poetry]
+name = "nexus-api"
+version = "0.1.0"
+description = "Project Nexus — AI-native content curation API"
+authors = ["Srihari <srihari.scorp@gmail.com>"]
+requires-python = ">=3.12"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.115"
+uvicorn = { version = "^0.32", extras = ["standard"] }
+sqlalchemy = { version = "^2.0", extras = ["asyncio"] }
+asyncpg = "^0.30"
+alembic = "^1.14"
+pgvector = "^0.3"
+pydantic = "^2.10"
+pydantic-settings = "^2.7"
+python-jose = { version = "^3.3", extras = ["cryptography"] }
+httpx = "^0.28"
+python-dotenv = "^1.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^8.3"
+pytest-asyncio = "^0.24"
+ruff = "^0.9"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

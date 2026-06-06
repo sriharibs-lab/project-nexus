@@ -1,0 +1,72 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "$version": "0.1.0",
+  "color": {
+    "brand": {
+      "primary": { "$value": "", "$type": "color", "$description": "Primary brand color" },
+      "secondary": { "$value": "", "$type": "color", "$description": "Secondary brand color" },
+      "accent": { "$value": "", "$type": "color", "$description": "Accent / highlight color" }
+    },
+    "neutral": {
+      "0":   { "$value": "", "$type": "color" },
+      "50":  { "$value": "", "$type": "color" },
+      "100": { "$value": "", "$type": "color" },
+      "200": { "$value": "", "$type": "color" },
+      "300": { "$value": "", "$type": "color" },
+      "400": { "$value": "", "$type": "color" },
+      "500": { "$value": "", "$type": "color" },
+      "600": { "$value": "", "$type": "color" },
+      "700": { "$value": "", "$type": "color" },
+      "800": { "$value": "", "$type": "color" },
+      "900": { "$value": "", "$type": "color" },
+      "1000": { "$value": "", "$type": "color" }
+    },
+    "semantic": {
+      "background": {
+        "primary":   { "$value": "", "$type": "color" },
+        "secondary": { "$value": "", "$type": "color" },
+        "elevated":  { "$value": "", "$type": "color" },
+        "overlay":   { "$value": "", "$type": "color" }
+      },
+      "text": {
+        "primary":   { "$value": "", "$type": "color" },
+        "secondary": { "$value": "", "$type": "color" },
+        "tertiary":  { "$value": "", "$type": "color" },
+        "disabled":  { "$value": "", "$type": "color" },
+        "inverse":   { "$value": "", "$type": "color" }
+      },
+      "border": {
+        "default": { "$value": "", "$type": "color" },
+        "subtle":  { "$value": "", "$type": "color" },
+        "strong":  { "$value": "", "$type": "color" }
+      },
+      "status": {
+        "success": { "$value": "", "$type": "color" },
+        "warning": { "$value": "", "$type": "color" },
+        "error":   { "$value": "", "$type": "color" },
+        "info":    { "$value": "", "$type": "color" }
+      }
+    },
+    "dark": {
+      "$description": "Dark mode overrides — same keys as semantic, applied via media query or class",
+      "background": {
+        "primary":   { "$value": "", "$type": "color" },
+        "secondary": { "$value": "", "$type": "color" },
+        "elevated":  { "$value": "", "$type": "color" },
+        "overlay":   { "$value": "", "$type": "color" }
+      },
+      "text": {
+        "primary":   { "$value": "", "$type": "color" },
+        "secondary": { "$value": "", "$type": "color" },
+        "tertiary":  { "$value": "", "$type": "color" },
+        "disabled":  { "$value": "", "$type": "color" },
+        "inverse":   { "$value": "", "$type": "color" }
+      },
+      "border": {
+        "default": { "$value": "", "$type": "color" },
+        "subtle":  { "$value": "", "$type": "color" },
+        "strong":  { "$value": "", "$type": "color" }
+      }
+    }
+  }
+}

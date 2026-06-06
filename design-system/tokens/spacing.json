@@ -1,0 +1,67 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "$version": "0.1.0",
+  "spacing": {
+    "0":   { "$value": "", "$type": "dimension", "$description": "0px" },
+    "1":   { "$value": "", "$type": "dimension", "$description": "4px" },
+    "2":   { "$value": "", "$type": "dimension", "$description": "8px" },
+    "3":   { "$value": "", "$type": "dimension", "$description": "12px" },
+    "4":   { "$value": "", "$type": "dimension", "$description": "16px" },
+    "5":   { "$value": "", "$type": "dimension", "$description": "20px" },
+    "6":   { "$value": "", "$type": "dimension", "$description": "24px" },
+    "7":   { "$value": "", "$type": "dimension", "$description": "28px" },
+    "8":   { "$value": "", "$type": "dimension", "$description": "32px" },
+    "10":  { "$value": "", "$type": "dimension", "$description": "40px" },
+    "12":  { "$value": "", "$type": "dimension", "$description": "48px" },
+    "16":  { "$value": "", "$type": "dimension", "$description": "64px" },
+    "20":  { "$value": "", "$type": "dimension", "$description": "80px" },
+    "24":  { "$value": "", "$type": "dimension", "$description": "96px" }
+  },
+  "borderRadius": {
+    "none":  { "$value": "", "$type": "dimension" },
+    "sm":    { "$value": "", "$type": "dimension" },
+    "base":  { "$value": "", "$type": "dimension" },
+    "md":    { "$value": "", "$type": "dimension" },
+    "lg":    { "$value": "", "$type": "dimension" },
+    "xl":    { "$value": "", "$type": "dimension" },
+    "2xl":   { "$value": "", "$type": "dimension" },
+    "3xl":   { "$value": "", "$type": "dimension" },
+    "full":  { "$value": "", "$type": "dimension", "$description": "9999px — pill / avatar" }
+  },
+  "borderWidth": {
+    "none":   { "$value": "", "$type": "dimension" },
+    "thin":   { "$value": "", "$type": "dimension" },
+    "base":   { "$value": "", "$type": "dimension" },
+    "medium": { "$value": "", "$type": "dimension" },
+    "thick":  { "$value": "", "$type": "dimension" }
+  },
+  "shadow": {
+    "xs":  { "$value": "", "$type": "shadow" },
+    "sm":  { "$value": "", "$type": "shadow" },
+    "md":  { "$value": "", "$type": "shadow" },
+    "lg":  { "$value": "", "$type": "shadow" },
+    "xl":  { "$value": "", "$type": "shadow" },
+    "2xl": { "$value": "", "$type": "shadow" },
+    "inner": { "$value": "", "$type": "shadow" }
+  },
+  "layout": {
+    "maxWidth": {
+      "xs":  { "$value": "", "$type": "dimension" },
+      "sm":  { "$value": "", "$type": "dimension" },
+      "md":  { "$value": "", "$type": "dimension" },
+      "lg":  { "$value": "", "$type": "dimension" },
+      "xl":  { "$value": "", "$type": "dimension" },
+      "2xl": { "$value": "", "$type": "dimension" },
+      "full": { "$value": "", "$type": "dimension" }
+    },
+    "contentPadding": {
+      "mobile":  { "$value": "", "$type": "dimension" },
+      "tablet":  { "$value": "", "$type": "dimension" },
+      "desktop": { "$value": "", "$type": "dimension" }
+    },
+    "safeArea": {
+      "top":    { "$value": "", "$type": "dimension", "$description": "iOS safe area top inset" },
+      "bottom": { "$value": "", "$type": "dimension", "$description": "iOS safe area bottom inset" }
+    }
+  }
+}

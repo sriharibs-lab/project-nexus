@@ -1,0 +1,61 @@
+# ── Dependencies ──────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+
+# ── Build outputs ─────────────────────────────────────────
+.next/
+out/
+dist/
+build/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.eggs/
+
+# ── Environment & secrets ─────────────────────────────────
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ── OS & editor ───────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Testing & coverage ────────────────────────────────────
+coverage/
+.coverage
+.pytest_cache/
+.nyc_output/
+
+# ── Logs ─────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── Package manager locks (keep only one) ─────────────────
+# yarn.lock  ← keep if using yarn
+# package-lock.json ← keep if using npm
+
+# ── Python venv ───────────────────────────────────────────
+venv/
+.venv/
+env/
+
+# ── Xcode / iOS ───────────────────────────────────────────
+*.xcworkspace/xcuserdata/
+DerivedData/
+*.ipa
+*.dSYM.zip
+*.dSYM

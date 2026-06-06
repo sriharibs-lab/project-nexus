@@ -1,0 +1,61 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "$version": "0.1.0",
+  "typography": {
+    "fontFamily": {
+      "display": { "$value": "", "$type": "fontFamily", "$description": "Hero headings, marketing" },
+      "body":    { "$value": "", "$type": "fontFamily", "$description": "Body text, UI copy" },
+      "mono":    { "$value": "", "$type": "fontFamily", "$description": "Code, labels, metadata" }
+    },
+    "fontSize": {
+      "xs":   { "$value": "", "$type": "dimension", "$description": "10px equiv" },
+      "sm":   { "$value": "", "$type": "dimension", "$description": "12px equiv" },
+      "base": { "$value": "", "$type": "dimension", "$description": "14px equiv" },
+      "md":   { "$value": "", "$type": "dimension", "$description": "16px equiv" },
+      "lg":   { "$value": "", "$type": "dimension", "$description": "18px equiv" },
+      "xl":   { "$value": "", "$type": "dimension", "$description": "20px equiv" },
+      "2xl":  { "$value": "", "$type": "dimension", "$description": "24px equiv" },
+      "3xl":  { "$value": "", "$type": "dimension", "$description": "28px equiv" },
+      "4xl":  { "$value": "", "$type": "dimension", "$description": "32px equiv" },
+      "5xl":  { "$value": "", "$type": "dimension", "$description": "40px equiv" },
+      "6xl":  { "$value": "", "$type": "dimension", "$description": "48px equiv" }
+    },
+    "fontWeight": {
+      "regular":   { "$value": "", "$type": "fontWeight" },
+      "medium":    { "$value": "", "$type": "fontWeight" },
+      "semibold":  { "$value": "", "$type": "fontWeight" },
+      "bold":      { "$value": "", "$type": "fontWeight" },
+      "extrabold": { "$value": "", "$type": "fontWeight" }
+    },
+    "lineHeight": {
+      "tight":   { "$value": "", "$type": "dimension" },
+      "snug":    { "$value": "", "$type": "dimension" },
+      "normal":  { "$value": "", "$type": "dimension" },
+      "relaxed": { "$value": "", "$type": "dimension" },
+      "loose":   { "$value": "", "$type": "dimension" }
+    },
+    "letterSpacing": {
+      "tighter": { "$value": "", "$type": "dimension" },
+      "tight":   { "$value": "", "$type": "dimension" },
+      "normal":  { "$value": "", "$type": "dimension" },
+      "wide":    { "$value": "", "$type": "dimension" },
+      "wider":   { "$value": "", "$type": "dimension" },
+      "widest":  { "$value": "", "$type": "dimension" }
+    },
+    "textStyle": {
+      "displayLarge":  { "$value": "", "$type": "typography", "$description": "Hero / splash heading" },
+      "displayMedium": { "$value": "", "$type": "typography" },
+      "headingLarge":  { "$value": "", "$type": "typography" },
+      "headingMedium": { "$value": "", "$type": "typography" },
+      "headingSmall":  { "$value": "", "$type": "typography" },
+      "bodyLarge":     { "$value": "", "$type": "typography" },
+      "bodyMedium":    { "$value": "", "$type": "typography" },
+      "bodySmall":     { "$value": "", "$type": "typography" },
+      "labelLarge":    { "$value": "", "$type": "typography" },
+      "labelMedium":   { "$value": "", "$type": "typography" },
+      "labelSmall":    { "$value": "", "$type": "typography" },
+      "caption":       { "$value": "", "$type": "typography" },
+      "overline":      { "$value": "", "$type": "typography" }
+    }
+  }
+}

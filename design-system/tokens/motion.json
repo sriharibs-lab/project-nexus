@@ -1,0 +1,42 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "$version": "0.1.0",
+  "motion": {
+    "duration": {
+      "instant":  { "$value": "", "$type": "duration", "$description": "Imperceptible — state flags only" },
+      "fast":     { "$value": "", "$type": "duration", "$description": "Quick micro-interactions" },
+      "base":     { "$value": "", "$type": "duration", "$description": "Standard UI transitions" },
+      "moderate": { "$value": "", "$type": "duration", "$description": "Panels, modals, sheets" },
+      "slow":     { "$value": "", "$type": "duration", "$description": "Page-level transitions" },
+      "slower":   { "$value": "", "$type": "duration", "$description": "Deliberate, cinematic" }
+    },
+    "easing": {
+      "linear":      { "$value": "", "$type": "cubicBezier" },
+      "easeIn":      { "$value": "", "$type": "cubicBezier", "$description": "Accelerate — elements leaving" },
+      "easeOut":     { "$value": "", "$type": "cubicBezier", "$description": "Decelerate — elements entering" },
+      "easeInOut":   { "$value": "", "$type": "cubicBezier", "$description": "Standard, symmetric" },
+      "spring":      { "$value": "", "$type": "cubicBezier", "$description": "Overshoot — playful/physical" },
+      "snappy":      { "$value": "", "$type": "cubicBezier", "$description": "Fast in, smooth out — iOS-feel" },
+      "emphasized":  { "$value": "", "$type": "cubicBezier", "$description": "Material-style emphasized curve" }
+    },
+    "transition": {
+      "micro":       { "$value": "", "$type": "transition", "$description": "Button press, checkbox, toggle" },
+      "element":     { "$value": "", "$type": "transition", "$description": "Card expand, tooltip, dropdown" },
+      "panel":       { "$value": "", "$type": "transition", "$description": "Side sheet, bottom sheet" },
+      "pageForward": { "$value": "", "$type": "transition", "$description": "Navigate deeper" },
+      "pageBack":    { "$value": "", "$type": "transition", "$description": "Navigate back" },
+      "modalEnter":  { "$value": "", "$type": "transition" },
+      "modalExit":   { "$value": "", "$type": "transition" }
+    },
+    "haptic": {
+      "$description": "Haptic feedback profiles — values are platform identifiers (iOS UIImpactFeedbackStyle etc.)",
+      "light":   { "$value": "", "$type": "custom" },
+      "medium":  { "$value": "", "$type": "custom" },
+      "heavy":   { "$value": "", "$type": "custom" },
+      "success": { "$value": "", "$type": "custom" },
+      "warning": { "$value": "", "$type": "custom" },
+      "error":   { "$value": "", "$type": "custom" },
+      "selection": { "$value": "", "$type": "custom" }
+    }
+  }
+}

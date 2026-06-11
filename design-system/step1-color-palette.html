@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nexus — Chalk + Plum, Gradient Variant</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #E8E7EC;
+      font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+      padding: 56px 40px 96px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 52px;
+    }
+    .step-label {
+      font-size: 11px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: #999;
+      margin-bottom: 10px;
+    }
+    header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #191919;
+      letter-spacing: -.025em;
+    }
+    header p { font-size: 13px; color: #999; margin-top: 8px; line-height: 1.6; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    .card {
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 4px 20px rgba(0,0,0,.07);
+    }
+
+    .card-header {
+      background: #fff;
+      padding: 15px 20px 13px;
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      border-bottom: 1px solid rgba(0,0,0,.06);
+    }
+    .card-num  { font-size: 10px; color: #bbb; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+    .card-name { font-size: 14px; font-weight: 700; color: #191919; letter-spacing: -.01em; }
+    .card-mood { font-size: 11px; color: #aaa; margin-left: auto; font-style: italic; }
+
+    .mode { padding: 18px 20px 20px; }
+
+    .mode-tag {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: .16em;
+      font-weight: 600;
+      margin-bottom: 13px;
+      opacity: .45;
+    }
+
+    .swatches {
+      display: flex;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 14px;
+      height: 52px;
+    }
+    .swatch {
+      flex: 1;
+      display: flex;
+      align-items: flex-end;
+      padding: 4px 5px;
+    }
+    .swatch span {
+      font-size: 7px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+    }
+
+    .preview {
+      border-radius: 10px;
+      padding: 16px 18px 18px;
+    }
+    .preview-eyebrow {
+      font-size: 9.5px;
+      text-transform: uppercase;
+      letter-spacing: .14em;
+      font-weight: 600;
+      margin-bottom: 7px;
+    }
+    .preview-headline {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -.025em;
+      line-height: 1.25;
+      margin-bottom: 7px;
+    }
+    .preview-body {
+      font-size: 11.5px;
+      line-height: 1.6;
+      margin-bottom: 14px;
+    }
+    .preview-btn {
+      display: inline-block;
+      padding: 8px 18px;
+      border-radius: 10px;
+      font-size: 11.5px;
+      font-weight: 600;
+      letter-spacing: -.01em;
+    }
+
+    /* ── Full-page mockup ── */
+    .page-mock-wrap {
+      grid-column: 1 / -1;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,.07), 0 8px 32px rgba(0,0,0,.10);
+    }
+
+    .page-mock-header {
+      background: #fff;
+      padding: 15px 24px 13px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid rgba(0,0,0,.06);
+    }
+
+    .page-mock {
+      display: flex;
+      gap: 0;
+    }
+
+    .mock-panel {
+      flex: 1;
+      padding: 56px 48px 64px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .mock-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .16em;
+      font-weight: 600;
+      padding: 4px 0 24px;
+      opacity: .35;
+    }
+
+    .mock-nx-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .14em;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    .mock-headline {
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: -.035em;
+      line-height: 1.15;
+      margin-bottom: 16px;
+      max-width: 320px;
+    }
+
+    .mock-subhead {
+      font-size: 15px;
+      line-height: 1.65;
+      margin-bottom: 32px;
+      max-width: 300px;
+    }
+
+    .mock-btn {
+      display: inline-block;
+      padding: 12px 28px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: -.01em;
+    }
+
+    .mock-footnote {
+      margin-top: 16px;
+      font-size: 11px;
+      opacity: .45;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 40px;
+      font-size: 11px;
+      color: #aaa;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="step-label">Nexus · Step 1 · Chalk + Plum</div>
+  <h1>Gradient Variant</h1>
+  <p>Flat (left) vs gradient (right) · full landing page mockup below</p>
+</header>
+
+<div class="grid">
+
+  <!-- ── FLAT (reference) ── -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-num">Flat</span>
+      <span class="card-name">Chalk + Plum</span>
+      <span class="card-mood">Original · no gradient</span>
+    </div>
+
+    <!-- Light flat -->
+    <div class="mode" style="background:#F9F8FC">
+      <div class="mode-tag" style="color:#130E1A">Light</div>
+      <div class="swatches">
+        <div class="swatch" style="background:#F9F8FC; outline:1px solid #E4E0EE; outline-offset:-1px">
+          <span style="color:#8880A0">BG</span>
+        </div>
+        <div class="swatch" style="background:#FFFFFF; outline:1px solid #E4E0EE; outline-offset:-1px">
+          <span style="color:#8880A0">Surface</span>
+        </div>
+        <div class="swatch" style="background:#5C2D9A">
+          <span style="color:rgba(255,255,255,.7)">Accent</span>
+        </div>
+        <div class="swatch" style="background:#130E1A">
+          <span style="color:rgba(255,255,255,.45)">Text</span>
+        </div>
+        <div class="swatch" style="background:#68607A">
+          <span style="color:rgba(255,255,255,.6)">Muted</span>
+        </div>
+        <div class="swatch" style="background:#E4E0EE; outline:1px solid #D4D0DE; outline-offset:-1px">
+          <span style="color:#8880A0">Border</span>
+        </div>
+      </div>
+      <div class="preview" style="background:#FFFFFF; border:1px solid #E4E0EE">
+        <div class="preview-eyebrow" style="color:#5C2D9A">Nexus</div>
+        <div class="preview-headline" style="color:#130E1A">Save what matters.</div>
+        <div class="preview-body" style="color:#68607A">Your reading list, organised and understood by AI.</div>
+        <div class="preview-btn" style="background:#5C2D9A; color:#fff">Get early access</div>
+      </div>
+    </div>
+
+    <!-- Dark flat -->
+    <div class="mode" style="background:#100D18">
+      <div class="mode-tag" style="color:#F0EEF8">Dark</div>
+      <div class="swatches">
+        <div class="swatch" style="background:#100D18; outline:1px solid rgba(255,255,255,.08); outline-offset:-1px">
+          <span style="color:rgba(255,255,255,.3)">BG</span>
+        </div>
+        <div class="swatch" style="background:#18142A; outline:1px solid rgba(255,255,255,.07); outline-offset:-1px">
+          <span style="color:rgba(255,255,255,.3)">Surface</span>
+        </div>
+        <div class="swatch" style="background:#8A5ED4">
+          <span style="color:rgba(255,255,255,.7)">Accent</span>
+        </div>
+        <div class="swatch" style="background:#F0EEF8">
+          <span style="color:rgba(0,0,0,.4)">Text</span>
+        </div>
+        <div class="swatch" style="background:#7A7090">
+          <span style="color:rgba(255,255,255,.55)">Muted</span>
+        </div>
+        <div class="swatch" style="background:#22203A">
+          <span style="color:rgba(255,255,255,.25)">Border</span>
+        </div>
+      </div>
+      <div class="preview" style="background:#18142A; border:1px solid rgba(255,255,255,.07)">
+        <div class="preview-eyebrow" style="color:#8A5ED4">Nexus</div>
+        <div class="preview-headline" style="color:#F0EEF8">Save what matters.</div>
+        <div class="preview-body" style="color:#7A7090">Your reading list, organised and understood by AI.</div>
+        <div class="preview-btn" style="background:#8A5ED4; color:#fff">Get early access</div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ── GRADIENT VARIANT ── -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-num">Gradient</span>
+      <span class="card-name">Chalk + Plum</span>
+      <span class="card-mood">With radial bloom</span>
+    </div>
+
+    <!-- Light gradient -->
+    <div class="mode" style="background: radial-gradient(ellipse 100% 55% at 50% 0%, #E8DFF5 0%, #F9F8FC 65%)">
+      <div class="mode-tag" style="color:#130E1A">Light</div>
+      <div class="swatches">
+        <div class="swatch" style="background: linear-gradient(135deg, #EDE6F8, #F9F8FC); outline:1px solid #E0DAF0; outline-offset:-1px">
+          <span style="color:#8070A8">BG</span>
+        </div>
+        <div class="swatch" style="background:#FFFFFF; outline:1px solid #E4E0EE; outline-offset:-1px">
+          <span style="color:#8880A0">Surface</span>
+        </div>
+        <div class="swatch" style="background:#5C2D9A">
+          <span style="color:rgba(255,255,255,.7)">Accent</span>
+        </div>
+        <div class="swatch" style="background:#130E1A">
+          <span style="color:rgba(255,255,255,.45)">Text</span>
+        </div>
+        <div class="swatch" style="background:#68607A">
+          <span style="color:rgba(255,255,255,.6)">Muted</span>
+        </div>
+        <div class="swatch" style="background:#E4E0EE; outline:1px solid #D4D0DE; outline-offset:-1px">
+          <span style="color:#8880A0">Border</span>
+        </div>
+      </div>
+      <div class="preview" style="background:#FFFFFF; border:1px solid #E4E0EE">
+        <div class="preview-eyebrow" style="color:#5C2D9A">Nexus</div>
+        <div class="preview-headline" style="color:#130E1A">Save what matters.</div>
+        <div class="preview-body" style="color:#68607A">Your reading list, organised and understood by AI.</div>
+        <div class="preview-btn" style="background:#5C2D9A; color:#fff">Get early access</div>
+      </div>
+    </div>
+
+    <!-- Dark gradient -->
+    <div class="mode" style="background: radial-gradient(ellipse 100% 55% at 50% 0%, #2A1650 0%, #100D18 65%)">
+      <div class="mode-tag" style="color:#F0EEF8">Dark</div>
+      <div class="swatches">
+        <div class="swatch" style="background: linear-gradient(135deg, #241450, #100D18); outline:1px solid rgba(255,255,255,.1); outline-offset:-1px">
+          <span style="color:rgba(255,255,255,.35)">BG</span>
+        </div>
+        <div class="swatch" style="background:#18142A; outline:1px solid rgba(255,255,255,.07); outline-offset:-1px">
+          <span style="color:rgba(255,255,255,.3)">Surface</span>
+        </div>
+        <div class="swatch" style="background:#8A5ED4">
+          <span style="color:rgba(255,255,255,.7)">Accent</span>
+        </div>
+        <div class="swatch" style="background:#F0EEF8">
+          <span style="color:rgba(0,0,0,.4)">Text</span>
+        </div>
+        <div class="swatch" style="background:#7A7090">
+          <span style="color:rgba(255,255,255,.55)">Muted</span>
+        </div>
+        <div class="swatch" style="background:#22203A">
+          <span style="color:rgba(255,255,255,.25)">Border</span>
+        </div>
+      </div>
+      <div class="preview" style="background:#18142A; border:1px solid rgba(255,255,255,.07)">
+        <div class="preview-eyebrow" style="color:#8A5ED4">Nexus</div>
+        <div class="preview-headline" style="color:#F0EEF8">Save what matters.</div>
+        <div class="preview-body" style="color:#7A7090">Your reading list, organised and understood by AI.</div>
+        <div class="preview-btn" style="background:#8A5ED4; color:#fff">Get early access</div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════
+       FULL LANDING PAGE MOCKUP — side by side
+  ═══════════════════════════════════════════ -->
+  <div class="page-mock-wrap">
+    <div class="page-mock-header">
+      <span class="card-num">Landing page at 1:1 scale</span>
+      <span class="card-name" style="font-size:13px">Flat vs Gradient — full context</span>
+    </div>
+    <div class="page-mock">
+
+      <!-- FLAT side -->
+      <div class="mock-panel" style="background:#F9F8FC; border-right:1px solid #E0DCF0">
+        <div class="mock-label" style="color:#130E1A">Flat</div>
+        <div class="mock-nx-label" style="color:#5C2D9A">Nexus</div>
+        <div class="mock-headline" style="color:#130E1A">Your reading list,<br>finally understood.</div>
+        <div class="mock-subhead" style="color:#68607A">Save anything. Nexus reads it, files it, and surfaces what matters — when it matters.</div>
+        <div class="mock-btn" style="background:#5C2D9A; color:#fff">Get early access</div>
+        <div class="mock-footnote" style="color:#68607A">No credit card · iOS first · invite only</div>
+      </div>
+
+      <!-- GRADIENT side -->
+      <div class="mock-panel" style="background: radial-gradient(ellipse 120% 60% at 50% -5%, #DDD0F0 0%, #F9F8FC 60%)">
+        <div class="mock-label" style="color:#130E1A">Gradient</div>
+        <div class="mock-nx-label" style="color:#5C2D9A">Nexus</div>
+        <div class="mock-headline" style="color:#130E1A">Your reading list,<br>finally understood.</div>
+        <div class="mock-subhead" style="color:#68607A">Save anything. Nexus reads it, files it, and surfaces what matters — when it matters.</div>
+        <div class="mock-btn" style="background:#5C2D9A; color:#fff">Get early access</div>
+        <div class="mock-footnote" style="color:#68607A">No credit card · iOS first · invite only</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<footer>Chalk + Plum · flat vs gradient · confirm direction to continue to typography</footer>
+
+</body>
+</html>

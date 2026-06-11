@@ -18,10 +18,13 @@ Core thesis: The entire product is an AI harness — tools, skills, and memory b
 - Prototype built in React/Next.js to nail UX before native iOS build
 
 ## UX Philosophy
-- User has exceptionally high UX standards. Benchmark: Apple, Airbnb, Linear, Notion.
+- User has exceptionally high UX standards. Benchmark: **Notion + NotebookLM** — Notion's clean information architecture and minimal color discipline, NotebookLM's AI-native interaction model.
+- **Color**: Light/white background, near-black text, one accent used sparingly. Dark mode = deep gray, same restraint. Not dark-first anymore.
+- **Landing page**: Single-box, one CTA, no bottom feature sections. Clean.
 - Custom logos, icons, and typography are non-negotiable.
 - Mobile-first (iPhone launch). Every screen must be purposeful and beautiful.
 - Never propose generic UI. Always go for opinionated, modern, unique.
+- **Always render visuals.** At every design step, produce an actual HTML file or React component the user can open in a browser. Never describe colors, fonts, or layouts in text or tables alone — user must see, not read.
 
 ## Key Files
 - [SPEC.md](SPEC.md) — Full product specification

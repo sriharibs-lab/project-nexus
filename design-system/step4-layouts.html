@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nexus — Step 4: Layout Wireframes</title>
+  <style>
+    :root {
+      --bg:      #0C0D0E;
+      --surface: #161819;
+      --s2:      #1C1E20;
+      --s3:      #222527;
+      --gold:    #D4A040;
+      --bronze:  #9A7030;
+      --text:    #F0EDE7;
+      --muted:   #7A7570;
+      --dim:     #3A3C3E;
+      --border:  rgba(255,255,255,0.07);
+      --divider: rgba(255,255,255,0.04);
+      --apple:   -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:var(--bg); color:var(--text); font-family:var(--apple); padding:48px 40px 80px; }
+
+    header { text-align:center; margin-bottom:64px; }
+    .step-label { font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+    header h1 { font-size:26px; font-weight:700; color:var(--text); letter-spacing:-.02em; }
+    .sub { font-size:13px; color:var(--muted); margin-top:8px; }
+    .theme-tag { display:inline-block; margin-top:12px; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--gold); border:1px solid rgba(212,160,64,.3); padding:4px 12px; border-radius:9999px; }
+
+    /* ── Grid ── */
+    .screens-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 28px;
+      max-width: 1120px;
+      margin: 0 auto;
+    }
+
+    .screen-wrap { display:flex; flex-direction:column; align-items:center; gap:16px; }
+
+    .screen-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .14em;
+      color: var(--muted);
+    }
+    .screen-title span {
+      color: var(--gold);
+      margin-right: 6px;
+    }
+
+    /* ── Phone shell ── */
+    .phone {
+      width: 240px;
+      background: var(--surface);
+      border-radius: 38px;
+      border: 1.5px solid rgba(255,255,255,0.1);
+      padding: 10px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06);
+      position: relative;
+    }
+
+    /* Dynamic island */
+    .phone::before {
+      content: '';
+      position: absolute;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90px;
+      height: 28px;
+      background: #000;
+      border-radius: 20px;
+      z-index: 10;
+    }
+
+    .screen {
+      background: var(--bg);
+      border-radius: 30px;
+      overflow: hidden;
+      height: 518px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* ── Shared components ── */
+
+    /* Status bar */
+    .status {
+      height: 50px;
+      padding: 14px 20px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      flex-shrink: 0;
+    }
+    .status-time { font-size: 11px; font-weight: 600; color: var(--text); opacity:.8; }
+    .status-dots { display:flex; gap:4px; align-items:center; }
+    .sdot { width:5px; height:5px; border-radius:50%; background:var(--muted); }
+
+    /* App header */
+    .app-header {
+      height: 46px;
+      padding: 0 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    /* Nexus logomark */
+    .nx-logo {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .nx-mark {
+      width: 26px;
+      height: 26px;
+    }
+    .nx-wordmark {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: -.02em;
+      color: var(--text);
+    }
+
+    .header-icons { display:flex; gap:14px; align-items:center; }
+    .hicon { width:18px; height:18px; opacity:.7; }
+    .avatar { width:26px; height:26px; border-radius:50%; background:var(--dim); border:1px solid var(--border); }
+
+    /* Wireframe helpers */
+    .ph  { border-radius:3px; background:var(--dim); } /* placeholder block */
+    .ph-gold { border-radius:3px; background:rgba(212,160,64,.25); }
+    .line-full   { height:8px; border-radius:4px; background:var(--dim); width:100%; }
+    .line-lg     { height:8px; border-radius:4px; background:var(--dim); width:90%; }
+    .line-med    { height:8px; border-radius:4px; background:var(--dim); width:72%; }
+    .line-short  { height:8px; border-radius:4px; background:var(--dim); width:50%; }
+    .line-xs     { height:6px; border-radius:3px; background:var(--muted); opacity:.35; width:42%; }
+
+    /* Bottom nav — shared */
+    .bottom-nav {
+      height: 64px;
+      background: rgba(22,24,25,0.95);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      flex-shrink: 0;
+      padding-bottom: 6px;
+      margin-top: auto;
+    }
+    .nav-btn { display:flex; flex-direction:column; align-items:center; gap:4px; }
+    .nav-dot { width:4px; height:4px; border-radius:50%; background:var(--gold); }
+    .nav-lbl { font-size:8px; font-weight:500; }
+    .nav-lbl.on  { color:var(--gold); }
+    .nav-lbl.off { color:var(--muted); }
+
+    /* Scrollable content zone */
+    .scroll-zone {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ────────────────────────────────────────
+       SCREEN 1 — LIBRARY
+    ──────────────────────────────────────── */
+
+    .lib-filter {
+      padding: 4px 18px 12px;
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .filter-pill {
+      height: 24px;
+      border-radius: 9999px;
+      padding: 0 10px;
+      font-size: 9px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+    }
+    .filter-pill.on {
+      background: var(--gold);
+      color: #0C0D0E;
+    }
+    .filter-pill.off {
+      background: var(--s2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .sync-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin: 0 18px 10px;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      font-size: 8.5px;
+      color: var(--muted);
+      align-self: flex-start;
+      flex-shrink: 0;
+    }
+    .sync-dot { width:5px; height:5px; border-radius:50%; background:#4CAF50; }
+
+    .lib-card-hero {
+      margin: 0 14px 10px;
+      background: var(--s2);
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .lib-card-img  { height: 90px; background: var(--s3); }
+    .lib-card-body { padding: 10px 12px 12px; display:flex; flex-direction:column; gap:6px; }
+
+    .lib-card-row {
+      margin: 0 14px 8px;
+      background: var(--s2);
+      border-radius: 12px;
+      padding: 10px 12px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .lib-thumb { width:46px; height:46px; border-radius:8px; background:var(--s3); flex-shrink:0; }
+
+    /* ────────────────────────────────────────
+       SCREEN 2 — READER
+    ──────────────────────────────────────── */
+    .reader-topbar {
+      height: 44px;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .back-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      color: var(--gold);
+      font-weight: 500;
+    }
+    .back-caret { width:7px; height:11px; }
+    .reader-actions { display:flex; gap:12px; }
+    .r-icon { width:18px; height:18px; opacity:.6; }
+
+    .reader-hero { height: 120px; background: var(--s3); flex-shrink:0; }
+
+    .reader-meta {
+      padding: 14px 18px 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .source-dot { width:16px; height:16px; border-radius:4px; background:var(--dim); }
+    .meta-text { font-size:8.5px; color:var(--muted); }
+    .meta-sep { font-size:8px; color:var(--dim); }
+
+    .reader-title {
+      padding: 0 18px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      flex-shrink: 0;
+    }
+    .title-line-1 { height:14px; border-radius:4px; background:var(--text); opacity:.85; width:100%; }
+    .title-line-2 { height:14px; border-radius:4px; background:var(--text); opacity:.85; width:78%; }
+
+    .reader-body {
+      padding: 0 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .ai-summary {
+      margin: 12px 14px 0;
+      background: rgba(212,160,64,0.07);
+      border: 1px solid rgba(212,160,64,0.2);
+      border-radius: 12px;
+      padding: 10px 12px;
+      flex-shrink: 0;
+    }
+    .ai-label {
+      font-size: 8px;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      color: var(--gold);
+      font-weight: 600;
+      margin-bottom: 7px;
+    }
+
+    /* ────────────────────────────────────────
+       SCREEN 3 — BRIEFING
+    ──────────────────────────────────────── */
+    .briefing-header {
+      padding: 0 18px 14px;
+      flex-shrink: 0;
+    }
+    .briefing-date {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: .14em;
+      color: var(--muted);
+      margin-bottom: 3px;
+    }
+    .briefing-title-line {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -.02em;
+    }
+
+    .card-stack {
+      position: relative;
+      height: 280px;
+      margin: 0 14px;
+      flex-shrink: 0;
+    }
+
+    /* Back cards (peeking) */
+    .brief-card {
+      position: absolute;
+      left: 0; right: 0;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .brief-card.c3 {
+      top: 16px;
+      height: 248px;
+      background: var(--s3);
+      transform: scale(0.92);
+      transform-origin: top center;
+      opacity: .4;
+    }
+    .brief-card.c2 {
+      top: 8px;
+      height: 256px;
+      background: var(--s2);
+      transform: scale(0.96);
+      transform-origin: top center;
+      opacity: .65;
+    }
+    .brief-card.c1 {
+      top: 0;
+      height: 268px;
+      background: var(--s2);
+      border-color: rgba(255,255,255,0.1);
+    }
+
+    .brief-card-img  { height: 140px; background: var(--s3); }
+    .brief-card-body { padding: 14px; display:flex; flex-direction:column; gap:7px; }
+    .brief-tag {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 9999px;
+      background: rgba(212,160,64,.15);
+      border: 1px solid rgba(212,160,64,.3);
+      font-size: 7.5px;
+      color: var(--gold);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      width: fit-content;
+    }
+
+    .progress-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px 0;
+      flex-shrink: 0;
+    }
+    .progress-dots { display:flex; gap:5px; }
+    .pdot { width:6px; height:6px; border-radius:50%; }
+    .pdot.on  { background:var(--gold); }
+    .pdot.off { background:var(--dim); }
+    .swipe-hint { font-size:8px; color:var(--muted); letter-spacing:.04em; }
+
+    /* ────────────────────────────────────────
+       SCREEN 1 REDESIGN — CAPTURE LANDING
+    ──────────────────────────────────────── */
+    .capture-zone {
+      margin: 4px 14px 10px;
+      background: var(--s2);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      padding: 12px;
+      flex-shrink: 0;
+    }
+    .capture-label {
+      font-size: 8.5px;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      color: var(--muted);
+      font-weight: 500;
+      margin-bottom: 9px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .capture-label-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: #4CAF50;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity:1; } 50% { opacity:.4; }
+    }
+    .capture-url-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 9px;
+      padding: 8px 10px;
+      margin-bottom: 10px;
+    }
+    .url-favicon {
+      width: 14px; height: 14px;
+      border-radius: 3px;
+      background: var(--dim);
+      flex-shrink: 0;
+    }
+    .url-text {
+      font-size: 9px;
+      color: var(--text);
+      opacity: .7;
+      flex: 1;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .ai-file-hint {
+      font-size: 8px;
+      color: var(--gold);
+      opacity: .8;
+      margin-bottom: 10px;
+      padding-left: 2px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .file-btn {
+      width: 100%;
+      height: 34px;
+      border-radius: 9999px;
+      background: var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 10px;
+      font-weight: 600;
+      color: #0C0D0E;
+    }
+
+    /* Filing animation placeholder */
+    .filing-anim {
+      margin: 0 14px 10px;
+      height: 32px;
+      border-radius: 10px;
+      background: rgba(212,160,64,0.06);
+      border: 1px dashed rgba(212,160,64,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 8.5px;
+      color: var(--gold);
+      opacity: .6;
+      flex-shrink: 0;
+    }
+
+    /* Pivot rows */
+    .pivot-section {
+      padding: 0 14px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      flex-shrink: 0;
+    }
+    .pivot-row {
+      display: flex;
+      gap: 6px;
+      overflow: hidden;
+    }
+    .piv {
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 8.5px;
+      font-weight: 500;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .piv.type-on  { background: var(--gold); color: #0C0D0E; }
+    .piv.type-off { background: var(--s2); color: var(--muted); border: 1px solid var(--border); }
+    /* AI-generated category — gold tint */
+    .piv.cat-ai   { background: rgba(212,160,64,0.12); color: var(--gold); border: 1px solid rgba(212,160,64,0.25); }
+    /* Human-created category — standard */
+    .piv.cat-human { background: var(--s2); color: var(--muted); border: 1px solid var(--border); }
+
+    /* Scroll fade hint */
+    .scroll-fade {
+      position: relative;
+      flex: 1;
+      overflow: hidden;
+    }
+    .scroll-fade::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 48px;
+      background: linear-gradient(transparent, var(--bg));
+      pointer-events: none;
+    }
+
+    /* ────────────────────────────────────────
+       SCREEN 4 — CHAT
+    ──────────────────────────────────────── */
+    .chat-header {
+      padding: 0 18px 14px;
+      flex-shrink: 0;
+    }
+    .chat-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -.02em;
+    }
+    .chat-sub { font-size: 9px; color:var(--muted); margin-top:2px; }
+
+    .chat-thread {
+      flex: 1;
+      padding: 0 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow: hidden;
+    }
+
+    .bubble {
+      border-radius: 16px;
+      padding: 9px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      max-width: 85%;
+    }
+    .bubble.ai {
+      background: var(--s2);
+      border: 1px solid var(--border);
+      align-self: flex-start;
+      border-bottom-left-radius: 4px;
+    }
+    .bubble.user {
+      background: rgba(212,160,64,.14);
+      border: 1px solid rgba(212,160,64,.22);
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+    }
+
+    .bubble-tag {
+      font-size: 7.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--gold);
+    }
+
+    .chips-row {
+      padding: 8px 14px;
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .chip {
+      padding: 5px 10px;
+      border-radius: 9999px;
+      background: var(--s2);
+      border: 1px solid var(--border);
+      font-size: 8px;
+      color: var(--muted);
+      white-space: nowrap;
+      font-weight: 500;
+    }
+
+    .chat-input {
+      margin: 6px 14px 0;
+      height: 38px;
+      border-radius: 9999px;
+      background: var(--s2);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      flex-shrink: 0;
+    }
+    .input-ph { font-size: 9px; color:var(--dim); }
+    .send-btn {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: var(--gold);
+      display: flex; align-items:center; justify-content:center;
+    }
+
+    /* ── Chat landing (new sparse layout) ── */
+    .chat-landing {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 20px 16px 0;
+      overflow: hidden;
+    }
+    .landing-logo-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 32px;
+    }
+    .landing-mark { width: 32px; height: 32px; }
+    .landing-wordmark {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -.02em;
+      color: var(--text);
+    }
+    .landing-greeting {
+      font-size: 9.5px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      font-weight: 400;
+    }
+    .landing-prompt {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -.025em;
+      line-height: 1.25;
+      margin-bottom: 22px;
+    }
+    .landing-input-wrap {
+      width: 100%;
+      background: var(--s2);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 9999px;
+      padding: 10px 10px 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .landing-input-ph { font-size: 9.5px; color: var(--dim); flex:1; }
+    .landing-send {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: var(--gold);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .landing-chips {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+    }
+    .landing-chip {
+      background: var(--s2);
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      padding: 9px 10px;
+      font-size: 8.5px;
+      color: var(--muted);
+      font-weight: 500;
+      line-height: 1.35;
+    }
+    .landing-chip .chip-icon {
+      font-size: 11px;
+      display: block;
+      margin-bottom: 4px;
+      opacity: .7;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="step-label">Nexus · Design System · Step 4</div>
+  <h1>Layout Wireframes — 4 Core Screens</h1>
+  <div class="sub">390px mobile · layout &amp; hierarchy only · no final detail</div>
+  <span class="theme-tag">Graphite + Gold · SF Pro · Symbol Icons</span>
+</header>
+
+<div class="screens-grid">
+
+
+  <!-- ══════════════════════════════════
+       SCREEN 1 — HOME / CAPTURE LANDING
+  ═══════════════════════════════════ -->
+  <div class="screen-wrap">
+    <div class="screen-title"><span>01</span>Home · Capture</div>
+    <div class="phone">
+      <div class="screen">
+
+        <div class="status">
+          <span class="status-time">9:41</span>
+          <div class="status-dots">
+            <div class="sdot"></div><div class="sdot"></div><div class="sdot"></div>
+          </div>
+        </div>
+
+        <div class="app-header">
+          <div class="nx-logo">
+            <svg class="nx-mark" viewBox="0 0 26 26" fill="none">
+              <circle cx="5" cy="13" r="2.5" fill="rgba(212,160,64,0.35)"/>
+              <circle cx="21" cy="7" r="2.5" fill="rgba(212,160,64,0.35)"/>
+              <circle cx="21" cy="19" r="2.5" fill="rgba(212,160,64,0.35)"/>
+              <line x1="7.5" y1="12" x2="18.5" y2="8.5" stroke="rgba(212,160,64,0.4)" stroke-width="1.2" stroke-linecap="round"/>
+              <line x1="7.5" y1="14" x2="18.5" y2="17.5" stroke="rgba(212,160,64,0.4)" stroke-width="1.2" stroke-linecap="round"/>
+              <circle cx="13" cy="13" r="3" fill="#D4A040"/>
+            </svg>
+            <span class="nx-wordmark">nexus</span>
+          </div>
+          <div class="avatar"></div>
+        </div>
+
+        <!-- ① Clipboard capture box (hero) -->
+        <div class="capture-zone">
+          <div class="capture-label">
+            <div class="capture-label-dot"></div>
+            Link detected on clipboard
+          </div>
+          <div class="capture-url-row">
+            <div class="url-favicon"></div>
+            <span class="url-text">theverge.com/2026/ai-agents-eve…</span>
+          </div>
+          <div class="ai-file-hint">✦ Nexus will file as: AI · Product</div>
+          <div class="file-btn">
+            File it
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+              <path d="M2 10.5L10.5 6L2 1.5v3.3l6.5 1.2L2 7.2z" fill="#0C0D0E"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- ② Filing animation strip (shown post-capture) -->
+        <div class="filing-anim">
+          <svg width="11" height="11" viewBox="0 0 24 24">
+            <path fill-rule="evenodd" fill="#D4A040" d="M7 2h10a1.5 1.5 0 0 1 1.5 1.5V21L12 17.2 5.5 21V3.5A1.5 1.5 0 0 1 7 2z"/>
+          </svg>
+          Filing animation plays here → disappears into library
+        </div>
+
+        <!-- ③ Content-type + category pivots -->
+        <div class="pivot-section">
+
+          <!-- Row 1: content type -->
+          <div class="pivot-row">
+            <div class="piv type-on">All</div>
+            <div class="piv type-off">Articles</div>
+            <div class="piv type-off">Video</div>
+            <div class="piv type-off">Podcasts</div>
+            <div class="piv type-off">Threads</div>
+          </div>
+
+          <!-- Row 2: categories — ✦ = AI-generated, plain = human -->
+          <div class="pivot-row">
+            <div class="piv cat-ai">✦ AI</div>
+            <div class="piv cat-ai">✦ Product</div>
+            <div class="piv cat-human">Design</div>
+            <div class="piv cat-ai">✦ Engineering</div>
+            <div class="piv cat-human">Reading list</div>
+            <div class="piv cat-human">+ New</div>
+          </div>
+
+        </div>
+
+        <!-- ④ Library (scroll-revealed) -->
+        <div class="scroll-fade">
+          <div class="lib-card-row" style="margin-bottom:8px;">
+            <div class="lib-thumb"></div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:6px;padding-top:2px;">
+              <div style="display:flex;gap:4px;margin-bottom:1px;">
+                <span style="font-size:7.5px;color:var(--gold);background:rgba(212,160,64,0.12);padding:2px 6px;border-radius:9999px;border:1px solid rgba(212,160,64,0.2);">✦ AI</span>
+              </div>
+              <div class="line-full"></div>
+              <div class="line-med"></div>
+              <div class="line-xs"></div>
+            </div>
+          </div>
+          <div class="lib-card-row" style="margin-bottom:8px;">
+            <div class="lib-thumb"></div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:6px;padding-top:2px;">
+              <div style="display:flex;gap:4px;margin-bottom:1px;">
+                <span style="font-size:7.5px;color:var(--muted);background:var(--s2);padding:2px 6px;border-radius:9999px;border:1px solid var(--border);">Design</span>
+              </div>
+              <div class="line-full"></div>
+              <div class="line-short"></div>
+              <div class="line-xs"></div>
+            </div>
+          </div>
+          <div class="lib-card-row">
+            <div class="lib-thumb"></div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:6px;padding-top:2px;">
+              <div style="display:flex;gap:4px;margin-bottom:1px;">
+                <span style="font-size:7.5px;color:var(--gold);background:rgba(212,160,64,0.12);padding:2px 6px;border-radius:9999px;border:1px solid rgba(212,160,64,0.2);">✦ Product</span>
+              </div>
+              <div class="line-full"></div>
+              <div class="line-med"></div>
+              <div class="line-xs"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bottom-nav">
+          <div class="nav-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24">
+              <path fill-rule="evenodd" fill="rgba(212,160,64,0.2)" d="M7 2h10a1.5 1.5 0 0 1 1.5 1.5V21L12 17.2 5.5 21V3.5A1.5 1.5 0 0 1 7 2z"/>
+              <path fill="#D4A040" d="M7 2h10a1.5 1.5 0 0 1 1.5 1.5V8H5.5V3.5A1.5 1.5 0 0 1 7 2z"/>
+            </svg>
+            <span class="nav-lbl on">Home</span>
+          </div>
+          <div class="nav-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24">
+              <path d="M5.5 3.2L5.5 20.8L21 12Z" fill="rgba(122,117,112,0.5)"/>
+            </svg>
+            <span class="nav-lbl off">Briefing</span>
+          </div>
+          <div class="nav-btn">
+            <svg width="20" height="20" viewBox="0 0 32 32" fill="none">
+              <circle cx="4"  cy="16" r="3" fill="rgba(122,117,112,0.35)"/>
+              <circle cx="26" cy="7"  r="3" fill="rgba(122,117,112,0.35)"/>
+              <circle cx="26" cy="25" r="3" fill="rgba(122,117,112,0.35)"/>
+              <line x1="7"  y1="15" x2="23" y2="8.5"  stroke="rgba(122,117,112,0.3)" stroke-width="1.5" stroke-linecap="round"/>
+              <line x1="7"  y1="17" x2="23" y2="23.5" stroke="rgba(122,117,112,0.3)" stroke-width="1.5" stroke-linecap="round"/>
+              <circle cx="16" cy="16" r="3.5" fill="rgba(122,117,112,0.5)"/>
+            </svg>
+            <span class="nav-lbl off">Ask</span>
+          </div>
+          <div class="nav-btn">
+            <div class="avatar" style="width:20px;height:20px;opacity:.5;"></div>
+            <span class="nav-lbl off">Profile</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════
+       SCREEN 2 — READER
+  ═══════════════════════════════ -->
+  <div class="screen-wrap">
+    <div class="screen-title"><span>02</span>Reader</div>
+    <div class="phone">
+      <div class="screen">
+
+        <div class="status">
+          <span class="status-time">9:41</span>
+          <div class="status-dots">
+            <div class="sdot"></div><div class="sdot"></div><div class="sdot"></div>
+          </div>
+        </div>
+
+        <div class="reader-topbar">
+          <div class="back-btn">
+            <svg class="back-caret" viewBox="0 0 7 11" fill="none">
+              <path d="M6 1L1 5.5L6 10" stroke="#D4A040" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Library
+          </div>
+          <div class="reader-actions">
+            <!-- Share -->
+            <svg class="r-icon" viewBox="0 0 24 24" fill="none">
+              <line x1="6.5" y1="8" x2="10.5" y2="11" stroke="rgba(240,237,231,0.55)" stroke-width="1.5" stroke-linecap="round"/>
+              <line x1="17.5" y1="8" x2="13.5" y2="11" stroke="rgba(240,237,231,0.55)" stroke-width="1.5" stroke-linecap="round"/>
+              <line x1="12" y1="14.5" x2="12" y2="18.5" stroke="rgba(240,237,231,0.55)" stroke-width="1.5" stroke-linecap="round"/>
+              <circle cx="4.5" cy="6.5" r="2.5" fill="rgba(240,237,231,0.3)" stroke="rgba(240,237,231,0.55)" stroke-width=".8"/>
+              <circle cx="19.5" cy="6.5" r="2.5" fill="rgba(240,237,231,0.3)" stroke="rgba(240,237,231,0.55)" stroke-width=".8"/>
+              <circle cx="12" cy="21" r="2.5" fill="rgba(240,237,231,0.3)" stroke="rgba(240,237,231,0.55)" stroke-width=".8"/>
+              <circle cx="12" cy="12" r="2.5" fill="#D4A040"/>
+            </svg>
+            <!-- Save -->
+            <svg class="r-icon" viewBox="0 0 24 24">
+              <path fill-rule="evenodd" fill="rgba(240,237,231,0.25)" d="M7 2h10a1.5 1.5 0 0 1 1.5 1.5V21L12 17.2 5.5 21V3.5A1.5 1.5 0 0 1 7 2z"/>
+              <path fill="rgba(240,237,231,0.7)" d="M7 2h10a1.5 1.5 0 0 1 1.5 1.5V8H5.5V3.5A1.5 1.5 0 0 1 7 2z"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="reader-hero"></div>
+
+        <div class="reader-meta">
+          <div class="source-dot"></div>
+          <span class="meta-text" style="color:var(--text);opacity:.8">The Verge</span>
+          <span class="meta-sep">·</span>
+          <span class="meta-text">Jun 6, 2026</span>
+          <span class="meta-sep">·</span>
+          <span class="meta-text" style="color:var(--gold)">4 min read</span>
+        </div>
+
+        <div class="reader-title">
+          <div class="title-line-1"></div>
+          <div class="title-line-2"></div>
+        </div>
+
+        <div class="reader-body">
+          <div class="line-full"></div>
+          <div class="line-full"></div>
+          <div class="line-lg"></div>
+          <div class="line-full"></div>
+          <div class="line-med"></div>
+        </div>
+
+        <div class="ai-summary">
+          <div class="ai-label">✦ Nexus Summary</div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <div class="line-full" style="background:rgba(212,160,64,0.22)"></div>
+            <div class="line-lg"   style="background:rgba(212,160,64,0.22)"></div>
+            <div class="line-med"  style="background:rgba(212,160,64,0.22)"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════
+       SCREEN 3 — BRIEFING
+  ═══════════════════════════════ -->
+  <div class="screen-wrap">
+    <div class="screen-title"><span>03</span>Briefing</div>
+    <div class="phone">
+      <div class="screen">
+
+        <div class="status">
+          <span class="status-time">9:41</span>
+          <div class="status-dots">
+            <div class="sdot"></div><div class="sdot"></div><div class="sdot"></div>
+          </div>
+        </div>
+
+        <div class="app-header">
+          <div class="nx-logo">
+            <svg class="nx-mark" viewBox="0 0 26 26" fill="none">
+              <circle cx="5" cy="13" r="2.5" fill="rgba(212,160,64,0.35)"/>
+              <circle cx="21" cy="7" r="2.5" fill="rgba(212,160,64,0.35)"/>
+              <circle cx="21" cy="19" r="2.5" fill="rgba(212,160,64,0.35)"/>
+              <line x1="7.5" y1="12" x2="18.5" y2="8.5" stroke="rgba(212,160,64,0.4)" stroke-width="1.2" stroke-linecap="round"/>
+              <line x1="7.5" y1="14" x2="18.5" y2="17.5" stroke="rgba(212,160,64,0.4)" stroke-width="1.2" stroke-linecap="round"/>
+              <circle cx="13" cy="13" r="3" fill="#D4A040"/>
+            </svg>
+            <span class="nx-wordmark">nexus</span>
+          </div>
+          <div class="header-icons">
+            <div class="avatar"></div>
+          </div>
+        </div>
+
+        <div class="briefing-header">
+          <div class="briefing-date">Friday, June 6</div>
+          <div class="briefing-title-line">Daily Briefing</div>
+        </div>
+
+        <!-- Card stack -->
+        <div class="card-stack">
+          <div class="brief-card c3"></div>
+          <div class="brief-card c2"></div>
+          <div class="brief-card c1">
+            <div class="brief-card-img"></div>
+            <div class="brief-card-body">
+              <div class="brief-tag">Technology</div>
+              <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;">
+                <div class="line-full" style="height:10px;background:rgba(240,237,231,0.5)"></div>
+                <div class="line-lg"   style="height:10px;background:rgba(240,237,231,0.5)"></div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:5px;margin-top:6px;">
+                <div class="line-full"></div>
+                <div class="line-med"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Progress + swipe hint -->
+        <div class="progress-row">
+          <div class="progress-dots">
+            <div class="pdot on"></div>
+            <div class="pdot off"></div>
+            <div class="pdot off"></div>
+            <div class="pdot off"></div>
+            <div class="pdot off"></div>
+          </div>
+          <span class="swipe-hint">Swipe to continue →</span>
+        </div>
+
+        <div class="bottom-nav" style="margin-top:auto;">
+          <div class="nav-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24">
+              <path fill-rule="evenodd" fill="rgba(122,117,112,0.2)" d="M7 2h10a1.5 1.5 0 0 1 1.5 1.5V21L12 17.2 5.5 21V3.5A1.5 1.5 0 0 1 7 2z"/>
+              <path fill="rgba(122,117,112,0.5)" d="M7 2h10a1.5 1.5 0 0 1 1.5 1.5V8H5.5V3.5A1.5 1.5 0 0 1 7 2z"/>
+            </svg>
+            <span class="nav-lbl off">Library</span>
+          </div>
+          <div class="nav-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24">
+              <path d="M5.5 3.2L5.5 20.8L21 12Z" fill="#D4A040"/>
+            </svg>
+            <span class="nav-lbl on">Briefing</span>
+          </div>
+          <div class="nav-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24">
+              <path fill-rule="evenodd" fill="rgba(122,117,112,0.45)" d="M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm0 2.8a5.2 5.2 0 1 1 0 10.4A5.2 5.2 0 0 1 11 5.8z"/>
+              <rect x="17.4" y="18.2" width="6" height="2.4" rx="1.2" transform="rotate(45 17.4 18.2)" fill="rgba(122,117,112,0.45)"/>
+            </svg>
+            <span class="nav-lbl off">Search</span>
+          </div>
+          <div class="nav-btn">
+            <div class="avatar" style="width:20px;height:20px;opacity:.5;"></div>
+            <span class="nav-lbl off">Profile</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════
+       SCREEN 4 — ASK NEXUS (landing)
+  ═══════════════════════════════ -->
+  <div class="screen-wrap">
+    <div class="screen-title"><span>04</span>Ask Nexus</div>
+    <div class="phone">
+      <div class="screen">
+
+        <div class="status">
+          <span class="status-time">9:41</span>
+          <div class="status-dots">
+            <div class="sdot"></div><div class="sdot"></div><div class="sdot"></div>
+          </div>
+        </div>
+
+        <!-- No app header — screen owns the full canvas -->
+        <div class="chat-landing">
+
+          <!-- Logo lockup -->
+          <div class="landing-logo-wrap">
+            <svg class="landing-mark" viewBox="0 0 32 32" fill="none">
+              <circle cx="4"  cy="16" r="3"   fill="rgba(212,160,64,0.35)"/>
+              <circle cx="26" cy="7"  r="3"   fill="rgba(212,160,64,0.35)"/>
+              <circle cx="26" cy="25" r="3"   fill="rgba(212,160,64,0.35)"/>
+              <line x1="7"  y1="15"  x2="23" y2="8.5"  stroke="rgba(212,160,64,0.4)" stroke-width="1.2" stroke-linecap="round"/>
+              <line x1="7"  y1="17"  x2="23" y2="23.5" stroke="rgba(212,160,64,0.4)" stroke-width="1.2" stroke-linecap="round"/>
+              <line x1="26" y1="10"  x2="26" y2="22"   stroke="rgba(212,160,64,0.3)" stroke-width="1.2" stroke-linecap="round"/>
+              <circle cx="16" cy="16" r="3.5" fill="#D4A040"/>
+            </svg>
+            <span class="landing-wordmark">nexus</span>
+          </div>
+
+          <!-- Greeting -->
+          <div class="landing-greeting">Good morning, Srihari</div>
+
+          <!-- Main prompt -->
+          <div class="landing-prompt">What would you<br>like to explore?</div>
+
+          <!-- Input box — the centrepiece -->
+          <div class="landing-input-wrap">
+            <span class="landing-input-ph">Ask your library anything…</span>
+            <div class="landing-send">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M1.5 10.5L10.5 6L1.5 1.5v3.2l6.5 1.3-6.5 1.3z" fill="#0C0D0E"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- 2×2 suggestion chips -->
+          <div class="landing-chips">
+            <div class="landing-chip">
+              <span class="chip-icon">✦</span>
+              Summarize this week
+            </div>
+            <div class="landing-chip">
+              <span class="chip-icon">◎</span>
+              Find connections
+            </div>
+            <div class="landing-chip">
+              <span class="chip-icon">↗</span>
+              What's trending?
+            </div>
+            <div class="landing-chip">
+              <span class="chip-icon">◷</span>
+              Catch me up
+            </div>
+          </div>
+
+        </div>
+
+        <div class="bottom-nav">
+          <div class="nav-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24">
+              <path fill-rule="evenodd" fill="rgba(122,117,112,0.2)" d="M7 2h10a1.5 1.5 0 0 1 1.5 1.5V21L12 17.2 5.5 21V3.5A1.5 1.5 0 0 1 7 2z"/>
+              <path fill="rgba(122,117,112,0.5)" d="M7 2h10a1.5 1.5 0 0 1 1.5 1.5V8H5.5V3.5A1.5 1.5 0 0 1 7 2z"/>
+            </svg>
+            <span class="nav-lbl off">Library</span>
+          </div>
+          <div class="nav-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24">
+              <path d="M5.5 3.2L5.5 20.8L21 12Z" fill="rgba(122,117,112,0.5)"/>
+            </svg>
+            <span class="nav-lbl off">Briefing</span>
+          </div>
+          <div class="nav-btn">
+            <!-- Ask Nexus — ACTIVE -->
+            <svg width="20" height="20" viewBox="0 0 32 32" fill="none">
+              <circle cx="4"  cy="16" r="3"   fill="rgba(212,160,64,0.35)"/>
+              <circle cx="26" cy="7"  r="3"   fill="rgba(212,160,64,0.35)"/>
+              <circle cx="26" cy="25" r="3"   fill="rgba(212,160,64,0.35)"/>
+              <line x1="7"  y1="15"  x2="23" y2="8.5"  stroke="rgba(212,160,64,0.4)" stroke-width="1.5" stroke-linecap="round"/>
+              <line x1="7"  y1="17"  x2="23" y2="23.5" stroke="rgba(212,160,64,0.4)" stroke-width="1.5" stroke-linecap="round"/>
+              <circle cx="16" cy="16" r="3.5" fill="#D4A040"/>
+            </svg>
+            <span class="nav-lbl on">Ask</span>
+          </div>
+          <div class="nav-btn">
+            <div class="avatar" style="width:20px;height:20px;opacity:.5;"></div>
+            <span class="nav-lbl off">Profile</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
+</div>
+
+<footer style="text-align:center;margin-top:64px;padding-bottom:48px;color:var(--muted);font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.4;font-family:var(--apple);">
+  Nexus Design System · Step 4 of 5 · Approve layouts to begin the full prototype
+</footer>
+
+</body>
+</html>

@@ -1,6 +1,6 @@
 # Project Nexus — Build Plan
-**Last Updated:** 2026-06-04  
-**Current Phase:** Pre-Development / Spec
+**Last Updated:** 2026-06-06  
+**Current Phase:** Phase 0A — Design System + Parallel Foundation Work
 
 ---
 
@@ -15,8 +15,8 @@
 ## Phase 0 — Foundation (Now)
 - [x] Write product spec (SPEC.md)
 - [x] Resolve open questions (personas, platform roadmap, content types, connections behavior)
-- [ ] **Design System** (see below — precedes all dev work)
-- [ ] Set up GitHub repo (monorepo: `/prototype`, `/app-ios`, `/api`, `/design-system`)
+- [~] **Design System** — explorative prompt running in parallel tab (Step 1: color palette)
+- [~] Set up GitHub repo (monorepo: `/prototype`, `/app-ios`, `/api`, `/design-system`) — in progress
 - [ ] Domain + waitlist landing page
 
 ### Phase 0A — Design System & Prototype (Before any native build)
@@ -28,13 +28,13 @@
 - [ ] Motion spec: duration + easing curves for key interactions
 
 **Design tokens (platform-agnostic JSON):**
-- [ ] `/design-system/tokens/colors.json`
-- [ ] `/design-system/tokens/typography.json`
-- [ ] `/design-system/tokens/spacing.json`
-- [ ] `/design-system/tokens/motion.json`
+- [~] `/design-system/tokens/colors.json` — scaffold in progress
+- [~] `/design-system/tokens/typography.json` — scaffold in progress
+- [~] `/design-system/tokens/spacing.json` — scaffold in progress
+- [~] `/design-system/tokens/motion.json` — scaffold in progress
 
 **Web Prototype (`/prototype/` — Next.js 14):**
-- [ ] Project scaffold: Next.js + Tailwind + Framer Motion
+- [~] Project scaffold: Next.js + Tailwind + Framer Motion — in progress via design tab
 - [ ] Token integration (CSS custom properties from JSON)
 - [ ] Core screens: Library, Item detail/Reader, Daily Briefing, Conversation
 - [ ] Signature moments: Save animation, card stack Briefing, Library shelf view
@@ -42,120 +42,148 @@
 
 ---
 
-### Design Prompt (for v0 or Claude Code sub-agent — Step-by-Step Explorative Mode)
+### Design Prompt v2 — Updated 2026-06-06 (for UX agent in Tab 1)
 
-Use this prompt to kick off the design exploration. It is **deliberately multi-step** — do not try to generate everything in one shot.
+**Direction**: Notion visual discipline + NotebookLM AI-native model. Light/white background, near-black text, one accent used sparingly. Step-by-step — do not generate everything in one shot. Every step produces a rendered HTML file.
 
 ---
 
 ```
-You are designing the visual identity and UI for **Nexus** — a premium, AI-native 
-content curation app. Think: Apple Books meets Linear meets The Economist. 
-The app is mobile-first (iPhone), but will expand to Android, Web, and Mac.
+You are the UX designer for Nexus — an AI-native content curation app.
+The product sits at the intersection of NotebookLM (AI is the core, not a feature)
+and Notion (clean information architecture, minimal color, white background).
 
-The design must be:
-- Premium and editorial — not generic SaaS
-- Glassmorphism where appropriate (frosted panels, subtle blur, layered depth)
-- Gradient backgrounds — deep, subtle, not garish (dark mode first)
-- Fully rounded corners on buttons (pill-shaped, 9999px radius)
-- Premium icons — custom style, minimal but effective color use
-- Delightful micro-interactions at every touch point (Framer Motion spring physics)
-- Dark mode AND light mode (design dark first)
-- Share extension UI (compact, beautiful save confirmation)
-- Offline sync indicator (subtle, non-intrusive)
+VISUAL REFERENCE:
+- Notion: white/off-white background (~#FAFAFA), near-black text (~#191919),
+  Inter font, minimal color, one accent sparingly used, clean sidebar nav
+- NotebookLM: clean, spacious, AI chat as a primary surface
+- Light-first. Dark mode mirrors the same restraint (deep gray, not black).
+- No glassmorphism, no gradient backgrounds.
+- ONE accent color. Used for signal, not decoration.
+- Buttons: rounded corners (8-12px radius), not pill-shaped
+- Icons: thin stroke, geometric, monochrome with single accent where needed
 
-We will work through this **one step at a time**. Do not generate full screens yet.
+THE APP:
+- Saves internet content (articles, videos, podcasts, threads)
+- AI summarizes, tags, connects, and answers questions about your saved content
+- Primary nav: left sidebar (desktop/tablet) or bottom nav (iPhone)
+- Core screens: Library, Item/Reader, Daily Briefing, Ask Nexus (AI chat)
+- Mobile-first but designed for all platforms
+
+We will work through this one step at a time.
+Each step produces a rendered HTML file — not text, not a table. Must be visual.
 
 ---
 
-**STEP 1 — Color Palette**
-Show me 5 distinct color theme options as swatches. Each theme should have:
-- A background (dark mode, near-black with personality — not pure #000)
-- A surface (card/panel color, slightly lighter)
-- A primary accent (the brand color — not blue, not generic)
-- A secondary accent (supporting color)
-- A text color (primary + secondary)
+STEP 1 — Color Palette
+Produce a rendered HTML file showing 4 light-mode palette options.
+Each palette as a visual swatch block showing:
+- Background (white or warm/cool off-white)
+- Surface (cards, sidebar — slightly different from background)
+- Text primary (near-black) + text secondary (medium gray)
+- Accent (ONE color — not blue — for links, active states, AI indicators)
+- Border (subtle 1px color)
 
-Format each as a named concept with hex values and a 1-line mood description.
-Examples of direction (don't copy): "Obsidian + Amber", "Midnight + Coral", "Slate + Gold".
+Also show each palette's dark mode equivalent as a second row below it.
+Name each concept (e.g. "Paper + Rust", "Milk + Indigo", "Stone + Amber").
+Output: single HTML file, all 4 palettes visible without scrolling.
 
 After I pick one, we move to Step 2.
 
 ---
 
-**STEP 2 — Typography** (only after Step 1 is chosen)
-Show 4 font pairing options for the chosen color theme. Each pairing should have:
-- A display/heading font (editorial, distinctive — serif or stylized sans)
-- A body/reading font (highly legible at small sizes)
-- A UI font (clean, for labels and navigation)
+STEP 2 — Typography
+(Only after Step 1 is chosen)
 
-For each, show a sample rendering: a headline ("Your daily briefing"), 
-a body paragraph (2–3 lines of article text), and a UI label ("3 min read").
-Include Google Fonts or system font names so they're web-safe for the prototype.
+Show 3 font pairing options rendered in the chosen palette as a full HTML specimen.
+Each pairing:
+- UI font: for labels, nav, metadata (Notion-clean — Inter or similar)
+- Display font: for headlines (can have personality)
+- Reader font: for article body text (legible at 16-18px)
+
+Each specimen shows:
+- App headline: "Everything you save, organized and understood"
+- Library item: title + source + 1-line AI summary
+- Short article paragraph (3-4 lines)
+- UI labels: "3 min read" / "Saved" / "Ask Nexus"
+
+Google Fonts only. Output: single HTML file, all 3 specimens visible.
 
 After I pick one, we move to Step 3.
 
 ---
 
-**STEP 3 — Icon Style** (only after Step 2 is chosen)
-Show 3 icon style directions, each with 6 sample icons:
-(save, article, video, podcast, search, connection/link)
+STEP 3 — Layout Wireframe (IA is decided — implement this)
+(Only after Step 2 is chosen)
 
-Styles to explore:
-- Option A: Thin stroke, monochrome with single accent color dot
-- Option B: Filled with subtle gradient, rounded shapes
-- Option C: Duotone — two-color fills, slightly playful but refined
+The IA is already decided. Implement it as a clean HTML wireframe (layout only, no color yet):
 
-Render each set in the chosen palette.
+Navigation model: Source-centric
+- Left sidebar (240px): Nexus logo, search bar, nav items (Library / Briefing / Ask Nexus),
+  divider, Collections list (shows both user-created and AI-auto-generated collections)
+- Main content area fills the rest
+- On mobile (< 768px): sidebar collapses to bottom nav (Library | Briefing | Ask | Profile)
+  with search bar pinned at top of content area
 
-After I pick one, we move to Step 4.
+No Home screen. Library is the default view. Briefing is the daily moment, not a dashboard.
 
----
+Render the Library screen only as an HTML wireframe — divs with borders and labels,
+proportional layout, actual HTML (not ASCII). Show both desktop and mobile versions side by side.
 
-**STEP 4 — Layout Sketches** (only after Step 3 is chosen)
-Show ASCII/text wireframe sketches of 4 core screens at mobile size (390px wide):
-1. Library (the main content shelf)
-2. Item / Reader view (clean reading experience)
-3. Daily Briefing (the card stack)
-4. Conversation / Ask Nexus
-
-Keep these rough — layout, hierarchy, and key components only. No color, no detail.
-I will approve layout direction before you build anything.
+After I review and approve the layout, we move to Step 4.
 
 ---
 
-**STEP 5 — Full Prototype** (only after Step 4 is approved)
-Now build the full Next.js 14 prototype with:
-- All chosen design decisions applied
-- Framer Motion animations for: card swipe (Briefing), save micro-animation, 
-  page transitions, hover states on cards
-- Glassmorphism on modals and bottom sheets
-- Gradient mesh backgrounds (subtle, dark)
-- Both dark and light mode via CSS variables from design tokens
-- Custom "N" logomark in the header (constellation/connected-nodes concept)
-- Bottom navigation: Library, Briefing, Chat, Profile
-- Share extension component (compact save sheet, appears from bottom)
-- Offline indicator (subtle chip, top of screen)
-- All buttons: pill-shaped (border-radius: 9999px)
-- Output as Next.js 14 App Router components + Tailwind CSS
+STEP 4 — Landing Page Wireframe
+(Only after Step 3 layout is approved)
+
+Wireframe the landing page as an HTML layout (no color yet, structure only).
+
+Rules for this landing page:
+- Single-column, one-box layout — NOT a multi-section marketing page
+- No feature grids, no testimonials, no pricing section, no footer nav
+- Everything above or just below the fold
+- One primary CTA only (email capture or "Get early access")
+
+The wireframe must show:
+- Logo / wordmark (top left)
+- Headline (large, centered or left-aligned)
+- Sub-headline (1-2 lines)
+- A single visual element (app screenshot OR abstract illustration — placeholder box)
+- Email input + CTA button
+- Optional: 1 line of social proof below CTA (e.g. "Join 2,400 people on the waitlist")
+
+Output: HTML wireframe, actual rendered layout with labeled placeholder boxes.
+I will approve the structure before any styling is applied.
+
+---
+
+STEP 5 — Landing Page (Final)
+(Only after Step 4 wireframe is approved)
+
+Build the fully styled, production-ready landing page in a single HTML file:
+- Apply chosen palette, typography, and logo
+- Responsive: looks great on mobile (390px) and desktop (1280px)
+- Subtle animation: headline fades in, CTA button has a hover state
+- Custom "N" logomark SVG in the header (constellation / connected-nodes concept)
+- Email capture form (static — no backend needed, just the UI)
+- Light mode default; dark mode via prefers-color-scheme media query
+- Output: single self-contained HTML file, no external dependencies except Google Fonts
 ```
 
----
-
----
 
 ## Phase 1 — MVP (Target: T+10 weeks)
 
 ### 1A — Backend Foundation (Weeks 1–3)
 - [ ] Supabase project setup (auth, DB)
-- [ ] PostgreSQL schema: users, items, tags, embeddings, briefings
-- [ ] pgvector extension + embedding pipeline
-- [ ] FastAPI skeleton: auth, items CRUD
+- [x] PostgreSQL schema: users, items, tags, embeddings, briefings — models + Alembic done
+- [~] pgvector extension + embedding pipeline — embed stub done; real model TBD
+- [x] FastAPI skeleton: auth, items CRUD — done (models, auth, queue stub, Alembic)
 - [ ] Content extraction service (Readability / Jina for articles)
 - [ ] YouTube transcript ingestion (YouTube Data API + transcript extraction)
 - [ ] Podcast transcript ingestion (RSS feed parse + Whisper/Deepgram for audio-to-text)
 - [ ] S3/R2 bucket for full-text storage
-- [ ] Anthropic API integration: summarize + insights pipeline
+- [x] Anthropic API integration: summarize + insights pipeline — pipeline.py done (claude-haiku-4-5); **blocked: needs ANTHROPIC_API_KEY**
 - [ ] Background job queue (async AI processing per save)
 
 ### 1B — iPhone App Foundation (Weeks 1–3, parallel)
@@ -230,6 +258,11 @@ Now build the full Next.js 14 prototype with:
 | 2026-06-05 | Platform roadmap: iOS → Android → Web → Desktop/Mac | Start focused, expand with shared design system |
 | 2026-06-05 | Central design system before any native build | All tokens/assets are platform-agnostic source of truth |
 | 2026-06-05 | Web prototype in Next.js to validate design language | Fastest to iterate, becomes reference for native builds |
+| 2026-06-06 | Product framing: NotebookLM brain + Notion shell | Clearest analogy; defensible market position |
+| 2026-06-06 | Design: light-first, white bg, one accent, Notion restraint | Dark mode mirrors same discipline; not dark-first |
+| 2026-06-06 | IA: Source-centric (Option A), no Home screen | Briefing IS the home moment; Library is the workspace |
+| 2026-06-06 | Collections: user-created + AI-auto-generated | Same container; user can rename/merge AI collections |
+| 2026-06-06 | 5 JTBDs locked | Capture / Understand / Research / Answer / Stay informed |
 
 ---
 

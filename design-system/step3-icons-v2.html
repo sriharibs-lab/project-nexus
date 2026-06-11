@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nexus — Step 3: Icon Style (Round 2)</title>
+  <style>
+    :root {
+      --bg:      #0C0D0E;
+      --surface: #161819;
+      --gold:    #D4A040;
+      --bronze:  #9A7030;
+      --text:    #F0EDE7;
+      --muted:   #7A7570;
+      --border:  rgba(255,255,255,0.07);
+      --divider: rgba(255,255,255,0.04);
+      --apple:   -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:var(--bg); color:var(--text); font-family:var(--apple); padding:48px 32px; }
+
+    header { text-align:center; margin-bottom:72px; }
+    .step-label { font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+    header h1 { font-size:26px; font-weight:700; color:var(--text); letter-spacing:-.02em; }
+    .sub { font-size:13px; color:var(--muted); margin-top:8px; font-weight:400; }
+    .theme-tag { display:inline-block; margin-top:12px; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--gold); border:1px solid rgba(212,160,64,.3); padding:4px 12px; border-radius:9999px; }
+
+    .options { max-width:880px; margin:0 auto; display:flex; flex-direction:column; gap:32px; }
+    .option-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; overflow:hidden; }
+
+    .option-header { display:flex; align-items:center; gap:14px; padding:22px 28px; border-bottom:1px solid var(--divider); }
+    .option-letter { width:34px; height:34px; border-radius:9px; background:rgba(212,160,64,.1); border:1px solid rgba(212,160,64,.25); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; color:var(--gold); flex-shrink:0; }
+    .option-title { font-size:15px; font-weight:600; color:var(--text); letter-spacing:-.01em; }
+    .option-desc { font-size:12px; color:var(--muted); margin-top:2px; }
+
+    .icon-grid { display:grid; grid-template-columns:repeat(6,1fr); padding:40px 28px 32px; border-bottom:1px solid var(--divider); gap:8px; }
+    .icon-cell { display:flex; flex-direction:column; align-items:center; gap:11px; }
+    .icon-wrap { width:60px; height:60px; display:flex; align-items:center; justify-content:center; }
+    .icon-name { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.1em; font-weight:500; }
+
+    /* Nav preview */
+    .nav-preview { padding:20px 28px 28px; }
+    .nav-label-small { font-size:10px; text-transform:uppercase; letter-spacing:.14em; color:var(--bronze); margin-bottom:16px; font-weight:500; }
+    .nav-bar { background:var(--bg); border:1px solid var(--border); border-radius:22px; padding:16px 0 20px; display:flex; justify-content:space-around; max-width:360px; margin:0 auto; }
+    .nav-item { display:flex; flex-direction:column; align-items:center; gap:6px; }
+    .nav-text { font-size:10px; font-weight:500; }
+    .nav-text.on  { color:var(--gold); }
+    .nav-text.off { color:var(--muted); }
+
+    footer { text-align:center; margin-top:64px; padding-bottom:48px; color:var(--muted); font-size:11px; letter-spacing:.12em; text-transform:uppercase; opacity:.4; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="step-label">Nexus · Design System · Step 3 · Round 2</div>
+  <h1>Icon Style — 3 New Directions</h1>
+  <div class="sub">Reductive · Crafted line · Soft fill</div>
+  <span class="theme-tag">Graphite + Gold · SF Pro</span>
+</header>
+
+<div class="options">
+
+
+  <!-- ═══════════════════════════════════════════
+       OPTION 1 — SYMBOL
+       Pure geometric fills. Reduced to the
+       essential symbol. No strokes.
+  ══════════════════════════════════════════════ -->
+  <div class="option-card">
+    <div class="option-header">
+      <div class="option-letter">1</div>
+      <div>
+        <div class="option-title">Symbol — Flat Geometric</div>
+        <div class="option-desc">Icons reduced to pure filled shapes · no strokes · Bauhaus/ISO abstraction</div>
+      </div>
+    </div>
+
+    <div class="icon-grid">
+
+      <!-- Save -->
+      <div class="icon-cell">
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" width="36" height="36">
+            <path fill-rule="evenodd" fill="rgba(212,160,64,0.2)"
+              d="M7 2h10a1.5 1.5 0 0 1 1.5 1.5V21L12 17.2 5.5 21V3.5A1.5 1.5 0 0 1 7 2z"/>
+            <path fill="#D4A040"
+              d="M7 2h10a1.5 1.5 0 0 1 1.5 1.5V8H5.5V3.5A1.5 1.5 0 0 1 7 2z"/>
+          </svg>
+        </div>
+        <span class="icon-name">Save</span>
+      </div>
+
+      <!-- Article -->
+      <div class="icon-cell">
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" width="36" height="36">
+            <rect x="3" y="4"   width="18" height="2.8" rx="1.4" fill="#D4A040"/>
+            <rect x="3" y="9.4" width="18" height="2.8" rx="1.4" fill="rgba(212,160,64,0.58)"/>
+            <rect x="3" y="14.8" width="18" height="2.8" rx="1.4" fill="rgba(212,160,64,0.38)"/>
+            <rect x="3" y="20.2" width="11" height="2.8" rx="1.4" fill="rgba(212,160,64,0.22)"/>
+          </svg>
+        </div>
+        <span class="icon-name">Article</span>
+      </div>
+
+      <!-- Video -->
+      <div class="icon-cell">
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" width="36" height="36">
+            <path d="M5.5 3.2 L5.5 20.8 L21 12 Z" fill="#D4A040"/>
+          </svg>
+        </div>
+        <span class="icon-name">Video</span>
+      </div>
+
+      <!-- Podcast -->
+      <div class="icon-cell">
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" width="36" height="36">
+            <!-- Mic body -->
+            <rect x="9" y="2" width="6" height="13" rx="3" fill="#D4A040"/>
+            <!-- Sound ring (donut half) -->
+            <path fill-rule="evenodd" fill="rgba(212,160,64,0.3)"
+              d="M4 12a8 8 0 0 0 16 0 1.5 1.5 0 0 1-3 0 5 5 0 0 1-10 0 1.5 1.5 0 0 1-3 0z"/>
+            <!-- Stand -->
+            <rect x="11.2" y="20" width="1.6" height="3.2" rx=".8" fill="rgba(212,160,64,0.45)"/>
+            <rect x="8"    y="22.5" width="8" height="1.8" rx=".9" fill="rgba(212,160,64,0.45)"/>
+          </svg>
+        </div>
+        <span class="icon-name">Podcast</span>
+      </div>
+
+      <!-- Search -->
+      <div class="icon-cell">
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" width="36" height="36">
+            <!-- Ring (donut) using evenodd -->
+            <path fill-rule="evenodd" fill="#D4A040"
+              d="M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm0 2.8a5.2 5.2 0 1 1 0 10.4A5.2 5.2 0 0 1 11 5.8z"/>
+            <!-- Handle -->
+            <rect x="17.4" y="18.2" width="6" height="2.4" rx="1.2"
+              transform="rotate(45 17.4 18.2)" fill="#D4A040"/>
+          </svg>
+        </div>
+        <span class="icon-name">Search</span>
+      </div>
+
+      <!-- Link -->
+      <div class="icon-cell">
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" width="36" height="36">
+            <!-- Lines first (behind) -->
+            <line x1="6.2"  y1="7.5"  x2="10.2" y2="10.8" stroke="rgba(212,160,64,0.3)" stroke-width="1.8" stroke-linecap="round"/>
+            <line x1="17.8" y1="7.5"  x2="13.8" y2="10.8" stroke="rgba(212,160,64,0.3)" stroke-width="1.8" stroke-linecap="round"/>
+            <line x1="12"   y1="15.2" x2="12"   y2="18.8" stroke="rgba(212,160,64,0.3)" stroke-width="1.8" stroke-linecap="round"/>
+            <!-- Outer nodes -->
+            <circle cx="4"  cy="6"  r="3" fill="rgba(212,160,64,0.28)"/>
+            <circle cx="20" cy="6"  r="3" fill="rgba(212,160,64,0.28)"/>
+            <circle cx="12" cy="21" r="3" fill="rgba(212,160,64,0.28)"/>
+            <!-- Center node -->
+            <circle cx="12" cy="12" r="3.5" fill="#D4A040"/>
+          </svg>
+        </div>
+        <span class="icon-name">Link</span>
+      </div>
+
+    </div>
+
+    <div class="nav-preview">
+      <div class="nav-label-small">Bottom Navigation Preview</div>
+      <div class="nav-bar">
+        <!-- Library (active) -->
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" width="26" height="26">
+            <path fill-rule="evenodd" fill="rgba(212,160,64,0.2)"
+              d="M7 2h10a1.5 1.5 0 0 1 1.5 1.5V21L12 17.2 5.5 21V3.5A1.5 1.5 0 0 1 7 2z"/>
+            <path fill="#D4A040"
+              d="M7 2h10a1.5 1.5 0 0 1 1.5 1.5V8H5.5V3.5A1.5 1.5 0 0 1 7 2z"/>
+          </svg>
+          <span class="nav-text on">Library</span>
+        </div>
+        <!-- Briefing -->
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" width="26" height="26">
+            <path d="M5.5 3.2L5.5 20.8L21 12Z" fill="rgba(122,117,112,0.5)"/>
+          </svg>
+          <span class="nav-text off">Briefing</span>
+        </div>
+        <!-- Search -->
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" width="26" height="26">
+            <path fill-rule="evenodd" fill="rgba(122,117,112,0.45)"
+              d="M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm0 2.8a5.2 5.2 0 1 1 0 10.4A5.2 5.2 0 0 1 11 5.8z"/>
+            <rect x="17.4" y="18.2" width="6" height="2.4" rx="1.2"
+              transform="rotate(45 17.4 18.2)" fill="rgba(122,117,112,0.45)"/>
+          </svg>
+          <span class="nav-text off">Search</span>
+        </div>
+        <!-- Connect -->
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" width="26" height="26">
+            <line x1="6.2"  y1="7.5"  x2="10.2" y2="10.8" stroke="rgba(122,117,112,0.3)" stroke-width="1.8" stroke-linecap="round"/>
+            <line x1="17.8" y1="7.5"  x2="13.8" y2="10.8" stroke="rgba(122,117,112,0.3)" stroke-width="1.8" stroke-linecap="round"/>
+            <line x1="12"   y1="15.2" x2="12"   y2="18.8" stroke="rgba(122,117,112,0.3)" stroke-width="1.8" stroke-linecap="round"/>
+            <circle cx="4"  cy="6"  r="3" fill="rgba(122,117,112,0.22)"/>
+            <circle cx="20" cy="6"  r="3" fill="rgba(122,117,112,0.22)"/>
+            <circle cx="12" cy="21" r="3" fill="rgba(122,117,112,0.22)"/>
+            <circle cx="12" cy="12" r="3.5" fill="rgba(122,117,112,0.5)"/>
+          </svg>
+          <span class="nav-text off">Connect</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════
+       OPTION 2 — CRAFTED LINE
+       Bespoke stroke paths. Not a library icon.
+       More character. Wider stroke (2px).
+       Designed like letters, not clip art.
+  ══════════════════════════════════════════════ -->
+  <div class="option-card">
+    <div class="option-header">
+      <div class="option-letter">2</div>
+      <div>
+        <div class="option-title">Crafted Line — Bespoke Stroke</div>
+        <div class="option-desc">2px uniform stroke · paths designed like letterforms · no fill · distinct proportions</div>
+      </div>
+    </div>
+
+    <div class="icon-grid">
+
+      <!-- Save -->
+      <div class="icon-cell">
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" width="38" height="38" fill="none"
+               stroke-linecap="round" stroke-linejoin="round">
+            <!-- Bookmark with generous proportions and rounded inner curve -->
+            <path d="M6 3h12a1 1 0 0 1 1 1v16.5l-7-4.5-7 4.5V4a1 1 0 0 1 1-1z"
+                  stroke="#F0EDE7" stroke-width="2"/>
+          </svg>
+        </div>
+        <span class="icon-name">Save</span>
+      </div>
+
+      <!-- Article -->
+      <div class="icon-cell">
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" width="38" height="38" fill="none"
+               stroke-linecap="round" stroke-linejoin="round">
+            <!-- Clean wide lines — generous spacing -->
+            <line x1="3.5" y1="6"    x2="20.5" y2="6"    stroke="#F0EDE7" stroke-width="2.2"/>
+            <line x1="3.5" y1="10.5" x2="20.5" y2="10.5" stroke="#F0EDE7" stroke-width="2.2"/>
+            <line x1="3.5" y1="15"   x2="20.5" y2="15"   stroke="#F0EDE7" stroke-width="2.2"/>
+            <line x1="3.5" y1="19.5" x2="13"   y2="19.5" stroke="#F0EDE7" stroke-width="2.2"/>
+          </svg>
+        </div>
+        <span class="icon-name">Article</span>
+      </div>
+
+      <!-- Video -->
+      <div class="icon-cell">
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" width="38" height="38" fill="none"
+               stroke-linecap="round" stroke-linejoin="round">
+            <!-- Play in a rounded square (not a circle — more distinctive) -->
+            <rect x="3" y="3" width="18" height="18" rx="5" stroke="#F0EDE7" stroke-width="2"/>
+            <path d="M9.5 8.5l7 3.5-7 3.5z"
+                  stroke="#D4A040" stroke-width="2" fill="#D4A040"/>
+          </svg>
+        </div>
+        <span class="icon-name">Video</span>
+      </div>
+
+      <!-- Podcast -->
+      <div class="icon-cell">
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" width="38" height="38" fill="none"
+               stroke-linecap="round" stroke-linejoin="round">
+            <!-- Mic: tall capsule with clear proportions -->
+            <rect x="9" y="2" width="6" height="12" rx="3"
+                  stroke="#F0EDE7" stroke-width="2"/>
+            <!-- Sound bowl -->
+            <path d="M5 11.5a7 7 0 0 0 14 0"
+                  stroke="#F0EDE7" stroke-width="2"/>
+            <!-- Stand: clean, proportional -->
+            <line x1="12" y1="18.5" x2="12" y2="22" stroke="#F0EDE7" stroke-width="2"/>
+            <line x1="8.5" y1="22"  x2="15.5" y2="22" stroke="#F0EDE7" stroke-width="2"/>
+          </svg>
+        </div>
+        <span class="icon-name">Podcast</span>
+      </div>
+
+      <!-- Search -->
+      <div class="icon-cell">
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" width="38" height="38" fill="none"
+               stroke-linecap="round" stroke-linejoin="round">
+            <!-- Lens — slightly larger circle, more confident -->
+            <circle cx="10.5" cy="10.5" r="7.5" stroke="#F0EDE7" stroke-width="2"/>
+            <!-- Handle: short, bold, angled -->
+            <line x1="16.5" y1="16.5" x2="21.5" y2="21.5"
+                  stroke="#D4A040" stroke-width="2.5"/>
+          </svg>
+        </div>
+        <span class="icon-name">Search</span>
+      </div>
+
+      <!-- Link -->
+      <div class="icon-cell">
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" width="38" height="38" fill="none"
+               stroke-linecap="round" stroke-linejoin="round">
+            <!-- Two chain links — more considered path than standard -->
+            <path d="M10 14a4 4 0 0 0 5.66 0l2.83-2.83a4 4 0 0 0-5.66-5.66l-1.41 1.41"
+                  stroke="#F0EDE7" stroke-width="2"/>
+            <path d="M14 10a4 4 0 0 0-5.66 0L5.51 12.83a4 4 0 0 0 5.66 5.66l1.41-1.41"
+                  stroke="#F0EDE7" stroke-width="2"/>
+          </svg>
+        </div>
+        <span class="icon-name">Link</span>
+      </div>
+
+    </div>
+
+    <div class="nav-preview">
+      <div class="nav-label-small">Bottom Navigation Preview</div>
+      <div class="nav-bar">
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 3h12a1 1 0 0 1 1 1v16.5l-7-4.5-7 4.5V4a1 1 0 0 1 1-1z"
+                  stroke="#D4A040" stroke-width="2"/>
+          </svg>
+          <span class="nav-text on">Library</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="5" stroke="#7A7570" stroke-width="2"/>
+            <path d="M9.5 8.5l7 3.5-7 3.5z" stroke="#7A7570" stroke-width="2" fill="#7A7570"/>
+          </svg>
+          <span class="nav-text off">Briefing</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="10.5" cy="10.5" r="7.5" stroke="#7A7570" stroke-width="2"/>
+            <line x1="16.5" y1="16.5" x2="21.5" y2="21.5" stroke="#7A7570" stroke-width="2.5"/>
+          </svg>
+          <span class="nav-text off">Search</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 14a4 4 0 0 0 5.66 0l2.83-2.83a4 4 0 0 0-5.66-5.66l-1.41 1.41"
+                  stroke="#7A7570" stroke-width="2"/>
+            <path d="M14 10a4 4 0 0 0-5.66 0L5.51 12.83a4 4 0 0 0 5.66 5.66l1.41-1.41"
+                  stroke="#7A7570" stroke-width="2"/>
+          </svg>
+          <span class="nav-text off">Connect</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════
+       OPTION 3 — SOFT FILL
+       Pillowy fills + ultra-thin stroke border.
+       Icons feel like frosted glass chips.
+       Matches the glassmorphism UI language.
+  ══════════════════════════════════════════════ -->
+  <div class="option-card">
+    <div class="option-header">
+      <div class="option-letter">3</div>
+      <div>
+        <div class="option-title">Soft Fill — Frosted Material</div>
+        <div class="option-desc">Generous fills at low opacity + 1px thin border · matches glassmorphism · tactile depth</div>
+      </div>
+    </div>
+
+    <div class="icon-grid">
+
+      <!-- Save -->
+      <div class="icon-cell">
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" width="40" height="40">
+            <!-- Soft body -->
+            <path d="M6.5 3.5h11a1 1 0 0 1 1 1v16l-6.5-3.8-6.5 3.8V4.5a1 1 0 0 1 1-1z"
+                  fill="rgba(212,160,64,0.14)" stroke="rgba(212,160,64,0.55)" stroke-width=".9"
+                  stroke-linejoin="round"/>
+            <!-- Inner soft tab -->
+            <path d="M8 6.5h8" stroke="rgba(212,160,64,0.8)" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span class="icon-name">Save</span>
+      </div>
+
+      <!-- Article -->
+      <div class="icon-cell">
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" width="40" height="40">
+            <!-- Soft document -->
+            <rect x="4" y="2" width="16" height="20" rx="3"
+                  fill="rgba(212,160,64,0.1)" stroke="rgba(212,160,64,0.4)" stroke-width=".9"/>
+            <!-- Text lines with fill + soft stroke -->
+            <rect x="7" y="7.5"  width="10" height="2" rx="1"
+                  fill="rgba(212,160,64,0.55)" stroke="none"/>
+            <rect x="7" y="11.5" width="10" height="2" rx="1"
+                  fill="rgba(212,160,64,0.4)" stroke="none"/>
+            <rect x="7" y="15.5" width="7"  height="2" rx="1"
+                  fill="rgba(212,160,64,0.28)" stroke="none"/>
+          </svg>
+        </div>
+        <span class="icon-name">Article</span>
+      </div>
+
+      <!-- Video -->
+      <div class="icon-cell">
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" width="40" height="40">
+            <!-- Soft rounded square bg -->
+            <rect x="2.5" y="2.5" width="19" height="19" rx="5.5"
+                  fill="rgba(212,160,64,0.1)" stroke="rgba(212,160,64,0.4)" stroke-width=".9"/>
+            <!-- Soft play triangle -->
+            <path d="M9.5 8l7 4-7 4z"
+                  fill="rgba(212,160,64,0.85)" stroke="rgba(212,160,64,0.3)" stroke-width=".5"
+                  stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <span class="icon-name">Video</span>
+      </div>
+
+      <!-- Podcast -->
+      <div class="icon-cell">
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" width="40" height="40">
+            <!-- Mic body: soft pill -->
+            <rect x="9" y="2" width="6" height="12.5" rx="3"
+                  fill="rgba(212,160,64,0.7)" stroke="rgba(212,160,64,0.6)" stroke-width=".9"/>
+            <!-- Sound arc: thin, glassy -->
+            <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0"
+                  fill="none" stroke="rgba(212,160,64,0.5)" stroke-width="1.2" stroke-linecap="round"/>
+            <!-- Stand -->
+            <line x1="12" y1="18" x2="12" y2="21.5"
+                  stroke="rgba(212,160,64,0.45)" stroke-width="1.4" stroke-linecap="round"/>
+            <line x1="9" y1="21.5" x2="15" y2="21.5"
+                  stroke="rgba(212,160,64,0.45)" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span class="icon-name">Podcast</span>
+      </div>
+
+      <!-- Search -->
+      <div class="icon-cell">
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" width="40" height="40">
+            <!-- Soft lens disc -->
+            <circle cx="10.5" cy="10.5" r="8"
+                    fill="rgba(212,160,64,0.1)" stroke="rgba(212,160,64,0.45)" stroke-width=".9"/>
+            <!-- Soft inner focus disc -->
+            <circle cx="10.5" cy="10.5" r="4"
+                    fill="rgba(212,160,64,0.22)"/>
+            <!-- Handle: soft fat line -->
+            <line x1="16.8" y1="16.8" x2="21.5" y2="21.5"
+                  stroke="rgba(212,160,64,0.7)" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span class="icon-name">Search</span>
+      </div>
+
+      <!-- Link -->
+      <div class="icon-cell">
+        <div class="icon-wrap">
+          <svg viewBox="0 0 24 24" width="40" height="40">
+            <!-- Soft lines -->
+            <line x1="6.5"  y1="8"    x2="10.5" y2="11"  stroke="rgba(212,160,64,0.3)" stroke-width="1.4" stroke-linecap="round"/>
+            <line x1="17.5" y1="8"    x2="13.5" y2="11"  stroke="rgba(212,160,64,0.3)" stroke-width="1.4" stroke-linecap="round"/>
+            <line x1="12"   y1="14.5" x2="12"   y2="18.5" stroke="rgba(212,160,64,0.3)" stroke-width="1.4" stroke-linecap="round"/>
+            <!-- Outer soft nodes -->
+            <circle cx="4.5" cy="6.5" r="3"
+                    fill="rgba(212,160,64,0.14)" stroke="rgba(212,160,64,0.4)" stroke-width=".9"/>
+            <circle cx="19.5" cy="6.5" r="3"
+                    fill="rgba(212,160,64,0.14)" stroke="rgba(212,160,64,0.4)" stroke-width=".9"/>
+            <circle cx="12" cy="21" r="3"
+                    fill="rgba(212,160,64,0.14)" stroke="rgba(212,160,64,0.4)" stroke-width=".9"/>
+            <!-- Central node: richest -->
+            <circle cx="12" cy="12" r="4"
+                    fill="rgba(212,160,64,0.22)" stroke="rgba(212,160,64,0.65)" stroke-width="1"/>
+            <circle cx="12" cy="12" r="2"
+                    fill="rgba(212,160,64,0.8)"/>
+          </svg>
+        </div>
+        <span class="icon-name">Link</span>
+      </div>
+
+    </div>
+
+    <div class="nav-preview">
+      <div class="nav-label-small">Bottom Navigation Preview</div>
+      <div class="nav-bar">
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" width="28" height="28">
+            <path d="M6.5 3.5h11a1 1 0 0 1 1 1v16l-6.5-3.8-6.5 3.8V4.5a1 1 0 0 1 1-1z"
+                  fill="rgba(212,160,64,0.22)" stroke="rgba(212,160,64,0.7)" stroke-width=".9"
+                  stroke-linejoin="round"/>
+            <path d="M8 6.5h8" stroke="rgba(212,160,64,0.9)" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+          <span class="nav-text on">Library</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" width="28" height="28">
+            <rect x="2.5" y="2.5" width="19" height="19" rx="5.5"
+                  fill="rgba(122,117,112,0.1)" stroke="rgba(122,117,112,0.3)" stroke-width=".9"/>
+            <path d="M9.5 8l7 4-7 4z" fill="rgba(122,117,112,0.45)"/>
+          </svg>
+          <span class="nav-text off">Briefing</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" width="28" height="28">
+            <circle cx="10.5" cy="10.5" r="8"
+                    fill="rgba(122,117,112,0.1)" stroke="rgba(122,117,112,0.3)" stroke-width=".9"/>
+            <circle cx="10.5" cy="10.5" r="4" fill="rgba(122,117,112,0.2)"/>
+            <line x1="16.8" y1="16.8" x2="21.5" y2="21.5"
+                  stroke="rgba(122,117,112,0.45)" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+          <span class="nav-text off">Search</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" width="28" height="28">
+            <line x1="6.5"  y1="8"    x2="10.5" y2="11"  stroke="rgba(122,117,112,0.28)" stroke-width="1.4" stroke-linecap="round"/>
+            <line x1="17.5" y1="8"    x2="13.5" y2="11"  stroke="rgba(122,117,112,0.28)" stroke-width="1.4" stroke-linecap="round"/>
+            <line x1="12"   y1="14.5" x2="12"   y2="18.5" stroke="rgba(122,117,112,0.28)" stroke-width="1.4" stroke-linecap="round"/>
+            <circle cx="4.5" cy="6.5" r="3" fill="rgba(122,117,112,0.14)" stroke="rgba(122,117,112,0.3)" stroke-width=".9"/>
+            <circle cx="19.5" cy="6.5" r="3" fill="rgba(122,117,112,0.14)" stroke="rgba(122,117,112,0.3)" stroke-width=".9"/>
+            <circle cx="12" cy="21" r="3" fill="rgba(122,117,112,0.14)" stroke="rgba(122,117,112,0.3)" stroke-width=".9"/>
+            <circle cx="12" cy="12" r="4" fill="rgba(122,117,112,0.18)" stroke="rgba(122,117,112,0.35)" stroke-width="1"/>
+            <circle cx="12" cy="12" r="2" fill="rgba(122,117,112,0.45)"/>
+          </svg>
+          <span class="nav-text off">Connect</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+</div>
+
+<footer>Nexus Design System · Step 3 of 5 · Pick 1, 2, or 3 to continue</footer>
+</body>
+</html>

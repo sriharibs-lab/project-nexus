@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nexus — Step 2: Typography</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,300&family=Inter:wght@300;400;500;600&family=Lora:ital,wght@0,400;0,500;1,400&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;1,8..60,300&display=swap" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg-grad: radial-gradient(ellipse 120% 60% at 50% -5%, #DDD0F0 0%, #F9F8FC 60%);
+      --surface: #FFFFFF;
+      --accent:  #5C2D9A;
+      --text:    #130E1A;
+      --muted:   #68607A;
+      --border:  #E4E0EE;
+      --border2: rgba(92,45,154,0.12);
+    }
+
+    body {
+      background: #E5E2EE;
+      font-family: 'Inter', -apple-system, sans-serif;
+      padding: 56px 40px 96px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 52px;
+    }
+    .step-label { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: #999; margin-bottom: 10px; }
+    header h1 { font-size: 22px; font-weight: 700; color: #191919; letter-spacing: -.025em; }
+    header p  { font-size: 13px; color: #999; margin-top: 8px; }
+
+    .pairings {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    /* ── Card shell ── */
+    .card {
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 4px 20px rgba(0,0,0,.07);
+    }
+
+    .card-header {
+      background: #fff;
+      padding: 14px 24px 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid #EEEAF6;
+    }
+    .card-num   { font-size: 10px; color: #bbb; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; font-family: 'Inter', sans-serif; }
+    .card-title { font-size: 14px; font-weight: 700; color: #191919; letter-spacing: -.01em; font-family: 'Inter', sans-serif; }
+    .card-desc  { font-size: 11px; color: #aaa; margin-left: auto; font-family: 'Inter', sans-serif; }
+
+    /* Font spec row */
+    .font-specs {
+      background: #FAFAFA;
+      border-bottom: 1px solid #EEEAF6;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0;
+    }
+    .font-spec {
+      padding: 11px 20px;
+      border-right: 1px solid #EEEAF6;
+      font-family: 'Inter', sans-serif;
+    }
+    .font-spec:last-child { border-right: none; }
+    .spec-role { font-size: 9px; text-transform: uppercase; letter-spacing: .13em; color: #aaa; font-weight: 600; margin-bottom: 3px; }
+    .spec-name { font-size: 12px; color: #333; font-weight: 500; }
+    .spec-weights { font-size: 10px; color: #aaa; margin-top: 1px; }
+
+    /* Preview area: 2-col */
+    .preview-area {
+      background: var(--bg-grad);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+
+    /* Left: landing page hero text sample */
+    .preview-hero {
+      padding: 36px 32px 40px;
+      border-right: 1px solid rgba(92,45,154,0.1);
+    }
+
+    .p-eyebrow {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .15em;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 14px;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .p-btn {
+      display: inline-block;
+      padding: 10px 22px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      background: var(--accent);
+      color: #fff;
+      letter-spacing: -.01em;
+      margin-top: 20px;
+    }
+
+    .p-hint {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 10px;
+      font-family: 'Inter', sans-serif;
+    }
+
+    /* Right: body + UI sample */
+    .preview-body-col {
+      padding: 36px 32px 40px;
+      background: #FFFFFF;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .body-sample-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: .14em;
+      color: #bbb;
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .ui-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      background: #FAFAFA;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .ui-nav-item {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+    .ui-nav-item.active {
+      background: rgba(92,45,154,0.08);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 48px;
+      font-size: 11px;
+      color: #aaa;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="step-label">Nexus · Step 2 of 5</div>
+  <h1>Typography — 4 Pairings</h1>
+  <p>Chalk + Plum gradient · hero text (left) · body &amp; UI (right)</p>
+</header>
+
+<div class="pairings">
+
+
+  <!-- ══════════════════════════
+       01 — THE BROADSHEET
+       Playfair Display + Inter
+  ═══════════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-num">01</span>
+      <span class="card-title">The Broadsheet</span>
+      <span class="card-desc">Classic editorial serif meets the cleanest UI sans</span>
+    </div>
+    <div class="font-specs">
+      <div class="font-spec">
+        <div class="spec-role">Display</div>
+        <div class="spec-name">Playfair Display</div>
+        <div class="spec-weights">Serif · 600 / 700</div>
+      </div>
+      <div class="font-spec">
+        <div class="spec-role">Body</div>
+        <div class="spec-name">Inter</div>
+        <div class="spec-weights">Sans · 300 / 400</div>
+      </div>
+      <div class="font-spec">
+        <div class="spec-role">UI</div>
+        <div class="spec-name">Inter</div>
+        <div class="spec-weights">Sans · 400 / 500 / 600</div>
+      </div>
+    </div>
+    <div class="preview-area">
+      <div class="preview-hero">
+        <div class="p-eyebrow">Nexus</div>
+        <div style="font-family:'Playfair Display',serif; font-size:34px; font-weight:700; color:#130E1A; line-height:1.15; letter-spacing:-.02em;">Your reading list,<br>finally understood.</div>
+        <div style="font-family:'Inter',sans-serif; font-size:15px; font-weight:300; color:#68607A; line-height:1.65; margin-top:16px;">Save anything from the web. Nexus reads it, files it, and surfaces what matters — when it matters.</div>
+        <div class="p-btn" style="font-family:'Inter',sans-serif;">Get early access</div>
+        <div class="p-hint">No credit card · iOS first</div>
+      </div>
+      <div class="preview-body-col">
+        <div>
+          <div class="body-sample-label">Article body text</div>
+          <div style="font-family:'Inter',sans-serif; font-size:14px; font-weight:400; color:#130E1A; line-height:1.7;">The shift from passive consumption to active curation is the defining challenge of the information age. Tools that understand context — not just keywords — will define the next decade.</div>
+          <div style="font-family:'Inter',sans-serif; font-size:12px; color:#68607A; margin-top:8px;">3 min read · Saved yesterday</div>
+        </div>
+        <div>
+          <div class="body-sample-label">Navigation</div>
+          <div class="ui-row">
+            <div class="ui-nav-item active" style="font-family:'Inter',sans-serif;">Library</div>
+            <div class="ui-nav-item" style="font-family:'Inter',sans-serif;">Briefing</div>
+            <div class="ui-nav-item" style="font-family:'Inter',sans-serif;">Ask</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════
+       02 — THE COUTURE
+       Cormorant Garamond + DM Sans
+  ═══════════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-num">02</span>
+      <span class="card-title">The Couture</span>
+      <span class="card-desc">Ultra-refined high-contrast serif · most elegant of the four</span>
+    </div>
+    <div class="font-specs">
+      <div class="font-spec">
+        <div class="spec-role">Display</div>
+        <div class="spec-name">Cormorant Garamond</div>
+        <div class="spec-weights">Serif · 300 / 600</div>
+      </div>
+      <div class="font-spec">
+        <div class="spec-role">Body</div>
+        <div class="spec-name">DM Sans</div>
+        <div class="spec-weights">Sans · 300 / 400</div>
+      </div>
+      <div class="font-spec">
+        <div class="spec-role">UI</div>
+        <div class="spec-name">DM Sans</div>
+        <div class="spec-weights">Sans · 400 / 500</div>
+      </div>
+    </div>
+    <div class="preview-area">
+      <div class="preview-hero">
+        <div class="p-eyebrow">Nexus</div>
+        <div style="font-family:'Cormorant Garamond',serif; font-size:42px; font-weight:600; color:#130E1A; line-height:1.1; letter-spacing:.005em;">Your reading list,<br>finally understood.</div>
+        <div style="font-family:'DM Sans',sans-serif; font-size:15px; font-weight:300; color:#68607A; line-height:1.65; margin-top:16px;">Save anything from the web. Nexus reads it, files it, and surfaces what matters — when it matters.</div>
+        <div class="p-btn" style="font-family:'DM Sans',sans-serif;">Get early access</div>
+        <div class="p-hint" style="font-family:'DM Sans',sans-serif;">No credit card · iOS first</div>
+      </div>
+      <div class="preview-body-col">
+        <div>
+          <div class="body-sample-label">Article body text</div>
+          <div style="font-family:'DM Sans',sans-serif; font-size:14px; font-weight:300; color:#130E1A; line-height:1.7;">The shift from passive consumption to active curation is the defining challenge of the information age. Tools that understand context — not just keywords — will define the next decade.</div>
+          <div style="font-family:'DM Sans',sans-serif; font-size:12px; color:#68607A; margin-top:8px;">3 min read · Saved yesterday</div>
+        </div>
+        <div>
+          <div class="body-sample-label">Navigation</div>
+          <div class="ui-row">
+            <div class="ui-nav-item active" style="font-family:'DM Sans',sans-serif;">Library</div>
+            <div class="ui-nav-item" style="font-family:'DM Sans',sans-serif;">Briefing</div>
+            <div class="ui-nav-item" style="font-family:'DM Sans',sans-serif;">Ask</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════
+       03 — THE SCHOLAR
+       EB Garamond + Source Serif 4 + Inter
+  ═══════════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-num">03</span>
+      <span class="card-title">The Scholar</span>
+      <span class="card-desc">Full-serif system · literary, long-form-first · most distinctive</span>
+    </div>
+    <div class="font-specs">
+      <div class="font-spec">
+        <div class="spec-role">Display</div>
+        <div class="spec-name">EB Garamond</div>
+        <div class="spec-weights">Serif · 400 / 500 / 600</div>
+      </div>
+      <div class="font-spec">
+        <div class="spec-role">Body</div>
+        <div class="spec-name">Source Serif 4</div>
+        <div class="spec-weights">Variable Serif · 300 / 400</div>
+      </div>
+      <div class="font-spec">
+        <div class="spec-role">UI</div>
+        <div class="spec-name">Inter</div>
+        <div class="spec-weights">Sans · 400 / 500</div>
+      </div>
+    </div>
+    <div class="preview-area">
+      <div class="preview-hero">
+        <div class="p-eyebrow">Nexus</div>
+        <div style="font-family:'EB Garamond',serif; font-size:38px; font-weight:500; color:#130E1A; line-height:1.18; letter-spacing:-.01em;">Your reading list,<br>finally understood.</div>
+        <div style="font-family:'Source Serif 4',serif; font-size:15.5px; font-weight:300; color:#68607A; line-height:1.7; margin-top:16px;">Save anything from the web. Nexus reads it, files it, and surfaces what matters — when it matters.</div>
+        <div class="p-btn" style="font-family:'Inter',sans-serif;">Get early access</div>
+        <div class="p-hint">No credit card · iOS first</div>
+      </div>
+      <div class="preview-body-col">
+        <div>
+          <div class="body-sample-label">Article body text</div>
+          <div style="font-family:'Source Serif 4',serif; font-size:14px; font-weight:300; color:#130E1A; line-height:1.75;">The shift from passive consumption to active curation is the defining challenge of the information age. Tools that understand context — not just keywords — will define the next decade.</div>
+          <div style="font-family:'Inter',sans-serif; font-size:12px; color:#68607A; margin-top:8px;">3 min read · Saved yesterday</div>
+        </div>
+        <div>
+          <div class="body-sample-label">Navigation</div>
+          <div class="ui-row">
+            <div class="ui-nav-item active" style="font-family:'Inter',sans-serif;">Library</div>
+            <div class="ui-nav-item" style="font-family:'Inter',sans-serif;">Briefing</div>
+            <div class="ui-nav-item" style="font-family:'Inter',sans-serif;">Ask</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════
+       04 — THE MINIMALIST
+       Inter only — weight hierarchy
+  ═══════════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-num">04</span>
+      <span class="card-title">The Minimalist</span>
+      <span class="card-desc">Inter throughout · Notion-style mono-family · pure weight contrast</span>
+    </div>
+    <div class="font-specs">
+      <div class="font-spec">
+        <div class="spec-role">Display</div>
+        <div class="spec-name">Inter</div>
+        <div class="spec-weights">Sans · 700 · −0.04em tracking</div>
+      </div>
+      <div class="font-spec">
+        <div class="spec-role">Body</div>
+        <div class="spec-name">Inter</div>
+        <div class="spec-weights">Sans · 300 / 400</div>
+      </div>
+      <div class="font-spec">
+        <div class="spec-role">UI</div>
+        <div class="spec-name">Inter</div>
+        <div class="spec-weights">Sans · 400 / 500 / 600</div>
+      </div>
+    </div>
+    <div class="preview-area">
+      <div class="preview-hero">
+        <div class="p-eyebrow">Nexus</div>
+        <div style="font-family:'Inter',sans-serif; font-size:32px; font-weight:700; color:#130E1A; line-height:1.15; letter-spacing:-.04em;">Your reading list,<br>finally understood.</div>
+        <div style="font-family:'Inter',sans-serif; font-size:15px; font-weight:300; color:#68607A; line-height:1.65; margin-top:16px;">Save anything from the web. Nexus reads it, files it, and surfaces what matters — when it matters.</div>
+        <div class="p-btn">Get early access</div>
+        <div class="p-hint">No credit card · iOS first</div>
+      </div>
+      <div class="preview-body-col">
+        <div>
+          <div class="body-sample-label">Article body text</div>
+          <div style="font-family:'Inter',sans-serif; font-size:14px; font-weight:400; color:#130E1A; line-height:1.7; letter-spacing:-.01em;">The shift from passive consumption to active curation is the defining challenge of the information age. Tools that understand context — not just keywords — will define the next decade.</div>
+          <div style="font-family:'Inter',sans-serif; font-size:12px; color:#68607A; margin-top:8px; letter-spacing:-.01em;">3 min read · Saved yesterday</div>
+        </div>
+        <div>
+          <div class="body-sample-label">Navigation</div>
+          <div class="ui-row">
+            <div class="ui-nav-item active">Library</div>
+            <div class="ui-nav-item">Briefing</div>
+            <div class="ui-nav-item">Ask</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+</div>
+
+  <!-- ══════════════════════════
+       05 — THE APPLE WAY
+       SF Pro system stack
+  ═══════════════════════════ -->
+  <div class="card" style="border: 2px solid rgba(92,45,154,0.2);">
+    <div class="card-header" style="background:#FDFBFF;">
+      <span class="card-num">05</span>
+      <span class="card-title">The Apple Way</span>
+      <span class="card-desc">SF Pro on Apple · Inter on all others · mono-family, weight + tracking only</span>
+    </div>
+    <div class="font-specs" style="background:#FDFBFF;">
+      <div class="font-spec">
+        <div class="spec-role">Display</div>
+        <div class="spec-name">SF Pro Display</div>
+        <div class="spec-weights">System · 700 · −0.04em</div>
+      </div>
+      <div class="font-spec">
+        <div class="spec-role">Body</div>
+        <div class="spec-name">SF Pro Text</div>
+        <div class="spec-weights">System · 300 / 400 · −0.01em</div>
+      </div>
+      <div class="font-spec">
+        <div class="spec-role">UI</div>
+        <div class="spec-name">SF Pro Text</div>
+        <div class="spec-weights">System · 500 / 600 · 0em</div>
+      </div>
+    </div>
+
+    <!-- System font note -->
+    <div style="background:#F6F3FC; border-bottom:1px solid #EEEAF6; padding:9px 20px; display:flex; align-items:center; gap:8px;">
+      <span style="font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.12em; color:#5C2D9A; font-family:'Inter',sans-serif;">System font</span>
+      <span style="font-size:11px; color:#68607A; font-family:'Inter',sans-serif;">Renders as SF Pro on all Apple devices right now in this browser · Inter on Windows/Android · no Google Fonts import needed</span>
+    </div>
+
+    <div class="preview-area">
+      <div class="preview-hero">
+        <div class="p-eyebrow" style="font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Inter,sans-serif;">Nexus</div>
+        <div style="
+          font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Inter, sans-serif;
+          font-size: 34px;
+          font-weight: 700;
+          color: #130E1A;
+          line-height: 1.1;
+          letter-spacing: -0.04em;
+        ">Your reading list,<br>finally understood.</div>
+        <div style="
+          font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Inter, sans-serif;
+          font-size: 15px;
+          font-weight: 300;
+          color: #68607A;
+          line-height: 1.65;
+          letter-spacing: -0.01em;
+          margin-top: 16px;
+        ">Save anything from the web. Nexus reads it, files it, and surfaces what matters — when it matters.</div>
+        <div class="p-btn" style="font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Inter,sans-serif; font-weight:600; letter-spacing:-0.01em;">Get early access</div>
+        <div class="p-hint" style="font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif; letter-spacing:-0.005em;">No credit card · iOS first</div>
+      </div>
+      <div class="preview-body-col">
+        <div>
+          <div class="body-sample-label">Article body text</div>
+          <div style="
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Inter, sans-serif;
+            font-size: 14px;
+            font-weight: 400;
+            color: #130E1A;
+            line-height: 1.65;
+            letter-spacing: -0.008em;
+          ">The shift from passive consumption to active curation is the defining challenge of the information age. Tools that understand context — not just keywords — will define the next decade.</div>
+          <div style="font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif; font-size:12px; color:#68607A; margin-top:8px; letter-spacing:-0.005em;">3 min read · Saved yesterday</div>
+        </div>
+        <div>
+          <div class="body-sample-label">Navigation</div>
+          <div class="ui-row">
+            <div class="ui-nav-item active" style="font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif; letter-spacing:-0.01em;">Library</div>
+            <div class="ui-nav-item" style="font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif; letter-spacing:-0.01em;">Briefing</div>
+            <div class="ui-nav-item" style="font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif; letter-spacing:-0.01em;">Ask</div>
+          </div>
+        </div>
+        <!-- Size scale sample -->
+        <div>
+          <div class="body-sample-label">Scale</div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <div style="font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;font-size:28px;font-weight:700;color:#130E1A;letter-spacing:-0.04em;line-height:1.1;">Display · 28px · 700</div>
+            <div style="font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;font-size:19px;font-weight:600;color:#130E1A;letter-spacing:-0.025em;">Title · 19px · 600</div>
+            <div style="font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;font-size:15px;font-weight:400;color:#130E1A;letter-spacing:-0.01em;">Body · 15px · 400</div>
+            <div style="font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;font-size:12px;font-weight:500;color:#68607A;letter-spacing:0em;">Caption · 12px · 500</div>
+            <div style="font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;font-size:10px;font-weight:600;color:#68607A;letter-spacing:0.04em;text-transform:uppercase;">LABEL · 10PX · 600</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+<footer>Nexus · Step 2 of 5 · Pick a pairing to continue to icons</footer>
+</body>
+</html>

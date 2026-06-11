@@ -1,6 +1,6 @@
 # Project Nexus — Product Specification
-**Version:** 0.2  
-**Date:** 2026-06-05  
+**Version:** 0.3  
+**Date:** 2026-06-06  
 **Status:** Draft
 
 **Platform Roadmap:** iOS (launch) → Android → Web → Desktop/Mac
@@ -12,6 +12,8 @@
 The internet produces more signal than any human can process. RSS readers, bookmarking apps, and read-later tools have tried to solve this — but they're digital filing cabinets. They store; they don't help you think.
 
 Nexus is built on a different premise: **curation is a cognitive task, and AI should carry most of it.**
+
+**The clearest product analogy:** Nexus is what you'd get if you combined NotebookLM and Notion — NotebookLM's AI-native, source-grounded intelligence with Notion's clean, organized, workspace-grade UX. NotebookLM treats AI as the product's organizing principle (not a feature). Notion proves that clean information architecture and minimal design can make complexity feel simple. Nexus inherits both.
 
 Nexus is not an app with AI features. It is an AI system with an app as its interface. Every interaction — saving, organizing, surfacing, summarizing, connecting — is powered by an AI core that learns what you care about and gets better over time.
 
@@ -97,7 +99,115 @@ No product exists that combines:
 
 ---
 
-## 5. Goals & Success Metrics
+## 5. Jobs To Be Done (JTBDs)
+
+| # | JTBD | Trigger moment |
+|---|---|---|
+| 1 | **Capture without friction** | "I found something interesting and don't want to lose it" |
+| 2 | **Understand without reading** | "I saved 20 things this week — which ones matter and why?" |
+| 3 | **Research a topic** | "I've been saving things about X for months — synthesize it for me" |
+| 4 | **Answer from my own knowledge** | "I know I read something about this — let me ask instead of search" |
+| 5 | **Stay informed without drowning** | "Give me a smart daily briefing from what I've saved, not an algorithm" |
+
+---
+
+## 5a. Information Architecture
+
+### Navigation Model: Collection-Centric
+Collections are the root unit. Not a library of items — a set of focused research spaces, each with its own AI agent. Closest reference: NotebookLM.
+
+```
+App
+├── Collections (Home — list/grid of all collections)
+│   └── [Collection]
+│       ├── Nexus  ← AI agent tab (DEFAULT landing)
+│       │   ├── Framing paragraph (AI-generated on collection creation)
+│       │   ├── Starter prompts (contextual)
+│       │   └── Chat thread
+│       └── Sources  ← the links/content tab
+│           ├── Source list (add / remove)
+│           └── Source detail
+│
+├── New Collection (creation flow)
+│   ├── "Research a topic"  ← AI-seeded: topic → AI finds authoritative sources
+│   └── "Start with a link"  ← Manual: empty collection, add sources yourself
+│
+└── Profile / Settings
+```
+
+**No global library. No global "Ask Nexus".** Every AI interaction is scoped to a collection.  
+The AI tab (Nexus) is the default landing view inside every collection — the hero, not a secondary feature.
+
+### Collection Creation Flows
+
+**AI-seeded ("Research a topic"):**
+1. User types topic: "Ozempic and longevity"
+2. System state: "Researching..."
+3. Shows N sources found — user can review/remove before confirming
+4. Collection created → lands on Nexus tab with AI framing paragraph
+
+**Manual ("Start with a link"):**
+1. Collection created empty
+2. User adds sources: paste a link, upload PDF/image, share from another app
+3. Each source is added to the Sources tab
+4. Nexus tab available once ≥1 source exists
+
+### Terminology (locked)
+
+| Concept | String |
+|---|---|
+| Primary container | Collection |
+| AI agent tab | Nexus |
+| Sources/links tab | Sources |
+| One piece of content | Source |
+| AI-seeded creation | Research a topic |
+| Manual creation | Start with a link |
+| Create button | New Collection |
+| First-launch prompt | What are you curious about? |
+| AI building state | Researching... |
+| Sources found state | Found 8 sources |
+| Add content | Add a source |
+| Onboarding CTA | Create your first collection |
+
+### AI Starter Prompts (Nexus tab defaults)
+
+Shown before user types anything. Replaced by contextual prompts when collection has ≥3 sources.
+
+```
+• What are the key ideas across these sources?
+• What should I read first?
+• Summarize this collection in 3 bullet points
+• What questions does this collection raise?
+• Are there any contradictions between sources?
+• What's missing from this collection?
+```
+
+AI framing paragraph format (shown at top of Nexus tab on first open):
+> "This collection has [N] sources covering [topic summary]. I've read everything — ask me anything."
+
+### Content Architecture
+
+```
+Collection {
+  id, name, created_by (user | AI), created_at
+  sources: Source[]
+}
+
+Source {
+  url, type (article | video | podcast | pdf | image | thread)
+  title, author, published_at, thumbnail
+  full_text  // extracted via pipeline
+
+  // AI layer (computed async on add)
+  tldr            // 2-3 sentences
+  key_insights    // 3-5 bullets
+  tags            // semantic, auto-generated
+}
+```
+
+---
+
+## 6. Goals & Success Metrics
 
 ### North Star Metric
 **Weekly Active Curators** — users who save, read, or interact with their Nexus library at least once per week.
@@ -402,29 +512,47 @@ tools = [
 ## 12. UX Design Direction
 
 ### Design DNA
-Nexus should feel like a product designed by someone who loves books, ideas, and beautiful software. References:
-- **Typography**: Clean, editorial. Think Apple Books meets The Atlantic.
-- **Motion**: Purposeful, never gratuitous. Fluid transitions, spring physics.
-- **Color**: Deep, premium palette. Dark mode first. A signature accent color (not blue).
-- **Iconography**: Custom-drawn, coherent system. Not SF Symbols defaults.
-- **Density**: Low density, high breathing room. Content gets space.
+Nexus should feel like Notion built the UI and NotebookLM built the brain. References:
+- **Color**: Light/white background, near-black text (#191919 range). One signature accent used sparingly — not as chrome, only as signal. Dark mode: deep gray (not black), same minimal color discipline.
+- **Typography**: Clean, legible, editorial. Inter or equivalent for UI. A slightly warmer serif or distinctive sans for display moments. Dense where needed, spacious where content lives.
+- **Motion**: Purposeful, never gratuitous. Fluid transitions, spring physics for interactions.
+- **Iconography**: Custom-drawn, coherent system. Thin-to-medium weight, minimal color, geometric. Not SF Symbols defaults.
+- **Density**: Notion-level efficiency — content-rich without feeling cluttered.
+
+### Visual Benchmark
+| Dimension | Reference |
+|---|---|
+| Information density | Notion |
+| Color restraint | Notion (white + one accent) |
+| AI as core surface | NotebookLM |
+| Source-grounded chat | NotebookLM |
+| Clean reading experience | Notion pages |
+| Sidebar navigation | Notion left sidebar |
 
 ### Signature UX Moments
-1. **The Save** — saving should feel satisfying. A micro-animation confirms the capture, the item "lands" in your library.
-2. **The Briefing** — a card stack experience. Swipe through. The AI's voice is present but not loud.
-3. **The Library** — a beautiful, browsable space. Not a list. More like a shelf.
-4. **Conversation** — the chat UI should feel different from every other AI chat. More intimate. More focused on your content.
+1. **The Save** — saving should feel satisfying. A micro-animation confirms the capture, the item "lands" in the library.
+2. **The Library** — Notion-like organized view. Items are entries, not cards. Filterable, sortable, beautiful.
+3. **Ask Nexus** — NotebookLM-style AI chat, but grounded only in your saved content. Citations surface to the source.
+4. **The Briefing** — AI-generated daily digest. Feels like a smart editor curated it, not an algorithm.
+5. **Connections** — AI surfaces links between items proactively. Feels like discovery, not filing.
 
 ### Typography
-- Display: Custom or licensed serif for headings (editorial feel)
-- Body / Reader: Highly legible reading font (consider licensing Tiempos Text, Canela, or similar)
-- UI: SF Pro (system) for chrome; custom for brand moments
+- UI + body: Inter (or system equivalent) — same as Notion
+- Display / brand moments: A distinctive serif or stylized wordmark
+- Reader view: Highly legible body font (Georgia, or licensed equivalent)
+- SF Pro on iOS for system chrome
 
 ### Logo Concept
 - Wordmark + symbol
-- Symbol: an abstract "N" that reads as a constellation or connected nodes — evoking synthesis, connection, discovery
-- Dark and light variants
-- App icon: the symbol, bold, memorable on a home screen
+- Symbol: an abstract "N" — constellation or connected nodes, evoking synthesis and discovery
+- Light and dark variants, single-color on both
+- App icon: symbol only, bold, memorable
+
+### Landing Page Direction
+- Single-screen, one-box layout — not a multi-section scroll with features at the bottom
+- White background, clean typography, one clear headline
+- Single primary CTA ("Get early access" or equivalent) — above the fold
+- No feature grid, no testimonials carousel, no pricing section on launch
 
 ---
 

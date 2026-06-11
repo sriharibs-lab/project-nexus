@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nexus — Step 3: Icon Style</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg-grad: radial-gradient(ellipse 120% 60% at 50% -5%, #DDD0F0 0%, #F9F8FC 60%);
+      --surface: #FFFFFF;
+      --accent:  #5C2D9A;
+      --text:    #130E1A;
+      --muted:   #68607A;
+      --border:  #E4E0EE;
+      --sys:     -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Inter, sans-serif;
+    }
+
+    body {
+      background: #E5E2EE;
+      font-family: var(--sys);
+      padding: 56px 40px 96px;
+    }
+
+    header { text-align: center; margin-bottom: 52px; }
+    .step-label { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: #999; margin-bottom: 10px; }
+    header h1 { font-size: 22px; font-weight: 700; color: #191919; letter-spacing: -.025em; }
+    header p  { font-size: 13px; color: #999; margin-top: 8px; }
+
+    .options { display: flex; flex-direction: column; gap: 20px; max-width: 900px; margin: 0 auto; }
+
+    /* ── Card ── */
+    .card { border-radius: 14px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 4px 20px rgba(0,0,0,.07); }
+
+    .card-header {
+      background: #fff;
+      padding: 14px 24px 12px;
+      display: flex; align-items: center; gap: 12px;
+      border-bottom: 1px solid #EEEAF6;
+    }
+    .card-letter {
+      width: 28px; height: 28px; border-radius: 7px;
+      background: rgba(92,45,154,.08); border: 1px solid rgba(92,45,154,.18);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; color: var(--accent);
+      flex-shrink: 0;
+    }
+    .card-title { font-size: 14px; font-weight: 600; color: #191919; letter-spacing: -.01em; }
+    .card-desc  { font-size: 11px; color: #aaa; margin-left: auto; }
+
+    /* ── Icon stage ── */
+    .icon-stage {
+      background: var(--bg-grad);
+      padding: 32px 28px 24px;
+      border-bottom: 1px solid rgba(92,45,154,.08);
+    }
+
+    .stage-row-label {
+      font-size: 9px; text-transform: uppercase; letter-spacing: .14em;
+      font-weight: 600; color: var(--muted); margin-bottom: 16px;
+    }
+
+    .icon-row {
+      display: flex; gap: 0;
+      margin-bottom: 8px;
+    }
+
+    .icon-cell {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; gap: 8px;
+    }
+
+    .icon-wrap {
+      width: 52px; height: 52px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .icon-wrap-active {
+      width: 52px; height: 52px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .icon-label {
+      font-size: 9px; font-weight: 500;
+      text-transform: uppercase; letter-spacing: .08em;
+      color: var(--muted);
+    }
+
+    .state-divider {
+      display: flex; align-items: center; gap: 10px;
+      margin: 16px 0 20px;
+    }
+    .state-divider-line { flex: 1; height: 1px; background: rgba(92,45,154,.1); }
+    .state-divider-text { font-size: 9px; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); font-weight: 500; }
+
+    /* ── Nav preview ── */
+    .nav-preview {
+      background: #FFFFFF;
+      padding: 20px 24px 24px;
+    }
+    .nav-preview-label {
+      font-size: 9px; text-transform: uppercase; letter-spacing: .14em;
+      font-weight: 600; color: #bbb; margin-bottom: 14px;
+    }
+    .nav-bar {
+      max-width: 360px; margin: 0 auto;
+      background: #FAFAFA;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 8px 14px;
+      display: flex; justify-content: space-around;
+    }
+    .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .nav-lbl { font-size: 10px; font-weight: 500; }
+    .nav-lbl.on  { color: var(--accent); }
+    .nav-lbl.off { color: #A09AAA; }
+
+    footer { text-align: center; margin-top: 48px; font-size: 11px; color: #aaa; letter-spacing: .1em; text-transform: uppercase; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="step-label">Nexus · Step 3 of 5</div>
+  <h1>Icon Style — 3 Directions</h1>
+  <p>Chalk + Plum gradient · SF Pro · default and active states shown</p>
+</header>
+
+<div class="options">
+
+
+  <!-- ════════════════════════════════
+       A — THIN LINE + PLUM TOUCH
+       1.5px stroke · one accent per icon
+  ═════════════════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-letter">A</div>
+      <span class="card-title">Thin Line + Plum Touch</span>
+      <span class="card-desc">1.5px stroke · near-black · one plum signal per icon</span>
+    </div>
+
+    <div class="icon-stage">
+      <div class="stage-row-label">Default</div>
+      <div class="icon-row">
+
+        <!-- Save -->
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 3h12a1 1 0 0 1 1 1v16l-7-4-7 4V4a1 1 0 0 1 1-1z" stroke="#1A1018" stroke-width="1.5"/>
+              <line x1="9" y1="8.5" x2="15" y2="8.5" stroke="#5C2D9A" stroke-width="2"/>
+            </svg>
+          </div>
+          <span class="icon-label">Save</span>
+        </div>
+
+        <!-- Article -->
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="2" width="16" height="20" rx="2" stroke="#1A1018" stroke-width="1.5"/>
+              <line x1="7.5" y1="8"  x2="16.5" y2="8"  stroke="#1A1018" stroke-width="1.5"/>
+              <line x1="7.5" y1="12" x2="16.5" y2="12" stroke="#1A1018" stroke-width="1.5"/>
+              <line x1="7.5" y1="16" x2="12"   y2="16" stroke="#1A1018" stroke-width="1.5"/>
+              <circle cx="16.5" cy="16" r="1.8" fill="#5C2D9A"/>
+            </svg>
+          </div>
+          <span class="icon-label">Article</span>
+        </div>
+
+        <!-- Video -->
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9" stroke="#1A1018" stroke-width="1.5"/>
+              <path d="M10 8.5l6 3.5-6 3.5z" fill="#5C2D9A"/>
+            </svg>
+          </div>
+          <span class="icon-label">Video</span>
+        </div>
+
+        <!-- Podcast -->
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="2" width="6" height="12" rx="3" stroke="#1A1018" stroke-width="1.5"/>
+              <path d="M5 11a7 7 0 0 0 14 0" stroke="#1A1018" stroke-width="1.5"/>
+              <line x1="12" y1="18" x2="12" y2="21" stroke="#1A1018" stroke-width="1.5"/>
+              <line x1="9"  y1="21" x2="15" y2="21" stroke="#1A1018" stroke-width="1.5"/>
+              <circle cx="12" cy="7.5" r="1.8" fill="#5C2D9A"/>
+            </svg>
+          </div>
+          <span class="icon-label">Podcast</span>
+        </div>
+
+        <!-- Search -->
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round">
+              <circle cx="11" cy="11" r="7.5" stroke="#1A1018" stroke-width="1.5"/>
+              <line x1="16.8" y1="16.8" x2="21" y2="21" stroke="#1A1018" stroke-width="1.8"/>
+              <circle cx="11" cy="11" r="2.5" fill="rgba(92,45,154,0.2)" stroke="#5C2D9A" stroke-width="1"/>
+            </svg>
+          </div>
+          <span class="icon-label">Search</span>
+        </div>
+
+        <!-- Link -->
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke="#1A1018" stroke-width="1.5"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke="#1A1018" stroke-width="1.5"/>
+              <circle cx="12" cy="12" r="2" fill="#5C2D9A"/>
+            </svg>
+          </div>
+          <span class="icon-label">Link</span>
+        </div>
+
+      </div>
+
+      <div class="state-divider">
+        <div class="state-divider-line"></div>
+        <span class="state-divider-text">Active / Selected</span>
+        <div class="state-divider-line"></div>
+      </div>
+
+      <div class="icon-row">
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 3h12a1 1 0 0 1 1 1v16l-7-4-7 4V4a1 1 0 0 1 1-1z" stroke="#5C2D9A" stroke-width="1.5"/>
+              <line x1="9" y1="8.5" x2="15" y2="8.5" stroke="#5C2D9A" stroke-width="2"/>
+            </svg>
+          </div>
+        </div>
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="2" width="16" height="20" rx="2" stroke="#5C2D9A" stroke-width="1.5"/>
+              <line x1="7.5" y1="8"  x2="16.5" y2="8"  stroke="#5C2D9A" stroke-width="1.5"/>
+              <line x1="7.5" y1="12" x2="16.5" y2="12" stroke="#5C2D9A" stroke-width="1.5"/>
+              <line x1="7.5" y1="16" x2="12"   y2="16" stroke="#5C2D9A" stroke-width="1.5"/>
+              <circle cx="16.5" cy="16" r="1.8" fill="#5C2D9A"/>
+            </svg>
+          </div>
+        </div>
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9" stroke="#5C2D9A" stroke-width="1.5"/>
+              <path d="M10 8.5l6 3.5-6 3.5z" fill="#5C2D9A"/>
+            </svg>
+          </div>
+        </div>
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="2" width="6" height="12" rx="3" stroke="#5C2D9A" stroke-width="1.5"/>
+              <path d="M5 11a7 7 0 0 0 14 0" stroke="#5C2D9A" stroke-width="1.5"/>
+              <line x1="12" y1="18" x2="12" y2="21" stroke="#5C2D9A" stroke-width="1.5"/>
+              <line x1="9"  y1="21" x2="15" y2="21" stroke="#5C2D9A" stroke-width="1.5"/>
+              <circle cx="12" cy="7.5" r="1.8" fill="#5C2D9A"/>
+            </svg>
+          </div>
+        </div>
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round">
+              <circle cx="11" cy="11" r="7.5" stroke="#5C2D9A" stroke-width="1.5"/>
+              <line x1="16.8" y1="16.8" x2="21" y2="21" stroke="#5C2D9A" stroke-width="1.8"/>
+              <circle cx="11" cy="11" r="2.5" fill="rgba(92,45,154,0.15)" stroke="#5C2D9A" stroke-width="1"/>
+            </svg>
+          </div>
+        </div>
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke="#5C2D9A" stroke-width="1.5"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke="#5C2D9A" stroke-width="1.5"/>
+              <circle cx="12" cy="12" r="2" fill="#5C2D9A"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-preview">
+      <div class="nav-preview-label">Bottom Navigation</div>
+      <div class="nav-bar">
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 3h12a1 1 0 0 1 1 1v16l-7-4-7 4V4a1 1 0 0 1 1-1z" stroke="#5C2D9A" stroke-width="1.5"/>
+            <line x1="9" y1="8.5" x2="15" y2="8.5" stroke="#5C2D9A" stroke-width="2"/>
+          </svg>
+          <span class="nav-lbl on">Library</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 3h12a1 1 0 0 1 1 1v16l-7-4-7 4V4a1 1 0 0 1 1-1z" stroke="#A09AAA" stroke-width="1.5"/>
+            <line x1="9" y1="8.5" x2="15" y2="8.5" stroke="#A09AAA" stroke-width="2"/>
+          </svg>
+          <span class="nav-lbl off">Briefing</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke-linecap="round">
+            <circle cx="11" cy="11" r="7.5" stroke="#A09AAA" stroke-width="1.5"/>
+            <line x1="16.8" y1="16.8" x2="21" y2="21" stroke="#A09AAA" stroke-width="1.8"/>
+          </svg>
+          <span class="nav-lbl off">Search</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="4" stroke="#A09AAA" stroke-width="1.5"/>
+            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="#A09AAA" stroke-width="1.5"/>
+          </svg>
+          <span class="nav-lbl off">Profile</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════════
+       B — PURE MONOCHROME
+       1.8px stroke · zero accent color
+  ═════════════════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-letter">B</div>
+      <span class="card-title">Pure Monochrome</span>
+      <span class="card-desc">1.8px stroke · near-black only · Notion-level restraint · plum only on active</span>
+    </div>
+
+    <div class="icon-stage">
+      <div class="stage-row-label">Default</div>
+      <div class="icon-row">
+
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 3h12a1 1 0 0 1 1 1v16l-7-4-7 4V4a1 1 0 0 1 1-1z" stroke="#1A1018" stroke-width="1.8"/>
+            </svg>
+          </div>
+          <span class="icon-label">Save</span>
+        </div>
+
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="2" width="16" height="20" rx="2" stroke="#1A1018" stroke-width="1.8"/>
+              <line x1="7.5" y1="8"  x2="16.5" y2="8"  stroke="#1A1018" stroke-width="1.5"/>
+              <line x1="7.5" y1="12" x2="16.5" y2="12" stroke="#1A1018" stroke-width="1.5"/>
+              <line x1="7.5" y1="16" x2="12.5" y2="16" stroke="#1A1018" stroke-width="1.5"/>
+            </svg>
+          </div>
+          <span class="icon-label">Article</span>
+        </div>
+
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9" stroke="#1A1018" stroke-width="1.8"/>
+              <path d="M10 8.5l6 3.5-6 3.5z" fill="#1A1018" stroke="#1A1018" stroke-width="1"/>
+            </svg>
+          </div>
+          <span class="icon-label">Video</span>
+        </div>
+
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="2" width="6" height="12" rx="3" stroke="#1A1018" stroke-width="1.8"/>
+              <path d="M5 11a7 7 0 0 0 14 0" stroke="#1A1018" stroke-width="1.8"/>
+              <line x1="12" y1="18" x2="12" y2="21" stroke="#1A1018" stroke-width="1.8"/>
+              <line x1="9"  y1="21" x2="15" y2="21" stroke="#1A1018" stroke-width="1.8"/>
+            </svg>
+          </div>
+          <span class="icon-label">Podcast</span>
+        </div>
+
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round">
+              <circle cx="11" cy="11" r="7.5" stroke="#1A1018" stroke-width="1.8"/>
+              <line x1="16.8" y1="16.8" x2="21" y2="21" stroke="#1A1018" stroke-width="2"/>
+            </svg>
+          </div>
+          <span class="icon-label">Search</span>
+        </div>
+
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke="#1A1018" stroke-width="1.8"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke="#1A1018" stroke-width="1.8"/>
+            </svg>
+          </div>
+          <span class="icon-label">Link</span>
+        </div>
+
+      </div>
+
+      <div class="state-divider">
+        <div class="state-divider-line"></div>
+        <span class="state-divider-text">Active — plum appears only here</span>
+        <div class="state-divider-line"></div>
+      </div>
+
+      <div class="icon-row">
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 3h12a1 1 0 0 1 1 1v16l-7-4-7 4V4a1 1 0 0 1 1-1z" stroke="#5C2D9A" stroke-width="1.8"/>
+            </svg>
+          </div>
+        </div>
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="2" width="16" height="20" rx="2" stroke="#5C2D9A" stroke-width="1.8"/>
+              <line x1="7.5" y1="8"  x2="16.5" y2="8"  stroke="#5C2D9A" stroke-width="1.5"/>
+              <line x1="7.5" y1="12" x2="16.5" y2="12" stroke="#5C2D9A" stroke-width="1.5"/>
+              <line x1="7.5" y1="16" x2="12.5" y2="16" stroke="#5C2D9A" stroke-width="1.5"/>
+            </svg>
+          </div>
+        </div>
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9" stroke="#5C2D9A" stroke-width="1.8"/>
+              <path d="M10 8.5l6 3.5-6 3.5z" fill="#5C2D9A"/>
+            </svg>
+          </div>
+        </div>
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="2" width="6" height="12" rx="3" stroke="#5C2D9A" stroke-width="1.8"/>
+              <path d="M5 11a7 7 0 0 0 14 0" stroke="#5C2D9A" stroke-width="1.8"/>
+              <line x1="12" y1="18" x2="12" y2="21" stroke="#5C2D9A" stroke-width="1.8"/>
+              <line x1="9"  y1="21" x2="15" y2="21" stroke="#5C2D9A" stroke-width="1.8"/>
+            </svg>
+          </div>
+        </div>
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round">
+              <circle cx="11" cy="11" r="7.5" stroke="#5C2D9A" stroke-width="1.8"/>
+              <line x1="16.8" y1="16.8" x2="21" y2="21" stroke="#5C2D9A" stroke-width="2"/>
+            </svg>
+          </div>
+        </div>
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke="#5C2D9A" stroke-width="1.8"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke="#5C2D9A" stroke-width="1.8"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-preview">
+      <div class="nav-preview-label">Bottom Navigation</div>
+      <div class="nav-bar">
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 3h12a1 1 0 0 1 1 1v16l-7-4-7 4V4a1 1 0 0 1 1-1z" stroke="#5C2D9A" stroke-width="1.8"/>
+          </svg>
+          <span class="nav-lbl on">Library</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 3h12a1 1 0 0 1 1 1v16l-7-4-7 4V4a1 1 0 0 1 1-1z" stroke="#C4BEC8" stroke-width="1.8"/>
+          </svg>
+          <span class="nav-lbl off">Briefing</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke-linecap="round">
+            <circle cx="11" cy="11" r="7.5" stroke="#C4BEC8" stroke-width="1.8"/>
+            <line x1="16.8" y1="16.8" x2="21" y2="21" stroke="#C4BEC8" stroke-width="2"/>
+          </svg>
+          <span class="nav-lbl off">Search</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="4" stroke="#C4BEC8" stroke-width="1.8"/>
+            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="#C4BEC8" stroke-width="1.8"/>
+          </svg>
+          <span class="nav-lbl off">Profile</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════════
+       C — FILLED + STROKE HYBRID
+       Flat fills · stroke border · weight contrast
+  ═════════════════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-letter">C</div>
+      <span class="card-title">Filled + Stroke Hybrid</span>
+      <span class="card-desc">Filled shapes with 1px stroke border · weight contrast · plum fill on active</span>
+    </div>
+
+    <div class="icon-stage">
+      <div class="stage-row-label">Default</div>
+      <div class="icon-row">
+
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34">
+              <path d="M6 3h12a1 1 0 0 1 1 1v16l-7-4-7 4V4a1 1 0 0 1 1-1z" fill="rgba(26,16,24,0.08)" stroke="#1A1018" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+              <rect x="8.5" y="7.5" width="7" height="2" rx="1" fill="#1A1018" opacity=".6"/>
+            </svg>
+          </div>
+          <span class="icon-label">Save</span>
+        </div>
+
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34">
+              <rect x="4" y="2" width="16" height="20" rx="2" fill="rgba(26,16,24,0.07)" stroke="#1A1018" stroke-width="1"/>
+              <rect x="7"   y="7.5"  width="10" height="1.5" rx=".75" fill="#1A1018" opacity=".55"/>
+              <rect x="7"   y="11.5" width="10" height="1.5" rx=".75" fill="#1A1018" opacity=".4"/>
+              <rect x="7"   y="15.5" width="6"  height="1.5" rx=".75" fill="#1A1018" opacity=".28"/>
+            </svg>
+          </div>
+          <span class="icon-label">Article</span>
+        </div>
+
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34">
+              <circle cx="12" cy="12" r="9" fill="rgba(26,16,24,0.07)" stroke="#1A1018" stroke-width="1"/>
+              <path d="M10.5 8.8l5.5 3.2-5.5 3.2z" fill="#1A1018" opacity=".7"/>
+            </svg>
+          </div>
+          <span class="icon-label">Video</span>
+        </div>
+
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="2" width="6" height="12" rx="3" fill="rgba(26,16,24,0.08)" stroke="#1A1018" stroke-width="1"/>
+              <path d="M5 11a7 7 0 0 0 14 0" stroke="#1A1018" stroke-width="1.2" opacity=".5"/>
+              <line x1="12" y1="18" x2="12" y2="21" stroke="#1A1018" stroke-width="1.2" opacity=".5"/>
+              <line x1="9"  y1="21" x2="15" y2="21" stroke="#1A1018" stroke-width="1.2" opacity=".5"/>
+            </svg>
+          </div>
+          <span class="icon-label">Podcast</span>
+        </div>
+
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round">
+              <circle cx="11" cy="11" r="7.5" fill="rgba(26,16,24,0.07)" stroke="#1A1018" stroke-width="1"/>
+              <line x1="16.8" y1="16.8" x2="21" y2="21" stroke="#1A1018" stroke-width="2"/>
+            </svg>
+          </div>
+          <span class="icon-label">Search</span>
+        </div>
+
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke="#1A1018" stroke-width="1.2"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke="#1A1018" stroke-width="1.2"/>
+            </svg>
+          </div>
+          <span class="icon-label">Link</span>
+        </div>
+
+      </div>
+
+      <div class="state-divider">
+        <div class="state-divider-line"></div>
+        <span class="state-divider-text">Active — plum fill</span>
+        <div class="state-divider-line"></div>
+      </div>
+
+      <div class="icon-row">
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34">
+              <path d="M6 3h12a1 1 0 0 1 1 1v16l-7-4-7 4V4a1 1 0 0 1 1-1z" fill="rgba(92,45,154,0.12)" stroke="#5C2D9A" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+              <rect x="8.5" y="7.5" width="7" height="2" rx="1" fill="#5C2D9A" opacity=".8"/>
+            </svg>
+          </div>
+        </div>
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34">
+              <rect x="4" y="2" width="16" height="20" rx="2" fill="rgba(92,45,154,0.1)" stroke="#5C2D9A" stroke-width="1"/>
+              <rect x="7"   y="7.5"  width="10" height="1.5" rx=".75" fill="#5C2D9A" opacity=".7"/>
+              <rect x="7"   y="11.5" width="10" height="1.5" rx=".75" fill="#5C2D9A" opacity=".5"/>
+              <rect x="7"   y="15.5" width="6"  height="1.5" rx=".75" fill="#5C2D9A" opacity=".35"/>
+            </svg>
+          </div>
+        </div>
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34">
+              <circle cx="12" cy="12" r="9" fill="rgba(92,45,154,0.1)" stroke="#5C2D9A" stroke-width="1"/>
+              <path d="M10.5 8.8l5.5 3.2-5.5 3.2z" fill="#5C2D9A"/>
+            </svg>
+          </div>
+        </div>
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="2" width="6" height="12" rx="3" fill="rgba(92,45,154,0.12)" stroke="#5C2D9A" stroke-width="1"/>
+              <path d="M5 11a7 7 0 0 0 14 0" stroke="#5C2D9A" stroke-width="1.2"/>
+              <line x1="12" y1="18" x2="12" y2="21" stroke="#5C2D9A" stroke-width="1.2"/>
+              <line x1="9"  y1="21" x2="15" y2="21" stroke="#5C2D9A" stroke-width="1.2"/>
+            </svg>
+          </div>
+        </div>
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round">
+              <circle cx="11" cy="11" r="7.5" fill="rgba(92,45,154,0.1)" stroke="#5C2D9A" stroke-width="1"/>
+              <line x1="16.8" y1="16.8" x2="21" y2="21" stroke="#5C2D9A" stroke-width="2"/>
+            </svg>
+          </div>
+        </div>
+        <div class="icon-cell">
+          <div class="icon-wrap">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke="#5C2D9A" stroke-width="1.2"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke="#5C2D9A" stroke-width="1.2"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-preview">
+      <div class="nav-preview-label">Bottom Navigation</div>
+      <div class="nav-bar">
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" width="22" height="22">
+            <path d="M6 3h12a1 1 0 0 1 1 1v16l-7-4-7 4V4a1 1 0 0 1 1-1z" fill="rgba(92,45,154,0.12)" stroke="#5C2D9A" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+            <rect x="8.5" y="7.5" width="7" height="2" rx="1" fill="#5C2D9A" opacity=".8"/>
+          </svg>
+          <span class="nav-lbl on">Library</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" width="22" height="22">
+            <path d="M6 3h12a1 1 0 0 1 1 1v16l-7-4-7 4V4a1 1 0 0 1 1-1z" fill="rgba(26,16,24,0.05)" stroke="#C4BEC8" stroke-width="1" stroke-linejoin="round" stroke-linecap="round"/>
+          </svg>
+          <span class="nav-lbl off">Briefing</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke-linecap="round">
+            <circle cx="11" cy="11" r="7.5" fill="rgba(26,16,24,0.05)" stroke="#C4BEC8" stroke-width="1"/>
+            <line x1="16.8" y1="16.8" x2="21" y2="21" stroke="#C4BEC8" stroke-width="1.8"/>
+          </svg>
+          <span class="nav-lbl off">Search</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="4" stroke="#C4BEC8" stroke-width="1"/>
+            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="#C4BEC8" stroke-width="1"/>
+          </svg>
+          <span class="nav-lbl off">Profile</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+</div>
+
+<footer>Nexus · Step 3 of 5 · Pick A, B, or C to continue to layout</footer>
+</body>
+</html>

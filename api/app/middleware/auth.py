@@ -1,4 +1,5 @@
-from jose import JWTError, jwt
+import httpx
+from jose import JWTError, jwk, jwt
 from fastapi import HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
@@ -6,24 +7,53 @@ from app.core.config import settings
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
-# Claims Supabase includes in every JWT
-_SUPABASE_ALGORITHMS = ["HS256"]
+# Cached JWKS keys — fetched once on first request, reused thereafter
+_jwks_cache: list[dict] | None = None
+
+
+def _get_jwks_keys() -> list[dict]:
+    global _jwks_cache
+    if _jwks_cache is None:
+        resp = httpx.get(settings.supabase_jwks_url, timeout=10)
+        resp.raise_for_status()
+        _jwks_cache = resp.json().get("keys", [])
+    return _jwks_cache
 
 
 def _decode_supabase_jwt(token: str) -> dict:
     try:
-        payload = jwt.decode(
-            token,
-            settings.supabase_jwt_secret,
-            algorithms=_SUPABASE_ALGORITHMS,
-            audience="authenticated",
-        )
-        return payload
+        header = jwt.get_unverified_header(token)
     except JWTError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Malformed token") from exc
+
+    kid = header.get("kid")
+    alg = header.get("alg", "ES256")
+    keys = _get_jwks_keys()
+
+    # Match by kid if present, otherwise try all keys
+    candidates = [k for k in keys if k.get("kid") == kid] if kid else keys
+    if not candidates:
+        candidates = keys
+
+    last_exc: Exception | None = None
+    for key_data in candidates:
+        try:
+            public_key = jwk.construct(key_data)
+            payload = jwt.decode(
+                token,
+                public_key,
+                algorithms=[alg, "ES256", "RS256"],
+                options={"verify_aud": False},
+            )
+            return payload
+        except JWTError as exc:
+            last_exc = exc
+            continue
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid or expired token",
+    ) from last_exc
 
 
 async def get_current_user(

@@ -7,10 +7,21 @@ class Settings(BaseSettings):
     # Database
     database_url: str
 
-    # Supabase
+    # Supabase (new key format — publishable replaces anon, secret replaces service_role)
     supabase_url: str
-    supabase_jwt_secret: str
-    supabase_anon_key: str
+    supabase_publishable_key: str
+    supabase_secret_key: str
+
+    # Derived from supabase_url — no separate env var needed
+    @property
+    def supabase_jwks_url(self) -> str:
+        return f"{self.supabase_url}/auth/v1/.well-known/jwks.json"
+
+    # Anthropic
+    anthropic_api_key: str = ""
+
+    # OpenAI (embeddings)
+    openai_api_key: str = ""
 
     # App
     environment: str = "development"

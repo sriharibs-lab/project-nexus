@@ -1,6 +1,13 @@
+---
+nbl_version: "1"
+cycle_policy:
+  max_tasks_per_run: 3
+  allow_phases: ["0A", "1A", "1B"]
+---
+
 # Project Nexus — Build Plan
-**Last Updated:** 2026-06-06  
-**Current Phase:** Phase 0A — Design System + Parallel Foundation Work
+**Last Updated:** 2026-06-11 (cleanup: design tokens filled, stale Design Prompt v2 removed)  
+**Current Phase:** Phase 1A — Backend Foundation
 
 ---
 
@@ -13,11 +20,11 @@
 ---
 
 ## Phase 0 — Foundation (Now)
-- [x] Write product spec (SPEC.md)
-- [x] Resolve open questions (personas, platform roadmap, content types, connections behavior)
-- [~] **Design System** — explorative prompt running in parallel tab (Step 1: color palette)
-- [~] Set up GitHub repo (monorepo: `/prototype`, `/app-ios`, `/api`, `/design-system`) — in progress
-- [ ] Domain + waitlist landing page
+- [x] Write product spec (SPEC.md) <!-- nbl:id=0-001 status=done -->
+- [x] Resolve open questions (personas, platform roadmap, content types, connections behavior) <!-- nbl:id=0-002 status=done -->
+- [x] **Design System** — v1 complete, handoff package in nexus-design-system-extracted/ <!-- nbl:id=0A-design status=done -->
+- [x] Set up GitHub repo (monorepo: `/prototype`, `/app-ios`, `/api`, `/design-system`) <!-- nbl:id=0-003 status=done -->
+- [ ] Domain + waitlist landing page <!-- nbl:id=0-004 agent=swe deps=[] est=3h -->
 
 ### Phase 0A — Design System & Prototype (Before any native build)
 **Assets (Figma + source files):**
@@ -28,170 +35,43 @@
 - [ ] Motion spec: duration + easing curves for key interactions
 
 **Design tokens (platform-agnostic JSON):**
-- [~] `/design-system/tokens/colors.json` — scaffold in progress
-- [~] `/design-system/tokens/typography.json` — scaffold in progress
-- [~] `/design-system/tokens/spacing.json` — scaffold in progress
-- [~] `/design-system/tokens/motion.json` — scaffold in progress
+- [x] `/design-system/tokens/colors.json` — filled from lTheme() + README.md <!-- nbl:id=0A-tok-colors status=done -->
+- [x] `/design-system/tokens/typography.json` <!-- nbl:id=0A-tok-type status=done -->
+- [x] `/design-system/tokens/spacing.json` <!-- nbl:id=0A-tok-spacing status=done -->
+- [x] `/design-system/tokens/motion.json` <!-- nbl:id=0A-tok-motion status=done -->
 
 **Web Prototype (`/prototype/` — Next.js 14):**
-- [~] Project scaffold: Next.js + Tailwind + Framer Motion — in progress via design tab
-- [ ] Token integration (CSS custom properties from JSON)
-- [ ] Core screens: Library, Item detail/Reader, Daily Briefing, Conversation
-- [ ] Signature moments: Save animation, card stack Briefing, Library shelf view
-- [ ] Responsive (mobile viewport primary)
+- [x] Project scaffold: Next.js + Tailwind + Framer Motion <!-- nbl:id=0A-proto-scaffold status=done -->
+- [ ] Token integration (CSS custom properties from JSON) <!-- nbl:id=0A-tok-css agent=swe deps=[0A-tok-colors,0A-tok-type] est=2h -->
+- [ ] Core screens: Home (collections), Collection detail, Nexus tab, Sources tab <!-- nbl:id=0A-screens agent=swe deps=[0A-tok-css] est=6h -->
+- [ ] Responsive (mobile 390px primary, desktop 1280px) <!-- nbl:id=0A-responsive agent=swe deps=[0A-screens] est=2h -->
 
 ---
-
-### Design Prompt v2 — Updated 2026-06-06 (for UX agent in Tab 1)
-
-**Direction**: Notion visual discipline + NotebookLM AI-native model. Light/white background, near-black text, one accent used sparingly. Step-by-step — do not generate everything in one shot. Every step produces a rendered HTML file.
-
----
-
-```
-You are the UX designer for Nexus — an AI-native content curation app.
-The product sits at the intersection of NotebookLM (AI is the core, not a feature)
-and Notion (clean information architecture, minimal color, white background).
-
-VISUAL REFERENCE:
-- Notion: white/off-white background (~#FAFAFA), near-black text (~#191919),
-  Inter font, minimal color, one accent sparingly used, clean sidebar nav
-- NotebookLM: clean, spacious, AI chat as a primary surface
-- Light-first. Dark mode mirrors the same restraint (deep gray, not black).
-- No glassmorphism, no gradient backgrounds.
-- ONE accent color. Used for signal, not decoration.
-- Buttons: rounded corners (8-12px radius), not pill-shaped
-- Icons: thin stroke, geometric, monochrome with single accent where needed
-
-THE APP:
-- Saves internet content (articles, videos, podcasts, threads)
-- AI summarizes, tags, connects, and answers questions about your saved content
-- Primary nav: left sidebar (desktop/tablet) or bottom nav (iPhone)
-- Core screens: Library, Item/Reader, Daily Briefing, Ask Nexus (AI chat)
-- Mobile-first but designed for all platforms
-
-We will work through this one step at a time.
-Each step produces a rendered HTML file — not text, not a table. Must be visual.
-
----
-
-STEP 1 — Color Palette
-Produce a rendered HTML file showing 4 light-mode palette options.
-Each palette as a visual swatch block showing:
-- Background (white or warm/cool off-white)
-- Surface (cards, sidebar — slightly different from background)
-- Text primary (near-black) + text secondary (medium gray)
-- Accent (ONE color — not blue — for links, active states, AI indicators)
-- Border (subtle 1px color)
-
-Also show each palette's dark mode equivalent as a second row below it.
-Name each concept (e.g. "Paper + Rust", "Milk + Indigo", "Stone + Amber").
-Output: single HTML file, all 4 palettes visible without scrolling.
-
-After I pick one, we move to Step 2.
-
----
-
-STEP 2 — Typography
-(Only after Step 1 is chosen)
-
-Show 3 font pairing options rendered in the chosen palette as a full HTML specimen.
-Each pairing:
-- UI font: for labels, nav, metadata (Notion-clean — Inter or similar)
-- Display font: for headlines (can have personality)
-- Reader font: for article body text (legible at 16-18px)
-
-Each specimen shows:
-- App headline: "Everything you save, organized and understood"
-- Library item: title + source + 1-line AI summary
-- Short article paragraph (3-4 lines)
-- UI labels: "3 min read" / "Saved" / "Ask Nexus"
-
-Google Fonts only. Output: single HTML file, all 3 specimens visible.
-
-After I pick one, we move to Step 3.
-
----
-
-STEP 3 — Layout Wireframe (IA is decided — implement this)
-(Only after Step 2 is chosen)
-
-The IA is already decided. Implement it as a clean HTML wireframe (layout only, no color yet):
-
-Navigation model: Source-centric
-- Left sidebar (240px): Nexus logo, search bar, nav items (Library / Briefing / Ask Nexus),
-  divider, Collections list (shows both user-created and AI-auto-generated collections)
-- Main content area fills the rest
-- On mobile (< 768px): sidebar collapses to bottom nav (Library | Briefing | Ask | Profile)
-  with search bar pinned at top of content area
-
-No Home screen. Library is the default view. Briefing is the daily moment, not a dashboard.
-
-Render the Library screen only as an HTML wireframe — divs with borders and labels,
-proportional layout, actual HTML (not ASCII). Show both desktop and mobile versions side by side.
-
-After I review and approve the layout, we move to Step 4.
-
----
-
-STEP 4 — Landing Page Wireframe
-(Only after Step 3 layout is approved)
-
-Wireframe the landing page as an HTML layout (no color yet, structure only).
-
-Rules for this landing page:
-- Single-column, one-box layout — NOT a multi-section marketing page
-- No feature grids, no testimonials, no pricing section, no footer nav
-- Everything above or just below the fold
-- One primary CTA only (email capture or "Get early access")
-
-The wireframe must show:
-- Logo / wordmark (top left)
-- Headline (large, centered or left-aligned)
-- Sub-headline (1-2 lines)
-- A single visual element (app screenshot OR abstract illustration — placeholder box)
-- Email input + CTA button
-- Optional: 1 line of social proof below CTA (e.g. "Join 2,400 people on the waitlist")
-
-Output: HTML wireframe, actual rendered layout with labeled placeholder boxes.
-I will approve the structure before any styling is applied.
-
----
-
-STEP 5 — Landing Page (Final)
-(Only after Step 4 wireframe is approved)
-
-Build the fully styled, production-ready landing page in a single HTML file:
-- Apply chosen palette, typography, and logo
-- Responsive: looks great on mobile (390px) and desktop (1280px)
-- Subtle animation: headline fades in, CTA button has a hover state
-- Custom "N" logomark SVG in the header (constellation / connected-nodes concept)
-- Email capture form (static — no backend needed, just the UI)
-- Light mode default; dark mode via prefers-color-scheme media query
-- Output: single self-contained HTML file, no external dependencies except Google Fonts
-```
-
 
 ## Phase 1 — MVP (Target: T+10 weeks)
 
 ### 1A — Backend Foundation (Weeks 1–3)
-- [ ] Supabase project setup (auth, DB)
-- [x] PostgreSQL schema: users, items, tags, embeddings, briefings — models + Alembic done
-- [~] pgvector extension + embedding pipeline — embed stub done; real model TBD
-- [x] FastAPI skeleton: auth, items CRUD — done (models, auth, queue stub, Alembic)
-- [ ] Content extraction service (Readability / Jina for articles)
-- [ ] YouTube transcript ingestion (YouTube Data API + transcript extraction)
-- [ ] Podcast transcript ingestion (RSS feed parse + Whisper/Deepgram for audio-to-text)
-- [ ] S3/R2 bucket for full-text storage
-- [x] Anthropic API integration: summarize + insights pipeline — pipeline.py done (claude-haiku-4-5); **blocked: needs ANTHROPIC_API_KEY**
-- [ ] Background job queue (async AI processing per save)
+- [x] Supabase project setup (auth, DB) — project yrzsbkljaqtwtbzeoirs, live <!-- nbl:id=1A-001 status=done -->
+- [x] PostgreSQL schema: users, items, tags, embeddings, feedback, ai_telemetry, performance_logs, audit_logs — migrations 0001+0002 live <!-- nbl:id=1A-002 status=done -->
+- [x] pgvector extension + OpenAI text-embedding-3-small — wired in ingestion pipeline <!-- nbl:id=1A-003 status=done -->
+- [x] FastAPI skeleton: auth (JWKS/ES256), items CRUD, feedback, ingest — live <!-- nbl:id=1A-004 status=done -->
+- [x] Content extraction service — Jina+trafilatura(fallback) wired into _process_job <!-- nbl:id=1A-005 status=done -->
+- [x] YouTube transcript ingestion — wired <!-- nbl:id=1A-006 status=done -->
+- [x] Podcast transcript ingestion (Deepgram Nova-3) — wired <!-- nbl:id=1A-007 status=done -->
+- [ ] S3/R2 bucket for full-text storage <!-- nbl:id=1A-008 agent=none gate=HUMAN:cloud_storage_credentials -->
+- [x] Anthropic API integration: summarize + insights pipeline — Claude Haiku 4.5, cost-tracked <!-- nbl:id=1A-009 status=done -->
+- [x] Background job queue (async AI processing) — in-process asyncio, full pipeline wired <!-- nbl:id=1A-010 status=done -->
+- [x] Feedback API: POST /v1/feedback + DB model + screenshot_url field <!-- nbl:id=1A-011 status=done -->
+- [ ] Collections model + migration — items need collection_id per SPEC §5a (IA locked: no global library) <!-- nbl:id=1A-012 agent=swe deps=[1A-001] est=2h -->
 
 ### 1B — iPhone App Foundation (Weeks 1–3, parallel)
-- [ ] Xcode project setup, SwiftUI architecture (MVVM or TCA)
-- [ ] Sign in with Apple + auth flow
-- [ ] Share Extension: capture URL from any app
-- [ ] API client layer (async/await)
-- [ ] Design tokens: colors, typography, spacing
+- [x] Xcode project setup — SwiftUI, iOS 17+, bundle ID app.nexus, at app-ios/Nexus/ <!-- nbl:id=1B-001 status=done -->
+- [ ] SwiftUI architecture scaffold — MVVM, folder structure (DesignSystem/Core/Models/Features), NexusApp root routing <!-- nbl:id=1B-001b agent=swe deps=[1B-001] est=3h -->
+- [ ] Sign in with Apple + Magic link email — both in v1 (Apple required by App Store; magic link = passwordless, no reset flows, cross-platform ready) <!-- nbl:id=1B-002 agent=swe deps=[1B-001,1A-001] est=4h -->
+- [ ] Share Extension: capture URL from any app <!-- nbl:id=1B-003 agent=swe deps=[1B-001] est=3h -->
+- [ ] API client layer (async/await) <!-- nbl:id=1B-004 agent=swe deps=[1B-001] est=2h -->
+- [ ] Design tokens: colors, typography, spacing (Swift from design-system/tokens/*.json) <!-- nbl:id=1B-005 agent=swe deps=[1B-001] est=2h -->
+- [ ] In-app feedback UI: Settings → "Send Feedback" → auto-screenshot capture → text + screenshot toggle → POST /feedback <!-- nbl:id=1B-006 agent=swe deps=[1B-001,1A-011] est=3h -->
 
 ### 1C — Core Features (Weeks 4–7)
 - [ ] Library view: list/grid, beautiful card design
@@ -222,6 +102,7 @@ Build the fully styled, production-ready landing page in a single HTML file:
 ---
 
 ## Phase 2 — Growth (T+10 to T+24 weeks)
+- [ ] Sign in with Google (extends auth to Android + web users)
 - [ ] Conversation Mode (full RAG chat with library)
 - [ ] Discovery engine (AI-suggested content from interest graph)
 - [ ] Sharing: public collections
@@ -263,6 +144,8 @@ Build the fully styled, production-ready landing page in a single HTML file:
 | 2026-06-06 | IA: Source-centric (Option A), no Home screen | Briefing IS the home moment; Library is the workspace |
 | 2026-06-06 | Collections: user-created + AI-auto-generated | Same container; user can rename/merge AI collections |
 | 2026-06-06 | 5 JTBDs locked | Capture / Understand / Research / Answer / Stay informed |
+| 2026-06-12 | Auth: Sign in with Apple + Magic link email in v1 | Apple required by App Store if any third-party login; magic link = passwordless, no reset flows, works cross-platform when web launches; Sign in with Google deferred to Phase 2 |
+| 2026-06-12 | Apple Developer Program enrolled | Srihari's existing Apple ID enrolled at $99/year; unblocks Xcode provisioning and App Store distribution |
 
 ---
 

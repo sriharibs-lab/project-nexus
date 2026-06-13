@@ -1,71 +1,77 @@
 {
   "$schema": "https://design-tokens.github.io/community-group/format/",
-  "$version": "0.1.0",
+  "$version": "1.0.0",
+  "$description": "Nexus color tokens — source: lTheme() in landing-kit.jsx + README.md. Accent-free philosophy: hierarchy from weight+spacing, not color. One accent (plum) used only for: send/confirm, loading spinner, selected tab tint, Echo-pulse, brand mark.",
+
   "color": {
     "brand": {
-      "primary": { "$value": "", "$type": "color", "$description": "Primary brand color" },
-      "secondary": { "$value": "", "$type": "color", "$description": "Secondary brand color" },
-      "accent": { "$value": "", "$type": "color", "$description": "Accent / highlight color" }
+      "plum":   { "$value": "#7054AB", "$type": "color", "$description": "Accent plum — approved uses only (see $description)" },
+      "bloom":  { "$value": "#E7DCF4", "$type": "color", "$description": "Plum bloom — page background gradient start" }
     },
     "neutral": {
-      "0":   { "$value": "", "$type": "color" },
-      "50":  { "$value": "", "$type": "color" },
-      "100": { "$value": "", "$type": "color" },
-      "200": { "$value": "", "$type": "color" },
-      "300": { "$value": "", "$type": "color" },
-      "400": { "$value": "", "$type": "color" },
-      "500": { "$value": "", "$type": "color" },
-      "600": { "$value": "", "$type": "color" },
-      "700": { "$value": "", "$type": "color" },
-      "800": { "$value": "", "$type": "color" },
-      "900": { "$value": "", "$type": "color" },
-      "1000": { "$value": "", "$type": "color" }
+      "0":    { "$value": "#FFFFFF", "$type": "color" },
+      "50":   { "$value": "#FBFAFD", "$type": "color", "$description": "surface3" },
+      "100":  { "$value": "#F9F8FC", "$type": "color", "$description": "page gradient end" },
+      "200":  { "$value": "#F4F2F9", "$type": "color", "$description": "surface2" },
+      "300":  { "$value": "#EEEBF5", "$type": "color", "$description": "hair" },
+      "400":  { "$value": "#E9E5F2", "$type": "color", "$description": "border" },
+      "500":  { "$value": "#DCD7EA", "$type": "color", "$description": "borderStrong" },
+      "600":  { "$value": "#B7B1C4", "$type": "color", "$description": "ghost" },
+      "700":  { "$value": "#9A93AC", "$type": "color", "$description": "faint" },
+      "800":  { "$value": "#68607A", "$type": "color", "$description": "muted" },
+      "900":  { "$value": "#130E1A", "$type": "color", "$description": "ink / text" },
+      "1000": { "$value": "#0A0710", "$type": "color", "$description": "deepest ink" }
     },
     "semantic": {
+      "page": {
+        "$value": "radial-gradient(135% 60% at 50% -8%, #E7DCF4 0%, #F9F8FC 50%)",
+        "$type": "color",
+        "$description": "Soft plum bloom — the ONLY ambient color on the surface. Used as page background."
+      },
       "background": {
-        "primary":   { "$value": "", "$type": "color" },
-        "secondary": { "$value": "", "$type": "color" },
-        "elevated":  { "$value": "", "$type": "color" },
-        "overlay":   { "$value": "", "$type": "color" }
+        "primary":   { "$value": "#FFFFFF",    "$type": "color", "$description": "surface" },
+        "secondary": { "$value": "#F4F2F9",    "$type": "color", "$description": "surface2 — segmented control track, pill hover bg" },
+        "elevated":  { "$value": "#FBFAFD",    "$type": "color", "$description": "surface3 — subtle elevated cards" },
+        "overlay":   { "$value": "rgba(19,14,26,0.50)", "$type": "color", "$description": "Modal scrim (menus use transparent scrim)" }
       },
       "text": {
-        "primary":   { "$value": "", "$type": "color" },
-        "secondary": { "$value": "", "$type": "color" },
-        "tertiary":  { "$value": "", "$type": "color" },
-        "disabled":  { "$value": "", "$type": "color" },
-        "inverse":   { "$value": "", "$type": "color" }
+        "primary":   { "$value": "#130E1A", "$type": "color", "$description": "ink" },
+        "secondary": { "$value": "#68607A", "$type": "color", "$description": "muted" },
+        "tertiary":  { "$value": "#9A93AC", "$type": "color", "$description": "faint" },
+        "disabled":  { "$value": "#B7B1C4", "$type": "color", "$description": "ghost" },
+        "inverse":   { "$value": "#FFFFFF",  "$type": "color" }
       },
       "border": {
-        "default": { "$value": "", "$type": "color" },
-        "subtle":  { "$value": "", "$type": "color" },
-        "strong":  { "$value": "", "$type": "color" }
+        "default": { "$value": "#E9E5F2", "$type": "color", "$description": "border" },
+        "subtle":  { "$value": "#EEEBF5", "$type": "color", "$description": "hair — lightest divider" },
+        "strong":  { "$value": "#DCD7EA", "$type": "color", "$description": "borderStrong — focused/active states" }
       },
       "status": {
-        "success": { "$value": "", "$type": "color" },
-        "warning": { "$value": "", "$type": "color" },
-        "error":   { "$value": "", "$type": "color" },
-        "info":    { "$value": "", "$type": "color" }
+        "success": { "$value": "#3D9E5F", "$type": "color" },
+        "warning": { "$value": "#D97706", "$type": "color" },
+        "error":   { "$value": "#DC2626", "$type": "color" },
+        "info":    { "$value": "#7054AB", "$type": "color", "$description": "Plum — info uses the brand accent" }
       }
     },
     "dark": {
-      "$description": "Dark mode overrides — same keys as semantic, applied via media query or class",
+      "$description": "Dark mode overrides — deep gray, same Notion restraint as light. Not dark-first.",
       "background": {
-        "primary":   { "$value": "", "$type": "color" },
-        "secondary": { "$value": "", "$type": "color" },
-        "elevated":  { "$value": "", "$type": "color" },
-        "overlay":   { "$value": "", "$type": "color" }
+        "primary":   { "$value": "#0F0D13", "$type": "color" },
+        "secondary": { "$value": "#1A1720", "$type": "color" },
+        "elevated":  { "$value": "#231F2A", "$type": "color" },
+        "overlay":   { "$value": "rgba(0,0,0,0.70)", "$type": "color" }
       },
       "text": {
-        "primary":   { "$value": "", "$type": "color" },
-        "secondary": { "$value": "", "$type": "color" },
-        "tertiary":  { "$value": "", "$type": "color" },
-        "disabled":  { "$value": "", "$type": "color" },
-        "inverse":   { "$value": "", "$type": "color" }
+        "primary":   { "$value": "#F0EBF8", "$type": "color" },
+        "secondary": { "$value": "#9E97B0", "$type": "color" },
+        "tertiary":  { "$value": "#6B6480", "$type": "color" },
+        "disabled":  { "$value": "#4A4458", "$type": "color" },
+        "inverse":   { "$value": "#130E1A", "$type": "color" }
       },
       "border": {
-        "default": { "$value": "", "$type": "color" },
-        "subtle":  { "$value": "", "$type": "color" },
-        "strong":  { "$value": "", "$type": "color" }
+        "default": { "$value": "#2E2A38", "$type": "color" },
+        "subtle":  { "$value": "#241F2E", "$type": "color" },
+        "strong":  { "$value": "#3D3850", "$type": "color" }
       }
     }
   }

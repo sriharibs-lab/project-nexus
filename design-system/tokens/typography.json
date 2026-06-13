@@ -1,61 +1,68 @@
 {
   "$schema": "https://design-tokens.github.io/community-group/format/",
-  "$version": "0.1.0",
+  "$version": "1.0.0",
+  "$description": "Nexus typography tokens — source: README.md + landing-kit.jsx. System font stack (SF Pro on iOS). Geist used ONLY for wordmark lockup. Negative letter-spacing throughout.",
+
   "typography": {
     "fontFamily": {
-      "display": { "$value": "", "$type": "fontFamily", "$description": "Hero headings, marketing" },
-      "body":    { "$value": "", "$type": "fontFamily", "$description": "Body text, UI copy" },
-      "mono":    { "$value": "", "$type": "fontFamily", "$description": "Code, labels, metadata" }
+      "ui":      { "$value": "-apple-system, BlinkMacSystemFont, \"Helvetica Neue\", sans-serif", "$type": "fontFamily", "$description": "SF Pro — all UI text, body, labels, metadata" },
+      "display": { "$value": "\"Geist\", -apple-system, sans-serif", "$type": "fontFamily", "$description": "Wordmark lockup ONLY — not UI text" },
+      "mono":    { "$value": "\"SF Mono\", \"Fira Code\", monospace", "$type": "fontFamily", "$description": "Code, metadata labels" }
     },
     "fontSize": {
-      "xs":   { "$value": "", "$type": "dimension", "$description": "10px equiv" },
-      "sm":   { "$value": "", "$type": "dimension", "$description": "12px equiv" },
-      "base": { "$value": "", "$type": "dimension", "$description": "14px equiv" },
-      "md":   { "$value": "", "$type": "dimension", "$description": "16px equiv" },
-      "lg":   { "$value": "", "$type": "dimension", "$description": "18px equiv" },
-      "xl":   { "$value": "", "$type": "dimension", "$description": "20px equiv" },
-      "2xl":  { "$value": "", "$type": "dimension", "$description": "24px equiv" },
-      "3xl":  { "$value": "", "$type": "dimension", "$description": "28px equiv" },
-      "4xl":  { "$value": "", "$type": "dimension", "$description": "32px equiv" },
-      "5xl":  { "$value": "", "$type": "dimension", "$description": "40px equiv" },
-      "6xl":  { "$value": "", "$type": "dimension", "$description": "48px equiv" }
+      "xs":   { "$value": "10px",   "$type": "dimension", "$description": "Overline, smallest caption" },
+      "sm":   { "$value": "11.5px", "$type": "dimension", "$description": "Tab labels, inline chips, secondary metadata" },
+      "base": { "$value": "13px",   "$type": "dimension", "$description": "Menu rows, segmented control, secondary labels" },
+      "md":   { "$value": "13.5px", "$type": "dimension", "$description": "Card labels, primary metadata, collection title chips" },
+      "lg":   { "$value": "15px",   "$type": "dimension", "$description": "Body text, source rows, chat answers" },
+      "xl":   { "$value": "16px",   "$type": "dimension", "$description": "Composer input, chat messages" },
+      "2xl":  { "$value": "16.5px", "$type": "dimension", "$description": "AI framing paragraph in Nexus tab" },
+      "3xl":  { "$value": "19px",   "$type": "dimension", "$description": "Home pivots (Recent / All)" },
+      "4xl":  { "$value": "22px",   "$type": "dimension" },
+      "5xl":  { "$value": "26px",   "$type": "dimension", "$description": "Collection view title" },
+      "6xl":  { "$value": "32px",   "$type": "dimension" },
+      "7xl":  { "$value": "40px",   "$type": "dimension", "$description": "Hero display" }
     },
     "fontWeight": {
-      "regular":   { "$value": "", "$type": "fontWeight" },
-      "medium":    { "$value": "", "$type": "fontWeight" },
-      "semibold":  { "$value": "", "$type": "fontWeight" },
-      "bold":      { "$value": "", "$type": "fontWeight" },
-      "extrabold": { "$value": "", "$type": "fontWeight" }
+      "regular":  { "$value": "400", "$type": "fontWeight" },
+      "medium":   { "$value": "500", "$type": "fontWeight", "$description": "Body, AI framing text" },
+      "semibold": { "$value": "600", "$type": "fontWeight", "$description": "Labels, segmented active, card titles" },
+      "bold":     { "$value": "700", "$type": "fontWeight", "$description": "Headings, pivots (active), wordmark" },
+      "extrabold":{ "$value": "800", "$type": "fontWeight" }
     },
     "lineHeight": {
-      "tight":   { "$value": "", "$type": "dimension" },
-      "snug":    { "$value": "", "$type": "dimension" },
-      "normal":  { "$value": "", "$type": "dimension" },
-      "relaxed": { "$value": "", "$type": "dimension" },
-      "loose":   { "$value": "", "$type": "dimension" }
+      "tight":   { "$value": "1.2",  "$type": "dimension" },
+      "snug":    { "$value": "1.3",  "$type": "dimension" },
+      "normal":  { "$value": "1.4",  "$type": "dimension", "$description": "Standard UI text" },
+      "relaxed": { "$value": "1.55", "$type": "dimension", "$description": "AI framing paragraph" },
+      "loose":   { "$value": "1.6",  "$type": "dimension", "$description": "Chat answers, article body" }
     },
     "letterSpacing": {
-      "tighter": { "$value": "", "$type": "dimension" },
-      "tight":   { "$value": "", "$type": "dimension" },
-      "normal":  { "$value": "", "$type": "dimension" },
-      "wide":    { "$value": "", "$type": "dimension" },
-      "wider":   { "$value": "", "$type": "dimension" },
-      "widest":  { "$value": "", "$type": "dimension" }
+      "tightest": { "$value": "-0.8px",   "$type": "dimension", "$description": "Large display sizes (26px+)" },
+      "tighter":  { "$value": "-0.5px",   "$type": "dimension", "$description": "Headings (22–24px)" },
+      "tight":    { "$value": "-0.4px",   "$type": "dimension", "$description": "Pivots, subheadings" },
+      "snug":     { "$value": "-0.2px",   "$type": "dimension", "$description": "Avatar initials" },
+      "normal":   { "$value": "-0.1px",   "$type": "dimension", "$description": "Base UI — most labels, body" },
+      "wide":     { "$value": "0",        "$type": "dimension" },
+      "wider":    { "$value": "0.05em",   "$type": "dimension", "$description": "Uppercase section captions (CREATE, OR ASK)" },
+      "widest":   { "$value": "0.08em",   "$type": "dimension", "$description": "Overline" }
     },
     "textStyle": {
-      "displayLarge":  { "$value": "", "$type": "typography", "$description": "Hero / splash heading" },
-      "displayMedium": { "$value": "", "$type": "typography" },
-      "headingLarge":  { "$value": "", "$type": "typography" },
-      "headingMedium": { "$value": "", "$type": "typography" },
-      "headingSmall":  { "$value": "", "$type": "typography" },
-      "bodyLarge":     { "$value": "", "$type": "typography" },
-      "bodyMedium":    { "$value": "", "$type": "typography" },
-      "bodySmall":     { "$value": "", "$type": "typography" },
-      "labelLarge":    { "$value": "", "$type": "typography" },
-      "labelMedium":   { "$value": "", "$type": "typography" },
-      "labelSmall":    { "$value": "", "$type": "typography" },
-      "caption":       { "$value": "", "$type": "typography" },
-      "overline":      { "$value": "", "$type": "typography" }
+      "$description": "Composite styles — format: fontSize/fontWeight/lineHeight, letterSpacing",
+      "displayLarge":  { "$value": "40px/700/1.2, -0.8px",  "$type": "typography", "$description": "Hero splash" },
+      "displayMedium": { "$value": "32px/700/1.2, -0.6px",  "$type": "typography" },
+      "headingLarge":  { "$value": "26px/700/1.2, -0.7px",  "$type": "typography", "$description": "Collection title" },
+      "headingMedium": { "$value": "22px/700/1.3, -0.5px",  "$type": "typography" },
+      "headingSmall":  { "$value": "19px/700/1.3, -0.4px",  "$type": "typography", "$description": "Pivot labels (active)" },
+      "bodyLarge":     { "$value": "16.5px/500/1.55, -0.1px", "$type": "typography", "$description": "Nexus tab framing paragraph" },
+      "bodyMedium":    { "$value": "15px/500/1.6, -0.1px",  "$type": "typography", "$description": "Chat answers, source rows" },
+      "bodySmall":     { "$value": "13.5px/500/1.4, -0.1px", "$type": "typography" },
+      "labelLarge":    { "$value": "13.5px/600/1.2, -0.1px", "$type": "typography", "$description": "Card labels, chip labels" },
+      "labelMedium":   { "$value": "13px/600/1.2, -0.1px",  "$type": "typography", "$description": "Menu rows, segmented control" },
+      "labelSmall":    { "$value": "11.5px/600/1.2, -0.05px", "$type": "typography", "$description": "Tab capsule labels, inline chips" },
+      "caption":       { "$value": "11px/500/1.2, 0.05em",  "$type": "typography", "$description": "Uppercase section captions (CREATE, OR ASK, SUGGESTED)" },
+      "overline":      { "$value": "10px/500/1.2, 0.08em",  "$type": "typography", "$description": "Smallest label, kicker text" },
+      "wordmark":      { "$value": "Geist 600, -0.035em",   "$type": "typography", "$description": "Brand lockup ONLY — not UI text" }
     }
   }
 }

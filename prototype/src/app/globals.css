@@ -1,27 +1,148 @@
+/* Nexus design tokens must be imported before Tailwind directives
+   so custom properties are available to all utilities. */
+@import "../styles/tokens.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ─── Base Reset ─── */
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ─── Page defaults ─── */
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--nx-font-ui);
+  font-size: var(--nx-text-lg);
+  font-weight: var(--nx-weight-medium);
+  line-height: var(--nx-leading-normal);
+  letter-spacing: var(--nx-tracking-normal);
+  color: var(--nx-color-text-primary);
+  background: var(--nx-color-page);
+  min-height: 100dvh;
 }
 
+/* ─── Typography utilities ─── */
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  /* Display */
+  .nx-text-display-lg {
+    font-size: var(--nx-text-7xl);
+    font-weight: var(--nx-weight-bold);
+    line-height: var(--nx-leading-tight);
+    letter-spacing: var(--nx-tracking-tightest);
+  }
+  .nx-text-display-md {
+    font-size: var(--nx-text-6xl);
+    font-weight: var(--nx-weight-bold);
+    line-height: var(--nx-leading-tight);
+    letter-spacing: -0.6px;
+  }
+
+  /* Headings */
+  .nx-text-heading-lg {
+    font-size: var(--nx-text-5xl);
+    font-weight: var(--nx-weight-bold);
+    line-height: var(--nx-leading-tight);
+    letter-spacing: -0.7px;
+  }
+  .nx-text-heading-md {
+    font-size: var(--nx-text-4xl);
+    font-weight: var(--nx-weight-bold);
+    line-height: var(--nx-leading-snug);
+    letter-spacing: var(--nx-tracking-tighter);
+  }
+  .nx-text-heading-sm {
+    font-size: var(--nx-text-3xl);
+    font-weight: var(--nx-weight-bold);
+    line-height: var(--nx-leading-snug);
+    letter-spacing: var(--nx-tracking-tight);
+  }
+
+  /* Body */
+  .nx-text-body-lg {
+    font-size: var(--nx-text-2xl);
+    font-weight: var(--nx-weight-medium);
+    line-height: var(--nx-leading-relaxed);
+    letter-spacing: var(--nx-tracking-normal);
+  }
+  .nx-text-body-md {
+    font-size: var(--nx-text-lg);
+    font-weight: var(--nx-weight-medium);
+    line-height: var(--nx-leading-loose);
+    letter-spacing: var(--nx-tracking-normal);
+  }
+  .nx-text-body-sm {
+    font-size: var(--nx-text-md);
+    font-weight: var(--nx-weight-medium);
+    line-height: var(--nx-leading-normal);
+    letter-spacing: var(--nx-tracking-normal);
+  }
+
+  /* Labels */
+  .nx-text-label-lg {
+    font-size: var(--nx-text-md);
+    font-weight: var(--nx-weight-semibold);
+    line-height: var(--nx-leading-tight);
+    letter-spacing: var(--nx-tracking-normal);
+  }
+  .nx-text-label-md {
+    font-size: var(--nx-text-base);
+    font-weight: var(--nx-weight-semibold);
+    line-height: var(--nx-leading-tight);
+    letter-spacing: var(--nx-tracking-normal);
+  }
+  .nx-text-label-sm {
+    font-size: var(--nx-text-sm);
+    font-weight: var(--nx-weight-semibold);
+    line-height: var(--nx-leading-tight);
+    letter-spacing: -0.05px;
+  }
+
+  /* Captions / overlines */
+  .nx-text-caption {
+    font-size: 11px;
+    font-weight: var(--nx-weight-medium);
+    line-height: var(--nx-leading-tight);
+    letter-spacing: var(--nx-tracking-wider);
+    text-transform: uppercase;
+  }
+  .nx-text-overline {
+    font-size: var(--nx-text-xs);
+    font-weight: var(--nx-weight-medium);
+    line-height: var(--nx-leading-tight);
+    letter-spacing: var(--nx-tracking-widest);
+    text-transform: uppercase;
+  }
+
+  /* Wordmark — brand lockup only */
+  .nx-text-wordmark {
+    font-family: var(--nx-font-display);
+    font-weight: var(--nx-weight-semibold);
+    letter-spacing: -0.035em;
+  }
+
+  /* ─── Pressable interaction ─── */
+  .nx-pressable {
+    transition: transform var(--nx-transition-micro);
+    cursor: pointer;
+  }
+  .nx-pressable:active {
+    transform: scale(var(--nx-scale-press-base));
+  }
+  .nx-pressable-light:active {
+    transform: scale(var(--nx-scale-press-light));
+  }
+  .nx-pressable-heavy:active {
+    transform: scale(var(--nx-scale-press-heavy));
   }
 }

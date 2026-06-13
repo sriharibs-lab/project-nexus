@@ -62,6 +62,20 @@ body {
   color: var(--nx-color-text-primary);
   background: var(--nx-color-page);
   min-height: 100dvh;
+  /* Remove default margin/padding so mobile full-screen layout has no gaps */
+  margin: 0;
+  padding: 0;
+}
+
+/* ─── Mobile-native layout helpers ─── */
+/* On narrow viewports the app fills the real screen edge-to-edge.
+   Screens that use MobileFrame already handle safe areas via StatusBar
+   and BottomTabBar — this rule just ensures no browser chrome bleeds through. */
+@media (max-width: 639px) {
+  html, body {
+    background: #FFFFFF; /* white instead of bloom gradient — avoids flash */
+    overflow-x: hidden;
+  }
 }
 
 /* ─── Typography utilities ─── */

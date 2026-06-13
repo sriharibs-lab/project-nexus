@@ -245,9 +245,62 @@ export function Avatar({
   );
 }
 
+// ── Responsive breakpoint hook ──
+//
+// Returns true when the viewport is narrower than 640 px (mobile-native mode).
+// Defaults to false on the server so the desktop frame is the SSR fallback,
+// avoiding layout shift on large screens. The effect fires synchronously after
+// hydration so mobile clients snap to full-screen in the first paint.
+
+function useIsNarrow(): boolean {
+  const [narrow, setNarrow] = React.useState(false);
+
+  React.useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const handler = (e: MediaQueryListEvent) => setNarrow(e.matches);
+    setNarrow(mq.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  return narrow;
+}
+
 // ── Mobile frame wrapper ──
+//
+// Responsive:
+//   mobile  (<640 px): fills the real viewport — no frame chrome, no padding.
+//   desktop (≥640 px): centered 390×844 iPhone mockup on warm canvas (#EDEBE6).
+//
+// All consumer screens remain unchanged — MobileFrame adapts around them.
 
 export function MobileFrame({ children }: { children: React.ReactNode }) {
+  const isNarrow = useIsNarrow();
+
+  if (isNarrow) {
+    // On a real phone/narrow window — the app IS the viewport.
+    return (
+      <div
+        style={{
+          width: "100%",
+          // height: 100dvh gives child screens a reference to resolve height: 100%,
+          // just like the fixed 844px desktop mockup does. overflow: hidden lets
+          // each screen manage its own scrollable areas internally.
+          height: "100dvh",
+          background: t.surface,
+          fontFamily: font.sans,
+          position: "relative",
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {children}
+      </div>
+    );
+  }
+
+  // Desktop: centered phone mockup on warm canvas.
   return (
     <div
       style={{
@@ -280,8 +333,30 @@ export function MobileFrame({ children }: { children: React.ReactNode }) {
 }
 
 // ── iOS status bar ──
+//
+// Responsive:
+//   mobile  (<640 px): a minimal safe-area spacer (respects env(safe-area-inset-top)
+//             for notch/Dynamic Island on real devices). No clock/battery chrome —
+//             the browser already provides those.
+//   desktop (≥640 px): full faux iOS status bar with 9:41 clock and battery icon.
 
 export function StatusBar() {
+  const isNarrow = useIsNarrow();
+
+  if (isNarrow) {
+    // Minimal spacer that respects the device safe area inset.
+    return (
+      <div
+        style={{
+          flexShrink: 0,
+          // fallback 20px for environments where the CSS env() isn't set
+          paddingTop: "max(env(safe-area-inset-top), 20px)",
+        }}
+      />
+    );
+  }
+
+  // Desktop faux status bar.
   return (
     <div
       style={{
@@ -325,12 +400,18 @@ export function StatusBar() {
 }
 
 // ── Home screen nav tab (bottom dock pill) ──
+//
+// Responsive:
+//   mobile  (<640 px): paddingBottom uses safe-area-inset-bottom so the pill
+//             clears the home indicator on iPhone models without a Home button.
+//   desktop (≥640 px): fixed 24 px bottom padding (matches the phone mockup).
 
 export function BottomTabBar({
   active,
 }: {
   active: "home" | "search" | "profile";
 }) {
+  const isNarrow = useIsNarrow();
   const tabs = [
     { key: "home", icon: "layers" as const, label: "Collections" },
     { key: "search", icon: "search" as const, label: "Search" },
@@ -343,11 +424,12 @@ export function BottomTabBar({
         bottom: 0,
         left: 0,
         right: 0,
-        height: 80,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        paddingBottom: 24,
+        // On mobile respect the home-indicator safe area; desktop uses fixed 24 px.
+        paddingBottom: isNarrow ? "max(env(safe-area-inset-bottom), 16px)" : 24,
+        paddingTop: 8,
         background: `linear-gradient(to top, ${t.surface} 60%, transparent)`,
       }}
     >

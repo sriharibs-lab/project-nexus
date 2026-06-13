@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 
@@ -15,6 +15,15 @@ const geist = localFont({
 export const metadata: Metadata = {
   title: "Nexus — Prototype",
   description: "Nexus iOS prototype — core screens",
+};
+
+// viewport-fit=cover is required so env(safe-area-inset-*) values are non-zero
+// on iPhone models with a notch or Dynamic Island when opened in mobile Safari.
+// In Next.js 14+ this must be a separate named export, not part of metadata.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

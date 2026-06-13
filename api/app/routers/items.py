@@ -1,132 +1,113 @@
 import uuid
 from datetime import datetime
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
-from app.core.users import get_or_create_user
 from app.middleware.auth import get_current_user
+from app.models.collection import Collection
 from app.models.item import ContentType, IngestStatus, Item
+from app.models.user import User
 
-router = APIRouter(prefix="/items", tags=["items"])
-
-
-class TagOut(BaseModel):
-    id: str
-    name: str
-    slug: str
+router = APIRouter(prefix="/collections/{collection_id}/items", tags=["items"])
 
 
-class ItemSummary(BaseModel):
-    id: str
+# ── Schemas ───────────────────────────────────────────────────────────────────
+
+class ItemResponse(BaseModel):
+    id: uuid.UUID
+    user_id: uuid.UUID
+    collection_id: uuid.UUID
     url: str
-    title: str | None
-    content_type: str
-    summary: str | None
-    ingest_status: str
-    tags: list[TagOut]
+    title: Optional[str]
+    content_type: ContentType
+    summary: Optional[str]
+    insights: Optional[List[str]]
+    ingest_status: IngestStatus
     created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
 
 
-class ItemDetail(ItemSummary):
-    insights: list[str]
-    extractor: str | None
-    word_count: int | None
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+async def _resolve_user(supabase_id: str, db: AsyncSession) -> User:
+    result = await db.execute(select(User).where(User.supabase_id == supabase_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return user
 
 
-def _to_summary(item: Item) -> ItemSummary:
-    return ItemSummary(
-        id=str(item.id),
-        url=item.url,
-        title=item.title,
-        content_type=item.content_type.value,
-        summary=item.summary,
-        ingest_status=item.ingest_status.value,
-        tags=[TagOut(id=str(t.id), name=t.name, slug=t.slug) for t in item.tags],
-        created_at=item.created_at,
+async def _get_owned_collection(
+    collection_id: uuid.UUID, user: User, db: AsyncSession
+) -> Collection:
+    result = await db.execute(
+        select(Collection).where(
+            Collection.id == collection_id, Collection.user_id == user.id
+        )
     )
+    collection = result.scalar_one_or_none()
+    if collection is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found")
+    return collection
 
 
-def _to_detail(item: Item) -> ItemDetail:
-    meta = item.metadata_ or {}
-    return ItemDetail(
-        id=str(item.id),
-        url=item.url,
-        title=item.title,
-        content_type=item.content_type.value,
-        summary=item.summary,
-        ingest_status=item.ingest_status.value,
-        tags=[TagOut(id=str(t.id), name=t.name, slug=t.slug) for t in item.tags],
-        created_at=item.created_at,
-        insights=meta.get("insights", []),
-        extractor=meta.get("extractor"),
-        word_count=meta.get("word_count"),
-    )
+# ── Routes ────────────────────────────────────────────────────────────────────
 
-
-@router.get("", response_model=list[ItemSummary])
+@router.get("", response_model=List[ItemResponse])
 async def list_items(
-    limit: int = 20,
-    offset: int = 0,
-    status_filter: IngestStatus | None = None,
-    db: AsyncSession = Depends(get_db),
+    collection_id: uuid.UUID,
     current_user: dict = Depends(get_current_user),
-) -> list[ItemSummary]:
-    user = await get_or_create_user(db, current_user["supabase_id"], current_user.get("email"))
-
-    q = (
-        select(Item)
-        .where(Item.user_id == user.id)
-        .options(selectinload(Item.tags))
-        .order_by(Item.created_at.desc())
-        .limit(min(limit, 100))
-        .offset(offset)
-    )
-    if status_filter:
-        q = q.where(Item.ingest_status == status_filter)
-
-    result = await db.execute(q)
-    return [_to_summary(item) for item in result.scalars().all()]
-
-
-@router.get("/{item_id}", response_model=ItemDetail)
-async def get_item(
-    item_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
-) -> ItemDetail:
-    user = await get_or_create_user(db, current_user["supabase_id"], current_user.get("email"))
-
+) -> List[ItemResponse]:
+    user = await _resolve_user(current_user["supabase_id"], db)
+    await _get_owned_collection(collection_id, user, db)
     result = await db.execute(
         select(Item)
-        .where(Item.id == item_id, Item.user_id == user.id)
-        .options(selectinload(Item.tags))
+        .where(Item.collection_id == collection_id)
+        .order_by(Item.created_at.desc())
+    )
+    return list(result.scalars().all())
+
+
+@router.get("/{item_id}", response_model=ItemResponse)
+async def get_item(
+    collection_id: uuid.UUID,
+    item_id: uuid.UUID,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ItemResponse:
+    user = await _resolve_user(current_user["supabase_id"], db)
+    await _get_owned_collection(collection_id, user, db)
+    result = await db.execute(
+        select(Item).where(Item.id == item_id, Item.collection_id == collection_id)
     )
     item = result.scalar_one_or_none()
-    if not item:
+    if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
-
-    return _to_detail(item)
+    return item
 
 
 @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_item(
+    collection_id: uuid.UUID,
     item_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> None:
-    user = await get_or_create_user(db, current_user["supabase_id"], current_user.get("email"))
-
+    user = await _resolve_user(current_user["supabase_id"], db)
+    await _get_owned_collection(collection_id, user, db)
     result = await db.execute(
-        select(Item).where(Item.id == item_id, Item.user_id == user.id)
+        select(Item).where(Item.id == item_id, Item.collection_id == collection_id)
     )
     item = result.scalar_one_or_none()
-    if not item:
+    if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
-
     await db.delete(item)
     await db.commit()

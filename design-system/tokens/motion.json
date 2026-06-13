@@ -1,42 +1,64 @@
 {
   "$schema": "https://design-tokens.github.io/community-group/format/",
-  "$version": "0.1.0",
+  "$version": "1.0.0",
+  "$description": "Nexus motion tokens — source: DESIGN_LANGUAGE.md §6 + README.md motion reference. Every tappable has press bounce. Menus use bloom-morph. Sheets/pages use platform curves. NEVER use rAF/JS springs — always CSS linear() or cubic-bezier.",
+
   "motion": {
     "duration": {
-      "instant":  { "$value": "", "$type": "duration", "$description": "Imperceptible — state flags only" },
-      "fast":     { "$value": "", "$type": "duration", "$description": "Quick micro-interactions" },
-      "base":     { "$value": "", "$type": "duration", "$description": "Standard UI transitions" },
-      "moderate": { "$value": "", "$type": "duration", "$description": "Panels, modals, sheets" },
-      "slow":     { "$value": "", "$type": "duration", "$description": "Page-level transitions" },
-      "slower":   { "$value": "", "$type": "duration", "$description": "Deliberate, cinematic" }
+      "instant":  { "$value": "50ms",  "$type": "duration", "$description": "Avatar hide-on-menu-open, state flags only" },
+      "fast":     { "$value": "150ms", "$type": "duration", "$description": "Hover states, chip fades" },
+      "base":     { "$value": "240ms", "$type": "duration", "$description": "Press bounce, Pressable spring (~.24s)" },
+      "moderate": { "$value": "380ms", "$type": "duration", "$description": "Pane swipe (PivotSwipe), tab thumb slide" },
+      "slow":     { "$value": "480ms", "$type": "duration", "$description": "Page push/pop" },
+      "slower":   { "$value": "520ms", "$type": "duration", "$description": "Tab capsule spring (true-spring linear())" },
+      "sheet":    { "$value": "520ms", "$type": "duration", "$description": "Bottom sheet rise" },
+      "menuOpen": { "$value": "420ms", "$type": "duration", "$description": "BloomMenu surface expand (spring)" },
+      "menuClose":{ "$value": "260ms", "$type": "duration", "$description": "BloomMenu collapse" },
+      "shimmer":  { "$value": "1600ms","$type": "duration", "$description": "Loading shimmer sweep" }
     },
+
     "easing": {
-      "linear":      { "$value": "", "$type": "cubicBezier" },
-      "easeIn":      { "$value": "", "$type": "cubicBezier", "$description": "Accelerate — elements leaving" },
-      "easeOut":     { "$value": "", "$type": "cubicBezier", "$description": "Decelerate — elements entering" },
-      "easeInOut":   { "$value": "", "$type": "cubicBezier", "$description": "Standard, symmetric" },
-      "spring":      { "$value": "", "$type": "cubicBezier", "$description": "Overshoot — playful/physical" },
-      "snappy":      { "$value": "", "$type": "cubicBezier", "$description": "Fast in, smooth out — iOS-feel" },
-      "emphasized":  { "$value": "", "$type": "cubicBezier", "$description": "Material-style emphasized curve" }
+      "linear":     { "$value": [0.0, 0.0, 1.0, 1.0], "$type": "cubicBezier" },
+      "easeIn":     { "$value": [0.4, 0.0, 0.9, 0.35], "$type": "cubicBezier", "$description": "Accelerate — elements leaving, menu close" },
+      "easeOut":    { "$value": [0.2, 0.8, 0.2, 1.0],  "$type": "cubicBezier", "$description": "Decelerate — page push, pane swipe" },
+      "easeInOut":  { "$value": [0.4, 0.0, 0.2, 1.0],  "$type": "cubicBezier" },
+      "spring":     { "$value": [0.18, 1.5, 0.4, 1.0], "$type": "cubicBezier", "$description": "Overshoot bounce — Pressable release, back button (.24s / .44s)" },
+      "snappy":     { "$value": [0.32, 0.72, 0.28, 1.0],"$type": "cubicBezier", "$description": "Sheet rise — iOS modal feel" },
+      "emphasized": { "$value": [0.22, 1.18, 0.36, 1.0],"$type": "cubicBezier", "$description": "Footer reveal (overshoot-settle)" },
+      "springTrue": { "$value": "linear(0, 0.009, 0.035 2.1%, 0.141, 0.281 6.7%, 0.723 12.9%, 0.938 16.7%, 1.064 20.1%, 1.109 22.4%, 1.12 24.5%, 1.106 27.3%, 0.999 36.8%, 0.984 40.5%, 1.004 47.7%, 1.001 50.2%, 1.0 100%)", "$type": "cubicBezier", "$description": "True baked spring k=200 c=15.5 ζ≈0.55 — BloomMenu surface expand, tab capsule thumb. ALWAYS CSS linear(), never rAF." }
     },
+
     "transition": {
-      "micro":       { "$value": "", "$type": "transition", "$description": "Button press, checkbox, toggle" },
-      "element":     { "$value": "", "$type": "transition", "$description": "Card expand, tooltip, dropdown" },
-      "panel":       { "$value": "", "$type": "transition", "$description": "Side sheet, bottom sheet" },
-      "pageForward": { "$value": "", "$type": "transition", "$description": "Navigate deeper" },
-      "pageBack":    { "$value": "", "$type": "transition", "$description": "Navigate back" },
-      "modalEnter":  { "$value": "", "$type": "transition" },
-      "modalExit":   { "$value": "", "$type": "transition" }
+      "micro":       { "$value": "240ms cubic-bezier(0.18,1.5,0.4,1)",    "$type": "transition", "$description": "Pressable press bounce — every tappable" },
+      "microBack":   { "$value": "440ms cubic-bezier(0.18,1.5,0.4,1)",    "$type": "transition", "$description": "Avatar / back button press (deeper scale, longer)" },
+      "element":     { "$value": "260ms cubic-bezier(0.4,0,0.9,0.35)",    "$type": "transition", "$description": "Menu close, tooltip, quick collapse" },
+      "panel":       { "$value": "520ms cubic-bezier(0.32,0.72,0.28,1)",  "$type": "transition", "$description": "Bottom sheet rise (modal enter)" },
+      "pageForward": { "$value": "480ms cubic-bezier(0.2,0.8,0.2,1)",     "$type": "transition", "$description": "Page push (navigate deeper)" },
+      "pageBack":    { "$value": "380ms cubic-bezier(0.2,0.8,0.2,1)",     "$type": "transition", "$description": "Page pop (navigate back)" },
+      "pivot":       { "$value": "380ms cubic-bezier(0.2,0.8,0.2,1)",     "$type": "transition", "$description": "PivotSwipe pane slide" },
+      "footerReveal":{ "$value": "400ms cubic-bezier(0.22,1.18,0.36,1)",  "$type": "transition", "$description": "Sheet footer slides up (overshoot-settle)" },
+      "modalExit":   { "$value": "260ms cubic-bezier(0.4,0,0.9,0.35)",    "$type": "transition", "$description": "Sheet dismiss down" }
     },
+
+    "scale": {
+      "pressLight":  { "$value": "0.97", "$type": "dimension", "$description": "Light press — rows, chips" },
+      "pressBase":   { "$value": "0.93", "$type": "dimension", "$description": "Standard Pressable" },
+      "pressHeavy":  { "$value": "0.88", "$type": "dimension", "$description": "Heavy press — icon buttons" },
+      "pressAvatar": { "$value": "0.84", "$type": "dimension", "$description": "Avatar / back button" },
+      "menuOrigin":  { "$value": "0.12", "$type": "dimension", "$description": "BloomMenu open-from scale (starts here, springs to 1)" },
+      "tabSquashX":  { "$value": "1.13", "$type": "dimension", "$description": "Tab thumb liquid squash at 38%" },
+      "tabSquashY":  { "$value": "0.87", "$type": "dimension", "$description": "Tab thumb liquid squash at 38%" }
+    },
+
     "haptic": {
-      "$description": "Haptic feedback profiles — values are platform identifiers (iOS UIImpactFeedbackStyle etc.)",
-      "light":   { "$value": "", "$type": "custom" },
-      "medium":  { "$value": "", "$type": "custom" },
-      "heavy":   { "$value": "", "$type": "custom" },
-      "success": { "$value": "", "$type": "custom" },
-      "warning": { "$value": "", "$type": "custom" },
-      "error":   { "$value": "", "$type": "custom" },
-      "selection": { "$value": "", "$type": "custom" }
+      "$description": "iOS UIKit haptic identifiers — use UIImpactFeedbackGenerator / UINotificationFeedbackGenerator",
+      "light":    { "$value": "UIImpactFeedbackGenerator.FeedbackStyle.light",              "$type": "custom", "$description": "Row tap, chip select" },
+      "medium":   { "$value": "UIImpactFeedbackGenerator.FeedbackStyle.medium",             "$type": "custom", "$description": "Button press, toggle" },
+      "heavy":    { "$value": "UIImpactFeedbackGenerator.FeedbackStyle.heavy",              "$type": "custom", "$description": "Destructive action" },
+      "success":  { "$value": "UINotificationFeedbackGenerator.FeedbackType.success",       "$type": "custom", "$description": "Source added, collection created" },
+      "warning":  { "$value": "UINotificationFeedbackGenerator.FeedbackType.warning",       "$type": "custom" },
+      "error":    { "$value": "UINotificationFeedbackGenerator.FeedbackType.error",         "$type": "custom", "$description": "Fetch failure" },
+      "selection":{ "$value": "UISelectionFeedbackGenerator",                               "$type": "custom", "$description": "Segmented control, pivot swipe" }
     }
   }
 }

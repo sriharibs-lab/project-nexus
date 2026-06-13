@@ -1,9 +1,11 @@
 # Project Nexus — Product Specification
-**Version:** 0.3  
-**Date:** 2026-06-06  
-**Status:** Draft
+**Version:** 0.4  
+**Date:** 2026-06-11  
+**Status:** Active
 
 **Platform Roadmap:** iOS (launch) → Android → Web → Desktop/Mac
+
+> **Product intent:** Nexus is a serious, production consumer app targeting worldwide release. Not a prototype, not a side project. Every technical decision — architecture, security, observability, AI design — must be made at that standard.
 
 ---
 
@@ -224,9 +226,9 @@ Source {
 
 ---
 
-## 6. Core Features
+## 7. Core Features
 
-### 6.1 Capture — "Save Anything, Instantly"
+### 7.1 Capture — "Save Anything, Instantly"
 - iOS Share Extension: save from any app (Safari, Twitter/X, YouTube, Spotify, etc.)
 - Supported content types: Articles, blog posts, YouTube videos (transcript ingestion), podcast episodes (transcript ingestion), Twitter/X threads, PDFs, newsletters
 - URL auto-detection and metadata enrichment (title, image, author, publish date, estimated read time)
@@ -276,7 +278,30 @@ This is what differentiates Nexus. Every item gets:
 - Export highlights (Markdown, Notion, Obsidian, email)
 - "Highlight Digest" — weekly email of your best captures
 
-### 6.8 Discovery (Phase 2)
+### 6.8 In-App Feedback
+
+Users can submit feedback without leaving the app.
+
+**Entry point:** Settings → "Send Feedback" (intentional, not accidental). No shake gesture.
+
+**Flow:**
+1. User taps "Send Feedback"
+2. App silently captures a screenshot of the current screen
+3. Feedback form appears: text field + screenshot preview with toggle ("Include screenshot")
+4. User writes feedback, optionally removes screenshot, taps Send
+5. Confirmation: "Thanks — we read every submission"
+
+**What's captured automatically (no user input):**
+- App version + iOS version (for bug diagnosis)
+- Feedback category (auto-detected or user-selected: Bug / Suggestion / Other)
+- Anonymized user ID (so we can follow up without linking to PII in logs)
+- Screenshot (if user keeps the toggle on)
+
+**What's NOT captured:** content of the user's library, URLs saved, or any reading data.
+
+**Screenshot storage:** Supabase Storage bucket (`feedback-screenshots/`), private, accessible only to Nexus team.
+
+### 6.9 Discovery (Phase 2)
 - Based on your library, Nexus suggests content you haven't seen
 - Curated by AI from trusted sources in your interest graph
 - Not an algorithmic feed — more like a smart librarian making suggestions
@@ -288,7 +313,7 @@ This is what differentiates Nexus. Every item gets:
 
 ---
 
-## 7. Feature Prioritization
+## 8. Feature Prioritization
 
 ### Phase 1 — MVP (iPhone Launch)
 **Must Have:**
@@ -298,6 +323,7 @@ This is what differentiates Nexus. Every item gets:
 - Semantic search / "Ask your library"
 - Reader view (clean, beautiful)
 - Basic memory / interest profile
+- In-app feedback (text + optional screenshot)
 
 **Should Have:**
 - Highlights and annotations
@@ -326,7 +352,7 @@ This is what differentiates Nexus. Every item gets:
 
 ---
 
-## 8. Guardrails
+## 9. Guardrails
 
 ### What Nexus Will NOT Be
 - A social feed / algorithmic dopamine loop
@@ -347,10 +373,10 @@ This is what differentiates Nexus. Every item gets:
 
 ---
 
-## 9. Technical Architecture
+## 10. Technical Architecture
 
 ### Philosophy: AI-Native, Not AI-Added
-The architecture is built from the ground up as an AI system. The model is not a service call — it is the orchestration layer.
+The architecture is built from the ground up as an AI system. The model is not a service call — it is the orchestration layer. Nexus is an **AI agentic harness** built on four formal pillars: **Model, Knowledge, Tools, Memory**. These are not features; they are the infrastructure the product runs on.
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -391,7 +417,7 @@ The architecture is built from the ground up as an AI system. The model is not a
 | Vector DB | pgvector (PostgreSQL) | Unified DB, semantic search |
 | Full-text Storage | PostgreSQL + S3/R2 | Article body storage |
 | Content Extraction | Mozilla Readability + Jina AI Reader | Clean article extraction |
-| Auth | Supabase Auth | Fast, secure, social login |
+| Auth | Supabase Auth — Sign in with Apple + Magic link email (v1); Sign in with Google (Phase 2) | Passwordless from day one; Apple required by App Store; magic link covers web/cross-platform |
 | Hosting | Railway / Fly.io (API) + Supabase (DB) | Fast launch, scalable |
 | Push Notifications | APNs via backend | Daily briefing delivery |
 | CDN | Cloudflare R2 + Workers | Fast, cheap |
@@ -463,9 +489,300 @@ tools = [
 ]
 ```
 
+### §9a: AI Agentic Harness — Four Pillars
+
+Nexus is not a chatbot wrapper. Every AI interaction is grounded in a formal four-pillar architecture:
+
+#### Pillar 1 — Model
+Model selection is a cost/quality/latency decision for every task — see §9c. Defaults:
+- **Claude claude-haiku-4-5** — high-volume background tasks (summarization, tagging, briefing composition)
+- **Claude claude-sonnet-4-6** — user-facing reasoning (grounded Q&A, collection research, conversation)
+- **Claude claude-opus-4-8** — internal tooling only (NBL Architect agent); not on the user-facing hot path in Phase 1
+- Non-Anthropic alternatives (Llama, open-weights embeddings) actively evaluated for cost reduction — see §9c
+- All Anthropic models operate under a **zero data retention (ZDR) agreement** — content processed but never retained or used for model training
+
+#### Pillar 2 — Knowledge
+The AI's knowledge base has three layers, retrieved via RAG on every inference call:
+1. **User library** — full text + embeddings of all saved sources, stored in pgvector per user. Hybrid search: semantic (embedding similarity) + keyword (full-text FTS). Retrieved at query time, injected as grounding context.
+2. **User interest graph** — a lightweight semantic profile of the user's topics, sources, and engagement patterns. Built from explicit signals (stars, highlights) and implicit signals (read depth, return visits, skip rate). Drives briefing personalization and connection surfacing.
+3. **Collection framing** — per-collection AI-generated context summary. Pre-computed on creation; updated when sources change.
+
+Knowledge access is **strictly read-only for the AI**. The AI agent cannot write to user data without an explicit user action triggering a write path.
+
+#### Pillar 3 — Tools
+Formal tool definitions — the AI calls these rather than free-form generation:
+
+```python
+tools = [
+    # Content pipeline tools
+    "extract_content(url) → ExtractionResult",
+    "summarize_item(text, content_type) → { tldr, key_insights, tags }",
+    "embed_text(text) → vector[1536]",
+    "find_connections(item_id, user_id, limit) → [RelatedItem]",
+
+    # Library tools
+    "search_library(query, user_id, filters, limit) → [SearchResult]",
+    "get_collection_context(collection_id) → CollectionContext",
+    "get_interest_profile(user_id) → InterestProfile",
+
+    # Agentic output tools
+    "build_daily_briefing(user_id, preferences) → Briefing",
+    "build_collection_framing(collection_id) → FacingParagraph",
+    "build_weekly_synthesis(user_id, date_range) → Synthesis",
+    "answer_with_citations(query, context_chunks) → CitedResponse",
+]
+```
+
+Every tool call is **logged with a correlation ID** linking it to the originating user action. Tool outputs are validated against schemas before storage. The AI cannot call destructive operations (delete, overwrite) directly.
+
+#### Pillar 4 — Memory
+Three tiers of memory with different lifespans:
+
+| Tier | Scope | Lifespan | Implementation |
+|---|---|---|---|
+| **Working memory** | Current session / conversation | Request lifetime | Sliding context window (Claude's context) |
+| **Episodic memory** | Interaction history | User account lifetime | PostgreSQL: per-user conversation log, pruned to last 50 turns |
+| **Semantic memory** | Interest graph, topic weights, reading patterns | User account lifetime | PostgreSQL: `user_profiles` table, updated on signal events |
+
+Memory is **user-owned and auditable**: users can view, correct, and delete their semantic memory from the Settings screen. Deletion is hard-delete — not soft-delete.
+
 ---
 
-## 10. Privacy & Data
+### §9c: Model Economics — Cost vs Quality vs Latency
+
+AI inference is Nexus's largest variable cost. At scale (100K users, 5 saves/week each), every unnecessary Opus call or un-cached Sonnet call compounds directly into margin erosion. Good business decisions require a deliberate cost architecture — not just "use the best model."
+
+#### The Three-Axis Decision
+Every AI task is evaluated on three axes before choosing a model or approach:
+
+| Axis | Question | Business stake |
+|---|---|---|
+| **Quality** | Will a cheaper model produce output the user finds noticeably worse? | Retention, NPS |
+| **Latency** | Does the user wait for this? Or is it background async? | UX, JTBD completion |
+| **Cost** | What's the cost per call × calls per user per day × user base? | Margin, unit economics |
+
+The rule: **use the cheapest model that clears the quality bar for the task.** Never use a larger model because it's "safer" without measuring the quality delta against the cost delta.
+
+#### Task-to-Model Routing
+
+| Task | Model / Approach | Rationale |
+|---|---|---|
+| Background summarization (TL;DR, key insights, tags) | **Claude Haiku** | High volume, structured output, quality bar is "accurate + concise" — Haiku clears it |
+| Embedding generation | **`text-embedding-3-small` (OpenAI)** — or self-hosted alternative | Embeddings are commodity; OpenAI's small model costs ~10× less than large with <5% retrieval quality loss |
+| Collection framing paragraph | **Claude Haiku** with prompt caching | Pre-computed; user doesn't wait. Cache the system prompt. |
+| Collection research (find sources for a topic) | **Claude Sonnet** | Requires judgment and web knowledge. Quality is user-visible, latency is acceptable (10–15s async) |
+| Grounded Q&A (Nexus tab chat) | **Claude Sonnet** | User is waiting; quality is the primary product differentiator. Sonnet is the floor. |
+| Daily briefing composition | **Claude Haiku** with structured output | High-volume background job. Briefing is structured (not a creative long-form essay). Haiku + good prompting is sufficient. |
+| Weekly synthesis report | **Claude Sonnet** | Once per week per user, long-form, quality-visible. Sonnet justified. |
+| Opus | **Reserved for internal tooling (NBL Architect agent) only** | Never on the user-facing hot path in Phase 1. Revisit for Phase 2 "deep research" mode if differentiated enough to charge more. |
+
+#### Cheaper Alternatives to Explore (Non-Anthropic)
+
+Not all tasks require a frontier model. These should be actively evaluated before committing to a paid model call:
+
+| Category | Alternatives | When to use |
+|---|---|---|
+| **Embeddings** | `text-embedding-3-small` (OpenAI), `mxbai-embed-large` (self-hosted via Ollama), `bge-m3` (open weights) | All embedding generation. Self-hosted removes per-call cost entirely at the cost of infra. Benchmark retrieval quality before switching. |
+| **Classification / tagging** | Regex rules, keyword classifiers, `distilbert` fine-tuned on content types | Content-type detection (article vs video vs thread) can be rule-based + ML, not LLM |
+| **Extraction / summarization** | `Llama 3.1 8B` or `Mistral 7B` via Groq/Together (low latency, low cost) | Background summaries for simple content. Run a quality A/B before replacing Haiku. |
+| **Structured output parsing** | Deterministic parsing (regex, BeautifulSoup, structured extractors) | Metadata extraction (title, author, publish date, read time) should never be an LLM call |
+| **Prompt caching** | Anthropic prompt caching (cache_control on system prompts) | Any call where the system prompt + few-shot examples is >1024 tokens. Can cut costs 80–90% on repeated calls. |
+| **Batch API** | Anthropic Batch API (50% discount, async) | Daily briefing generation, weekly synthesis, background re-summarization jobs. None of these are real-time. |
+
+#### Cost Control Principles
+
+1. **Measure before assuming.** Before using Sonnet where Haiku might work, run 100 samples of real content through both and score quality. Decisions are data-driven.
+2. **Prompt caching is free money.** Every high-volume call with a stable system prompt uses `cache_control`. This is non-negotiable.
+3. **Batch API for all async work.** Background jobs (briefings, summaries, re-tagging) use the Batch API. 50% discount for non-real-time work.
+4. **Token budgets per task.** Each tool call has a defined `max_tokens` output limit. Unbounded generation is a cost leak.
+5. **RAG context window discipline.** Only inject the top-K most relevant chunks, not the full library. K is tuned per task type. Larger context = higher cost with diminishing quality returns past a threshold.
+6. **Cost telemetry is first-class.** Every AI call emits `input_tokens`, `output_tokens`, `cache_read_tokens`, `model`, and `cost_usd` (computed). Monthly per-user AI cost is a tracked metric. If it exceeds the Pro subscription COGS threshold, that triggers a model routing review.
+
+#### Unit Economics Target (Phase 1)
+| Metric | Target |
+|---|---|
+| AI cost per active free user / month | < $0.05 |
+| AI cost per Pro user / month | < $0.80 |
+| AI cost as % of Pro revenue | < 10% |
+
+These are directional targets, not launch gates. Track from day 1 so the data exists to make routing decisions in Phase 2.
+
+---
+
+### §9b: Production Engineering Standards
+
+Nexus is a worldwide consumer app. These are non-negotiable engineering requirements, not optional polish.
+
+#### Observability — Telemetry
+Every meaningful event in the system emits a structured telemetry event. Format: structured JSON with a correlation ID that chains from the originating user action through every downstream service call.
+
+**Instrumented events (mandatory):**
+- `user.save` — URL saved (type, latency, outcome)
+- `pipeline.extraction` — extraction step (extractor used, duration, chars extracted, error)
+- `pipeline.ai_summarize` — AI call (model, input_tokens, output_tokens, latency_ms, cache_hit)
+- `pipeline.embed` — embedding call (duration_ms, vector_dims)
+- `ai.tool_call` — every tool invocation (tool_name, duration_ms, success, correlation_id)
+- `ai.conversation_turn` — chat message (collection_id, turn_index, model, latency_ms, grounded_sources_count)
+- `search.query` — library search (query_type: semantic|keyword|hybrid, result_count, latency_ms)
+- `briefing.generated` — daily briefing (items_considered, items_selected, model, duration_ms)
+- `error.*` — all errors with stack trace, correlation ID, affected user ID (anonymized)
+
+**Stack:** OpenTelemetry (traces + metrics) → collector → backend (Grafana Cloud / Datadog). Sentry for error reporting.
+
+#### Observability — Monitoring & Alerting
+Key service health monitors with defined SLOs:
+
+| Signal | SLO | Alert threshold |
+|---|---|---|
+| API p95 response time | < 500ms | > 800ms |
+| Save-to-summary latency | < 10 seconds | > 15 seconds |
+| AI pipeline error rate | < 1% | > 2% |
+| Embedding pipeline error rate | < 0.5% | > 1% |
+| Background queue depth | < 100 items | > 500 items |
+| Auth error rate | < 0.1% | > 0.5% |
+| iOS crash-free sessions | > 99.5% | < 99% |
+
+Alerts route to on-call (PagerDuty or equivalent). Severity: P1 (auth down, data loss risk), P2 (AI pipeline degraded, >10s latency), P3 (elevated error rate).
+
+#### Performance Markers (iOS)
+Instruments-compatible timing markers in the iOS app for every user-perceived performance moment:
+
+| Marker | Target | Measure |
+|---|---|---|
+| App cold start to collections visible | < 1.5s | Time to interactive |
+| Share Extension save → confirmation | < 800ms | Time to save confirmation |
+| Collection open → Nexus tab rendered | < 400ms | Perceived navigation speed |
+| Chat message sent → first token | < 2s | Time to first token (streaming) |
+| Search results rendered | < 300ms | From keypress to results |
+| Library scroll | 60fps stable | Frame rate |
+
+Use `os_signpost` on iOS for instrumentation. These markers feed into TestFlight + production Xcode Organizer metrics.
+
+#### Structured Logging
+All services log structured JSON. Every log line includes:
+
+```json
+{
+  "ts": "ISO-8601",
+  "level": "info|warn|error",
+  "service": "api|pipeline|ai|auth",
+  "trace_id": "uuid",
+  "span_id": "uuid",
+  "user_id": "sha256-anonymized",
+  "event": "event.name",
+  "duration_ms": 0,
+  "error": null
+}
+```
+
+- User IDs are **anonymized (SHA-256 hash)** in logs — never raw UUIDs
+- Log retention: 30 days hot, 90 days cold storage
+- No PII in logs: no email addresses, no content text, no URLs in production logs
+- Error logs are shipped to Sentry with full context but scrubbed of content
+
+---
+
+## 11. Security Architecture
+
+### Threat Model
+Nexus handles personal content — articles, notes, private URLs, reading history. A breach exposes what users read, think about, and research. The threat surface includes:
+- **Account takeover** — unauthorized access to a user's library
+- **Data exfiltration** — bulk download of user content
+- **Content injection** — malicious URLs exploiting the extraction pipeline
+- **AI prompt injection** — adversarial content in saved sources manipulating AI responses
+- **Supply chain** — compromised dependencies in the API or iOS app
+- **Insider threat** — unauthorized internal access to user data
+
+### Encryption
+
+**At rest:**
+- All user content (article text, transcripts, highlights, notes): AES-256-GCM, per-user encryption keys
+- Embeddings: encrypted at the database level (Supabase + pgvector column-level encryption)
+- Backups: encrypted with a separate backup key, stored in a geographically separate region
+- User interest profiles: encrypted at rest, same key rotation schedule as content
+- Encryption keys: managed via a dedicated KMS (AWS KMS or equivalent), never stored in application code or environment variables
+
+**In transit:**
+- All API traffic: TLS 1.3 minimum, TLS 1.2 forbidden
+- **Certificate pinning** on iOS: pinned to Nexus API certificate chain. Prevents MITM even on compromised network infrastructure
+- WebSocket connections (streaming AI responses): WSS only, same TLS requirements
+- Internal service-to-service traffic (API ↔ DB, API ↔ queue): mTLS
+
+**Key management:**
+- Per-user content encryption keys, derived from a master key in KMS
+- Key rotation schedule: annual for master keys, quarterly for derived keys
+- Key rotation does not require user action — handled transparently with old-key → new-key migration in background
+- Deleted user: encryption keys destroyed within 72 hours of account deletion, making content irrecoverable
+
+### Authentication & Authorization
+
+**Authentication:**
+- Primary: Sign in with Apple (iOS 17+, privacy-preserving)
+- Secondary: Email + magic link (no passwords stored anywhere)
+- MFA: supported in Phase 2 via TOTP
+- Session tokens: short-lived JWTs (15-minute access token), long-lived refresh tokens (30 days), stored in iOS Keychain (not UserDefaults)
+- Refresh token rotation: each use issues a new refresh token; old one is invalidated (prevents replay)
+- Concurrent session limit: 5 devices maximum; oldest session evicted on limit
+
+**Authorization:**
+- All data access enforced at the database layer via **Row-Level Security (RLS)** in Supabase/PostgreSQL
+- No cross-user data access possible at the query layer — not just application-level checks
+- API endpoints: every route validates JWT and extracts `user_id` from the verified token; no user_id accepted from the request body
+- AI agent authorization: AI tools are scoped to the authenticated user's data only; no tool can access another user's data even with a crafted prompt
+- Admin access: separate admin role with audit logging, never co-mingled with user data paths
+
+### API Security
+- **Rate limiting**: per-user (saves: 100/hour, AI queries: 50/hour, auth: 10/minute)
+- **Input validation**: all incoming URLs validated and sanitized before extraction; content length limits enforced
+- **SSRF protection**: extraction pipeline runs in a sandboxed network zone with an allowlist of outbound destinations; internal IP ranges blocked
+- **Content Security Policy**: API responses include strict CSP headers
+- **Dependency scanning**: automated via Dependabot + Snyk in CI. Critical vulnerabilities block deployment
+- **SAST**: static analysis (Bandit for Python, SwiftLint security rules) runs on every PR
+
+### AI-Specific Security
+- **Prompt injection defense**: content from saved URLs is injected into AI context as data, not as instructions. System prompt is immutable and cannot be overridden by user content.
+- **Output validation**: AI-generated content (summaries, answers) is validated for length, format, and absence of injection patterns before storage or display
+- **Zero data retention**: Anthropic ZDR agreement ensures content sent for AI processing is never used for model training and is deleted after the API call completes
+- **Tool call authorization**: AI tools are validated against an allowlist; no tool execution without an authenticated session scope
+
+### Audit Logging
+Every data access event produces an immutable audit log entry:
+
+```json
+{
+  "ts": "ISO-8601",
+  "event_type": "content.read|content.write|content.delete|auth.login|auth.logout|admin.access",
+  "actor_id": "sha256-anonymized",
+  "resource_type": "collection|source|profile|session",
+  "resource_id": "uuid",
+  "outcome": "success|denied",
+  "ip_hash": "sha256",
+  "client": "ios|api|admin"
+}
+```
+
+- Audit logs are **append-only**, written to a separate, restricted store
+- Retention: 2 years
+- Audit log access is itself audited
+
+### Compliance
+- **GDPR**: data deletion within 30 days of request; data portability export; DPA with all sub-processors
+- **CCPA**: opt-out of sale (no data is sold; still required disclosure); deletion rights
+- **App Store**: compliant with Apple's data collection disclosures (nutrition labels)
+- **SOC 2 Type II**: targeted for Phase 3 (enterprise tier). Controls designed from day 1 to support this.
+- **OWASP Mobile Top 10**: full audit before App Store submission
+- **OWASP API Security Top 10**: addressed in API design (auth, injection, SSRF, rate limiting)
+
+### Trust Model
+- The AI agent is **not trusted with write access**. It can read user data (scoped to the authenticated user) and propose output; writes only happen through validated, user-initiated paths.
+- Users are **always in control**: every AI action is reversible or correctable. AI cannot delete sources, modify collection names, or alter user settings without explicit user confirmation.
+- **No silent AI behavior**: every background AI action (summarization, tagging, connection surfacing) is surfaced in a transparent activity model. Users can see what the AI did and when.
+
+---
+
+## 12. Privacy & Data
+
+> Full security architecture (encryption, auth, audit logging, compliance) is in **§10 Security Architecture** above.
 
 ### Principles
 1. **Your data is yours** — users own their saves, insights, and memory profile
@@ -474,24 +791,18 @@ tools = [
 4. **Transparency** — users can see exactly what Nexus knows about them and delete it
 
 ### Data Handling
-- Content extracted from URLs is stored encrypted at rest (AES-256)
-- Embeddings are stored per-user, not shared
-- AI calls to Anthropic API: content is sent for processing but not retained for training (zero data retention agreement)
-- User memory/interest profile: viewable and deletable in-app
-- Export: users can export their full library at any time (JSON, Markdown)
+- Content extracted from URLs is stored encrypted at rest (AES-256, per-user keys)
+- Embeddings are stored per-user, never shared or pooled across users
+- AI calls to Anthropic API: zero data retention (ZDR) agreement — content processed but never retained or used for training
+- User memory/interest profile: viewable and deletable in-app at any time
+- Export: users can export their full library at any time (JSON, Markdown, CSV)
 - GDPR + CCPA compliant from day 1
-- No third-party analytics SDKs in v1 (use privacy-preserving PostHog self-hosted or equivalent)
-
-### Auth & Security
-- Sign in with Apple (primary)
-- Email + magic link (secondary)
-- No passwords stored
-- JWT tokens, short-lived with refresh
-- All API traffic TLS 1.3
+- No third-party advertising or tracking SDKs — ever
+- First-party analytics: privacy-preserving, aggregated only (no individual-level behavioral data sold or shared)
 
 ---
 
-## 11. Monetization
+## 13. Monetization
 
 ### Model: Freemium Subscription
 
@@ -509,7 +820,7 @@ tools = [
 
 ---
 
-## 12. UX Design Direction
+## 14. UX Design Direction
 
 ### Design DNA
 Nexus should feel like Notion built the UI and NotebookLM built the brain. References:
@@ -556,7 +867,7 @@ Nexus should feel like Notion built the UI and NotebookLM built the brain. Refer
 
 ---
 
-## 13. Design System Architecture
+## 15. Design System Architecture
 
 ### Philosophy: One Source of Truth
 All design resources are platform-agnostic and centrally maintained. Native apps consume tokens; they don't define them.
@@ -601,7 +912,7 @@ The prototype lives in `/prototype/` in the monorepo and is the design reference
 
 ---
 
-## 14. Launch Strategy
+## 16. Launch Strategy
 
 ### Pre-Launch
 - Waitlist landing page (minimal, beautiful)
@@ -620,7 +931,7 @@ The prototype lives in `/prototype/` in the monorepo and is the design reference
 
 ---
 
-## 14. Open Questions
+## 17. Open Questions
 
 - [ ] What's the right monetization gate? (conversation mode? briefing? saves?) — **deferred**
 - [x] AI persona: nameless. The product is Nexus. No named AI character.

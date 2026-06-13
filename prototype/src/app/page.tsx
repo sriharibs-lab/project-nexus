@@ -1,101 +1,394 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+/**
+ * Home screen — Collections list.
+ *
+ * SPEC §5a: Collections are the root. No global library.
+ * Layout: Recent / All pivots (header) → collection cards list → New Collection CTA.
+ * source_count is displayed from the denormalized field (never a COUNT query).
+ */
+
+import React, { useState } from "react";
+import Link from "next/link";
+import { tokens } from "../lib/tokens";
+import {
+  Icon,
+  Pressable,
+  Avatar,
+  MobileFrame,
+  StatusBar,
+  BottomTabBar,
+} from "../lib/components";
+import { MOCK_COLLECTIONS, relativeTime, type Collection } from "../lib/mock-data";
+
+const t = tokens.color;
+
+// ── Pivot tabs (Recent / All) ──
+
+function PivotButton({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <Pressable
+      onClick={onClick}
+      scale={0.96}
+      style={{
+        fontSize: 19,
+        fontWeight: active ? 700 : 600,
+        letterSpacing: -0.4,
+        color: active ? t.ink : t.faint,
+        padding: "8px 14px",
+        borderRadius: 999,
+        background: active ? t.surface2 : "transparent",
+        transition: "background 0.15s, color 0.15s",
+        fontFamily: tokens.font.display,
+      }}
+    >
+      {label}
+    </Pressable>
+  );
+}
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+// ── Collection card ──
+
+function CollectionCard({ collection }: { collection: Collection }) {
+  const hasAi = !!collection.ai_framing;
+  const processingCount = collection.sources.filter(
+    (s) => s.ingest_status === "processing" || s.ingest_status === "pending"
+  ).length;
+
+  return (
+    <Link href={`/collections/${collection.id}`} style={{ textDecoration: "none" }}>
+      <Pressable
+        scale={0.985}
+        style={{
+          display: "block",
+          width: "100%",
+          background: t.surface,
+          borderRadius: 20,
+          border: `1px solid ${t.border}`,
+          padding: "16px 16px 14px",
+          textAlign: "left",
+          marginBottom: 10,
+          boxShadow: "0 1px 4px rgba(19,14,26,0.04)",
+          animation: "nxFade 0.3s cubic-bezier(.2,.8,.2,1) both",
+        }}
+      >
+        {/* Title row */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            gap: 8,
+            marginBottom: 6,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 16,
+              fontWeight: 700,
+              letterSpacing: -0.3,
+              color: t.ink,
+              lineHeight: 1.3,
+              flex: 1,
+              minWidth: 0,
+            }}
           >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            {collection.name}
+          </div>
+          <Icon name="chevRight" size={16} color={t.ghost} />
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+
+        {/* Description */}
+        {collection.description && (
+          <div
+            style={{
+              fontSize: 13.5,
+              color: t.muted,
+              lineHeight: 1.4,
+              letterSpacing: -0.1,
+              marginBottom: 12,
+              overflow: "hidden",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+            }}
+          >
+            {collection.description}
+          </div>
+        )}
+
+        {/* Meta row: source count + AI indicator + time */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+          }}
         >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+          {/* Source count badge */}
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+              padding: "3px 9px",
+              borderRadius: 999,
+              background: t.surface2,
+              border: `1px solid ${t.hair}`,
+            }}
+          >
+            <Icon name="layers" size={12} color={t.muted} />
+            <span
+              style={{
+                fontSize: 12.5,
+                fontWeight: 600,
+                color: t.muted,
+                letterSpacing: -0.1,
+              }}
+            >
+              {collection.source_count} {collection.source_count === 1 ? "source" : "sources"}
+            </span>
+          </div>
+
+          {/* AI-ready indicator */}
+          {hasAi && (
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                padding: "3px 9px",
+                borderRadius: 999,
+                background: `${t.plum}14`,
+                border: `1px solid ${t.plum}30`,
+              }}
+            >
+              <Icon name="nexus" size={12} color={t.plum} />
+              <span
+                style={{
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  color: t.plum,
+                  letterSpacing: -0.1,
+                }}
+              >
+                Nexus ready
+              </span>
+            </div>
+          )}
+
+          {/* Processing indicator */}
+          {processingCount > 0 && (
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                padding: "3px 9px",
+                borderRadius: 999,
+                background: t.surface2,
+                border: `1px solid ${t.hair}`,
+              }}
+            >
+              <div
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: 999,
+                  border: `1.5px solid ${t.ghost}`,
+                  borderTopColor: t.muted,
+                  animation: "nxSpin 0.8s linear infinite",
+                  flexShrink: 0,
+                }}
+              />
+              <span style={{ fontSize: 12.5, color: t.faint, letterSpacing: -0.1 }}>
+                {processingCount} reading
+              </span>
+            </div>
+          )}
+
+          <div style={{ flex: 1 }} />
+
+          <span style={{ fontSize: 12, color: t.ghost, letterSpacing: -0.1 }}>
+            {relativeTime(collection.created_at)}
+          </span>
+        </div>
+      </Pressable>
+    </Link>
+  );
+}
+
+// ── New Collection CTA button ──
+
+function NewCollectionButton() {
+  return (
+    <Link href="/collections/new" style={{ textDecoration: "none" }}>
+      <Pressable
+        scale={0.97}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+          width: "100%",
+          height: 50,
+          borderRadius: 999,
+          background: t.ink,
+          color: t.white,
+          fontFamily: tokens.font.sans,
+          fontSize: 15.5,
+          fontWeight: 600,
+          letterSpacing: -0.2,
+          border: "none",
+          marginTop: 4,
+        }}
+      >
+        <Icon name="plus" size={18} color={t.white} stroke={2} />
+        New Collection
+      </Pressable>
+    </Link>
+  );
+}
+
+// ── Main Home screen ──
+
+export default function HomePage() {
+  const [pivot, setPivot] = useState<"Recent" | "All">("Recent");
+
+  const collections = pivot === "Recent"
+    ? [...MOCK_COLLECTIONS].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
+    : MOCK_COLLECTIONS;
+
+  return (
+    <MobileFrame>
+      {/* Full-screen page with bloom background */}
+      <div
+        style={{
+          height: "100%",
+          background: t.page,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          fontFamily: tokens.font.sans,
+        }}
+      >
+        <StatusBar />
+
+        {/* Header */}
+        <div style={{ padding: "4px 14px 0", flexShrink: 0 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <div style={{ display: "flex", gap: 2 }}>
+              <PivotButton
+                label="Recent"
+                active={pivot === "Recent"}
+                onClick={() => setPivot("Recent")}
+              />
+              <PivotButton
+                label="All"
+                active={pivot === "All"}
+                onClick={() => setPivot("All")}
+              />
+            </div>
+            <Pressable scale={0.9} style={{ borderRadius: 999 }}>
+              <Avatar initials="S" />
+            </Pressable>
+          </div>
+        </div>
+
+        {/* Collections list */}
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: "auto",
+            padding: "14px 16px 100px",
+          }}
         >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+          {collections.map((col) => (
+            <CollectionCard key={col.id} collection={col} />
+          ))}
+
+          {/* Empty state */}
+          {collections.length === 0 && (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                paddingTop: 80,
+                gap: 12,
+              }}
+            >
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 18,
+                  background: t.surface2,
+                  border: `1px solid ${t.border}`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Icon name="layers" size={26} color={t.ghost} />
+              </div>
+              <div
+                style={{
+                  fontSize: 17,
+                  fontWeight: 600,
+                  color: t.ink,
+                  letterSpacing: -0.3,
+                }}
+              >
+                What are you curious about?
+              </div>
+              <div
+                style={{
+                  fontSize: 14,
+                  color: t.muted,
+                  textAlign: "center",
+                  maxWidth: 240,
+                  lineHeight: 1.5,
+                }}
+              >
+                Create your first collection to start researching.
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Bottom CTA */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: 80,
+            left: 16,
+            right: 16,
+          }}
         >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+          <NewCollectionButton />
+        </div>
+
+        <BottomTabBar active="home" />
+      </div>
+    </MobileFrame>
   );
 }

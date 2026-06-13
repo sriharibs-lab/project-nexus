@@ -1,67 +1,76 @@
 {
   "$schema": "https://design-tokens.github.io/community-group/format/",
-  "$version": "0.1.0",
+  "$version": "1.0.0",
+  "$description": "Nexus spacing, radius, border, shadow, and layout tokens — source: README.md + landing-kit.jsx component measurements.",
+
   "spacing": {
-    "0":   { "$value": "", "$type": "dimension", "$description": "0px" },
-    "1":   { "$value": "", "$type": "dimension", "$description": "4px" },
-    "2":   { "$value": "", "$type": "dimension", "$description": "8px" },
-    "3":   { "$value": "", "$type": "dimension", "$description": "12px" },
-    "4":   { "$value": "", "$type": "dimension", "$description": "16px" },
-    "5":   { "$value": "", "$type": "dimension", "$description": "20px" },
-    "6":   { "$value": "", "$type": "dimension", "$description": "24px" },
-    "7":   { "$value": "", "$type": "dimension", "$description": "28px" },
-    "8":   { "$value": "", "$type": "dimension", "$description": "32px" },
-    "10":  { "$value": "", "$type": "dimension", "$description": "40px" },
-    "12":  { "$value": "", "$type": "dimension", "$description": "48px" },
-    "16":  { "$value": "", "$type": "dimension", "$description": "64px" },
-    "20":  { "$value": "", "$type": "dimension", "$description": "80px" },
-    "24":  { "$value": "", "$type": "dimension", "$description": "96px" }
+    "0":  { "$value": "0px",   "$type": "dimension" },
+    "1":  { "$value": "4px",   "$type": "dimension" },
+    "2":  { "$value": "8px",   "$type": "dimension" },
+    "3":  { "$value": "12px",  "$type": "dimension" },
+    "4":  { "$value": "14px",  "$type": "dimension", "$description": "Side padding — header, dock (14px)" },
+    "5":  { "$value": "16px",  "$type": "dimension", "$description": "Standard content side padding" },
+    "6":  { "$value": "20px",  "$type": "dimension" },
+    "7":  { "$value": "24px",  "$type": "dimension", "$description": "Bottom clearance — capsule above home indicator" },
+    "8":  { "$value": "28px",  "$type": "dimension", "$description": "Sheet footer bottom safe padding" },
+    "10": { "$value": "32px",  "$type": "dimension" },
+    "12": { "$value": "40px",  "$type": "dimension", "$description": "Back button size (40×40)" },
+    "14": { "$value": "44px",  "$type": "dimension", "$description": "Min hit target (Apple HIG)" },
+    "16": { "$value": "48px",  "$type": "dimension", "$description": "Add-source pill height; standard button height" },
+    "20": { "$value": "60px",  "$type": "dimension", "$description": "Status bar / dynamic island clearance" },
+    "24": { "$value": "96px",  "$type": "dimension" }
   },
+
   "borderRadius": {
-    "none":  { "$value": "", "$type": "dimension" },
-    "sm":    { "$value": "", "$type": "dimension" },
-    "base":  { "$value": "", "$type": "dimension" },
-    "md":    { "$value": "", "$type": "dimension" },
-    "lg":    { "$value": "", "$type": "dimension" },
-    "xl":    { "$value": "", "$type": "dimension" },
-    "2xl":   { "$value": "", "$type": "dimension" },
-    "3xl":   { "$value": "", "$type": "dimension" },
-    "full":  { "$value": "", "$type": "dimension", "$description": "9999px — pill / avatar" }
+    "none":  { "$value": "0px",    "$type": "dimension" },
+    "xs":    { "$value": "6px",    "$type": "dimension" },
+    "sm":    { "$value": "9px",    "$type": "dimension", "$description": "Segmented control item, small badge" },
+    "base":  { "$value": "13px",   "$type": "dimension", "$description": "List row cards" },
+    "md":    { "$value": "14px",   "$type": "dimension", "$description": "Creation cards, menu rows (radius ~14)" },
+    "lg":    { "$value": "16px",   "$type": "dimension", "$description": "Collection cards" },
+    "xl":    { "$value": "22px",   "$type": "dimension", "$description": "Composer, Liquid Glass baseline" },
+    "2xl":   { "$value": "24px",   "$type": "dimension", "$description": "Nexus tab composer radius" },
+    "3xl":   { "$value": "26px",   "$type": "dimension", "$description": "Floating menus (22–26 range)" },
+    "full":  { "$value": "9999px", "$type": "dimension", "$description": "Pill, avatar, chip, icon button" }
   },
+
   "borderWidth": {
-    "none":   { "$value": "", "$type": "dimension" },
-    "thin":   { "$value": "", "$type": "dimension" },
-    "base":   { "$value": "", "$type": "dimension" },
-    "medium": { "$value": "", "$type": "dimension" },
-    "thick":  { "$value": "", "$type": "dimension" }
+    "none":   { "$value": "0px",   "$type": "dimension" },
+    "hair":   { "$value": "0.5px", "$type": "dimension", "$description": "Hairline — subtlest dividers" },
+    "base":   { "$value": "1px",   "$type": "dimension", "$description": "Standard card/composer border" },
+    "medium": { "$value": "1.5px", "$type": "dimension" },
+    "thick":  { "$value": "2px",   "$type": "dimension" }
   },
+
   "shadow": {
-    "xs":  { "$value": "", "$type": "shadow" },
-    "sm":  { "$value": "", "$type": "shadow" },
-    "md":  { "$value": "", "$type": "shadow" },
-    "lg":  { "$value": "", "$type": "shadow" },
-    "xl":  { "$value": "", "$type": "shadow" },
-    "2xl": { "$value": "", "$type": "shadow" },
-    "inner": { "$value": "", "$type": "shadow" }
+    "xs":     { "$value": "0 1px 2px rgba(19,14,26,0.03)",                    "$type": "shadow", "$description": "Hairline card (inline surface)" },
+    "sm":     { "$value": "0 2px 6px rgba(19,14,26,0.06)",                    "$type": "shadow" },
+    "md":     { "$value": "0 4px 12px rgba(19,14,26,0.10)",                   "$type": "shadow" },
+    "lg":     { "$value": "0 8px 24px rgba(19,14,26,0.15)",                   "$type": "shadow" },
+    "xl":     { "$value": "0 22px 58px rgba(19,14,26,0.20)",                  "$type": "shadow", "$description": "Floating Liquid Glass menus + tab capsule" },
+    "sheet":  { "$value": "0 -12px 40px rgba(19,14,26,0.20)",                 "$type": "shadow", "$description": "Bottom sheet rise shadow" },
+    "focus":  { "$value": "0 0 0 3px #F4F2F9",                               "$type": "shadow", "$description": "Composer active ring (surface2 halo)" },
+    "inner":  { "$value": "inset 0 1px 3px rgba(19,14,26,0.08)",              "$type": "shadow" }
   },
+
   "layout": {
     "maxWidth": {
-      "xs":  { "$value": "", "$type": "dimension" },
-      "sm":  { "$value": "", "$type": "dimension" },
-      "md":  { "$value": "", "$type": "dimension" },
-      "lg":  { "$value": "", "$type": "dimension" },
-      "xl":  { "$value": "", "$type": "dimension" },
-      "2xl": { "$value": "", "$type": "dimension" },
-      "full": { "$value": "", "$type": "dimension" }
+      "xs":   { "$value": "320px",  "$type": "dimension" },
+      "sm":   { "$value": "390px",  "$type": "dimension", "$description": "iPhone 14 Pro viewport width" },
+      "md":   { "$value": "430px",  "$type": "dimension", "$description": "iPhone 14 Plus viewport width" },
+      "lg":   { "$value": "768px",  "$type": "dimension" },
+      "xl":   { "$value": "1024px", "$type": "dimension" },
+      "2xl":  { "$value": "1280px", "$type": "dimension" },
+      "full": { "$value": "100%",   "$type": "dimension" }
     },
     "contentPadding": {
-      "mobile":  { "$value": "", "$type": "dimension" },
-      "tablet":  { "$value": "", "$type": "dimension" },
-      "desktop": { "$value": "", "$type": "dimension" }
+      "mobile":  { "$value": "14px", "$type": "dimension", "$description": "14px side gutters (matches header/dock)" },
+      "tablet":  { "$value": "24px", "$type": "dimension" },
+      "desktop": { "$value": "32px", "$type": "dimension" }
     },
     "safeArea": {
-      "top":    { "$value": "", "$type": "dimension", "$description": "iOS safe area top inset" },
-      "bottom": { "$value": "", "$type": "dimension", "$description": "iOS safe area bottom inset" }
+      "top":    { "$value": "60px", "$type": "dimension", "$description": "Dynamic Island + status bar clearance" },
+      "bottom": { "$value": "34px", "$type": "dimension", "$description": "Home indicator clearance" }
     }
   }
 }

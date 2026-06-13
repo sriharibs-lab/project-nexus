@@ -1,12 +1,11 @@
 from dataclasses import dataclass, field
-from enum import Enum
 from typing import Optional
 
-
-class ContentType(str, Enum):
-    ARTICLE = "article"
-    VIDEO = "video"
-    PODCAST = "podcast"
+# ContentType is defined once in app/models/item.py (the canonical location).
+# Importing here so pipeline modules have a single source of truth and the
+# ingest router routes correctly — a mismatched enum caused silent AI
+# routing errors when item.py extended the values and base.py did not.
+from app.models.item import ContentType  # noqa: F401 — re-exported for pipeline modules
 
 
 @dataclass

@@ -26,9 +26,30 @@ Core thesis: The entire product is an AI harness — tools, skills, and memory b
 - Never propose generic UI. Always go for opinionated, modern, unique.
 - **Always render visuals.** At every design step, produce an actual HTML file or React component the user can open in a browser. Never describe colors, fonts, or layouts in text or tables alone — user must see, not read.
 
+## App IA (locked)
+- Collections are the root. No global library.
+- Each Collection has two tabs: **Nexus** (AI agent, default landing) + **Sources** (links)
+- Creation: "Research a topic" (AI-seeded) | "Start with a link" (manual)
+- Saving a link always prompts to assign to a collection — no inbox
+- Full terminology table: SPEC.md §5a
+
+## Design System (v1 complete)
+- Full iOS handoff in `nexus-design-system-extracted/design_handoff_nexus_ios/`
+- Read `DESIGN_LANGUAGE.md` + `README.md` before any UI work — canonical and non-negotiable
+- Brand mark: **Echo** (SVG in `logo.jsx`). Palette: soft plum bloom bg, ink text, plum `#7054AB` accent
+- Material model: inline = solid + hairline; floating = Liquid Glass (menus, tab capsule)
+
+## Autonomous Build System (NBL — designed, not yet built)
+- 6-agent loop: Architect → Planner → SWE → Test → Review → ALM
+- **Architect** is the strategic CTO agent — steers direction, weighs alternatives, flags risks
+- Plan: `/Users/srihari/.claude/plans/whimsical-bubbling-kitten.md`
+- When building: read the plan file first; don't implement without it
+
 ## Key Files
 - [SPEC.md](SPEC.md) — Full product specification
 - [BUILD_PLAN.md](BUILD_PLAN.md) — Running build plan, updated continuously
+- [nexus-design-system-extracted/design_handoff_nexus_ios/DESIGN_LANGUAGE.md](nexus-design-system-extracted/design_handoff_nexus_ios/DESIGN_LANGUAGE.md) — Design system canonical
+- GitHub: https://github.com/sriharibs-lab/project-nexus
 
 ## User Preferences
 - AI-native architecture: model + tools + memory + skills as the foundation

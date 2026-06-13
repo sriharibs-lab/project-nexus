@@ -33,16 +33,19 @@ def upgrade() -> None:
     )
     op.create_index("ix_users_supabase_id", "users", ["supabase_id"])
 
-    content_type_enum = postgresql.ENUM(
-        "article", "podcast", "video", "thread", "blog", "announcement", "other",
-        name="content_type_enum",
-    )
-    ingest_status_enum = postgresql.ENUM(
-        "pending", "processing", "completed", "failed",
-        name="ingest_status_enum",
-    )
-    content_type_enum.create(op.get_bind())
-    ingest_status_enum.create(op.get_bind())
+    op.execute("""
+        DO $$ BEGIN
+            CREATE TYPE content_type_enum AS ENUM ('article','podcast','video','thread','blog','announcement','other');
+        EXCEPTION WHEN duplicate_object THEN null; END $$
+    """)
+    op.execute("""
+        DO $$ BEGIN
+            CREATE TYPE ingest_status_enum AS ENUM ('pending','processing','completed','failed');
+        EXCEPTION WHEN duplicate_object THEN null; END $$
+    """)
+
+    content_type_col = postgresql.ENUM(name="content_type_enum", create_type=False)
+    ingest_status_col = postgresql.ENUM(name="ingest_status_enum", create_type=False)
 
     op.create_table(
         "items",
@@ -50,11 +53,11 @@ def upgrade() -> None:
         sa.Column("user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
         sa.Column("url", sa.Text, nullable=False),
         sa.Column("title", sa.String(500)),
-        sa.Column("content_type", sa.Enum("article", "podcast", "video", "thread", "blog", "announcement", "other", name="content_type_enum", create_type=False), nullable=False, server_default="article"),
+        sa.Column("content_type", content_type_col, nullable=False, server_default="article"),
         sa.Column("raw_content", sa.Text),
         sa.Column("summary", sa.Text),
         sa.Column("metadata", postgresql.JSONB, server_default="{}"),
-        sa.Column("ingest_status", sa.Enum("pending", "processing", "completed", "failed", name="ingest_status_enum", create_type=False), nullable=False, server_default="pending"),
+        sa.Column("ingest_status", ingest_status_col, nullable=False, server_default="pending"),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     )

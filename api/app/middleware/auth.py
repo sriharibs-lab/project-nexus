@@ -1,10 +1,7 @@
 from jose import JWTError, jwt
 from fastapi import HTTPException, Request, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.config import settings
-
-bearer_scheme = HTTPBearer(auto_error=False)
 
 # Claims Supabase includes in every JWT
 _SUPABASE_ALGORITHMS = ["HS256"]
@@ -26,21 +23,18 @@ def _decode_supabase_jwt(token: str) -> dict:
         ) from exc
 
 
-async def get_current_user(
-    request: Request,
-    credentials: HTTPAuthorizationCredentials | None = None,
-) -> dict:
+async def get_current_user(request: Request) -> dict:
     """
     FastAPI dependency. Returns the decoded Supabase JWT payload.
-    Attach as Depends(get_current_user) on any protected route.
+    Reads the bearer token exclusively from the Authorization header so that
+    FastAPI does not treat this function as a second request-body source on
+    POST routes (which would require a {"payload": {...}} wrapper instead of a
+    flat JSON body).
     """
-    if credentials is None:
-        auth_header = request.headers.get("Authorization", "")
-        if not auth_header.startswith("Bearer "):
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing bearer token")
-        token = auth_header.removeprefix("Bearer ").strip()
-    else:
-        token = credentials.credentials
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing bearer token")
+    token = auth_header.removeprefix("Bearer ").strip()
 
     payload = _decode_supabase_jwt(token)
 

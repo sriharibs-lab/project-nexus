@@ -1,8 +1,9 @@
 import enum
 import uuid
 from datetime import datetime
+from typing import List, Optional
 
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, String, Table, Text, func
+from sqlalchemy import ARRAY, Column, DateTime, Enum, ForeignKey, String, Table, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -10,6 +11,13 @@ from app.core.database import Base
 
 
 class ContentType(str, enum.Enum):
+    """Canonical ContentType enum — single source of truth.
+
+    Previously duplicated in api/pipeline/base.py (ARTICLE/VIDEO/PODCAST only).
+    api/pipeline/base.py now imports from here to avoid silent routing mismatches.
+    Covers all content types the ingest router accepts and the AI pipeline routes on.
+    """
+
     article = "article"
     podcast = "podcast"
     video = "video"
@@ -41,14 +49,18 @@ class Item(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    collection_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("collections.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     url: Mapped[str] = mapped_column(Text, nullable=False)
-    title: Mapped[str | None] = mapped_column(String(500))
+    title: Mapped[Optional[str]] = mapped_column(String(500))
     content_type: Mapped[ContentType] = mapped_column(
         Enum(ContentType, name="content_type_enum"), nullable=False, default=ContentType.article
     )
-    raw_content: Mapped[str | None] = mapped_column(Text)
-    summary: Mapped[str | None] = mapped_column(Text)
-    metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB, default=dict)
+    raw_content: Mapped[Optional[str]] = mapped_column(Text)
+    summary: Mapped[Optional[str]] = mapped_column(Text)
+    insights: Mapped[Optional[List[str]]] = mapped_column(ARRAY(Text))
+    metadata_: Mapped[Optional[dict]] = mapped_column("metadata", JSONB, default=dict)
     ingest_status: Mapped[IngestStatus] = mapped_column(
         Enum(IngestStatus, name="ingest_status_enum"),
         nullable=False,
@@ -61,7 +73,8 @@ class Item(Base):
     )
 
     user: Mapped["User"] = relationship("User", back_populates="items")  # noqa: F821
-    tags: Mapped[list["Tag"]] = relationship("Tag", secondary="item_tags", back_populates="items")  # noqa: F821
-    embedding: Mapped["Embedding | None"] = relationship(  # noqa: F821
+    collection: Mapped["Collection"] = relationship("Collection", back_populates="items")  # noqa: F821
+    tags: Mapped[List["Tag"]] = relationship("Tag", secondary="item_tags", back_populates="items")  # noqa: F821
+    embedding: Mapped[Optional["Embedding"]] = relationship(  # noqa: F821
         "Embedding", back_populates="item", uselist=False, cascade="all, delete-orphan"
     )

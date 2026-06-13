@@ -4,6 +4,9 @@ Async content ingestion queue stub.
 Currently an in-process asyncio queue. Replace the backend (Redis/BullMQ,
 Celery, or a Postgres-backed queue like pgqueuer) without changing the
 public interface: enqueue_item / start_worker.
+
+NOTE: In-process queue loses all jobs on crash or redeploy. Swap to pgqueuer
+or Redis before Phase 1C / TestFlight cutoff (Architect note).
 """
 
 import asyncio
@@ -22,14 +25,24 @@ class IngestJob:
     url: str
     content_type: str
     user_id: str
+    collection_id: str
     retries: int = field(default=0)
 
 
-async def enqueue_item(url: str, content_type: str, user_id: str) -> str:
+async def enqueue_item(url: str, content_type: str, user_id: str, collection_id: str) -> str:
     job_id = str(uuid.uuid4())
-    job = IngestJob(job_id=job_id, url=url, content_type=content_type, user_id=user_id)
+    job = IngestJob(
+        job_id=job_id,
+        url=url,
+        content_type=content_type,
+        user_id=user_id,
+        collection_id=collection_id,
+    )
     await _queue.put(job)
-    logger.info("Enqueued job %s for url=%s user=%s", job_id, url, user_id)
+    logger.info(
+        "Enqueued job %s for url=%s user=%s collection=%s",
+        job_id, url, user_id, collection_id,
+    )
     return job_id
 
 
@@ -37,7 +50,7 @@ async def _process_job(job: IngestJob) -> None:
     """
     Stub processor — replace with real fetch → parse → embed → store pipeline.
     """
-    logger.info("Processing job %s url=%s", job.job_id, job.url)
+    logger.info("Processing job %s url=%s collection=%s", job.job_id, job.url, job.collection_id)
     # TODO: fetch content, extract text, generate embedding, persist Item + Embedding
     await asyncio.sleep(0)  # yield to event loop
 

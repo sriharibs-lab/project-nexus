@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, HttpUrl
 
 from app.middleware.auth import get_current_user
+from app.models.item import ContentType
 from app.queue.ingestion import enqueue_item
 
 router = APIRouter(prefix="/ingest", tags=["ingest"])
@@ -9,7 +10,9 @@ router = APIRouter(prefix="/ingest", tags=["ingest"])
 
 class IngestRequest(BaseModel):
     url: HttpUrl
-    content_type: str = "article"
+    # Validated against the canonical ContentType enum — prevents silent
+    # routing errors when an unknown content_type bypasses AI path selection.
+    content_type: ContentType = ContentType.article
 
 
 class IngestResponse(BaseModel):
@@ -25,7 +28,7 @@ async def ingest_item(
 ) -> IngestResponse:
     job_id = await enqueue_item(
         url=str(payload.url),
-        content_type=payload.content_type,
+        content_type=payload.content_type.value,
         user_id=current_user["supabase_id"],
     )
     return IngestResponse(

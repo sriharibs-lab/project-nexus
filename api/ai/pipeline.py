@@ -61,11 +61,24 @@ def summarize_item(content: str, content_type: ContentType) -> ProcessedItem:
     """
     Summarize content and extract semantic tags.
     Returns TL;DR, 3-5 key insights, and semantic tags.
+
+    The system prompt uses cache_control: ephemeral so Anthropic's prompt
+    caching layer can reuse the compiled prompt prefix across calls. At ~200
+    tokens the system prompt is currently below the 1024-token cache minimum,
+    but adding few-shot examples for quality will push it past the threshold.
+    cache_control is set now so caching activates automatically when the
+    prompt grows — no code change needed at that point (SPEC §9c).
     """
     response = client.messages.create(
         model="claude-haiku-4-5",
         max_tokens=512,
-        system=SYSTEM_PROMPT,
+        system=[
+            {
+                "type": "text",
+                "text": SYSTEM_PROMPT,
+                "cache_control": {"type": "ephemeral"},
+            }
+        ],
         messages=[
             {
                 "role": "user",

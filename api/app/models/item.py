@@ -10,6 +10,13 @@ from app.core.database import Base
 
 
 class ContentType(str, enum.Enum):
+    """Canonical ContentType enum — single source of truth.
+
+    Previously duplicated in api/pipeline/base.py (ARTICLE/VIDEO/PODCAST only).
+    api/pipeline/base.py now imports from here to avoid silent routing mismatches.
+    Covers all content types the ingest router accepts and the AI pipeline routes on.
+    """
+
     article = "article"
     podcast = "podcast"
     video = "video"
@@ -41,6 +48,14 @@ class Item(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    # Every item belongs to exactly one collection (SPEC §5a: no global library).
+    # SET NULL on collection delete so items are not silently lost.
+    collection_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("collections.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     url: Mapped[str] = mapped_column(Text, nullable=False)
     title: Mapped[str | None] = mapped_column(String(500))
     content_type: Mapped[ContentType] = mapped_column(
@@ -61,6 +76,9 @@ class Item(Base):
     )
 
     user: Mapped["User"] = relationship("User", back_populates="items")  # noqa: F821
+    collection: Mapped["Collection | None"] = relationship(  # noqa: F821
+        "Collection", back_populates="items"
+    )
     tags: Mapped[list["Tag"]] = relationship("Tag", secondary="item_tags", back_populates="items")  # noqa: F821
     embedding: Mapped["Embedding | None"] = relationship(  # noqa: F821
         "Embedding", back_populates="item", uselist=False, cascade="all, delete-orphan"

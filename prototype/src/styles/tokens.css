@@ -1,0 +1,224 @@
+/*
+ * Nexus Design System — CSS Custom Properties
+ * Generated from design-system/tokens/*.json
+ * DO NOT hand-edit. Update source JSON and regenerate.
+ *
+ * Naming convention:
+ *   --nx-<category>-<subcategory>-<variant>
+ */
+
+:root {
+  /* ─── Color › Brand ─── */
+  --nx-color-brand-plum:  #7054AB;
+  --nx-color-brand-bloom: #E7DCF4;
+
+  /* ─── Color › Neutral ─── */
+  --nx-color-neutral-0:    #FFFFFF;
+  --nx-color-neutral-50:   #FBFAFD;
+  --nx-color-neutral-100:  #F9F8FC;
+  --nx-color-neutral-200:  #F4F2F9;
+  --nx-color-neutral-300:  #EEEBF5;
+  --nx-color-neutral-400:  #E9E5F2;
+  --nx-color-neutral-500:  #DCD7EA;
+  --nx-color-neutral-600:  #B7B1C4;
+  --nx-color-neutral-700:  #9A93AC;
+  --nx-color-neutral-800:  #68607A;
+  --nx-color-neutral-900:  #130E1A;
+  --nx-color-neutral-1000: #0A0710;
+
+  /* ─── Color › Semantic › Page ─── */
+  --nx-color-page: radial-gradient(135% 60% at 50% -8%, #E7DCF4 0%, #F9F8FC 50%);
+
+  /* ─── Color › Semantic › Background ─── */
+  --nx-color-bg-primary:   #FFFFFF;
+  --nx-color-bg-secondary: #F4F2F9;
+  --nx-color-bg-elevated:  #FBFAFD;
+  --nx-color-bg-overlay:   rgba(19, 14, 26, 0.50);
+
+  /* ─── Color › Semantic › Text ─── */
+  --nx-color-text-primary:   #130E1A;
+  --nx-color-text-secondary: #68607A;
+  --nx-color-text-tertiary:  #9A93AC;
+  --nx-color-text-disabled:  #B7B1C4;
+  --nx-color-text-inverse:   #FFFFFF;
+
+  /* ─── Color › Semantic › Border ─── */
+  --nx-color-border-default: #E9E5F2;
+  --nx-color-border-subtle:  #EEEBF5;
+  --nx-color-border-strong:  #DCD7EA;
+
+  /* ─── Color › Semantic › Status ─── */
+  --nx-color-status-success: #3D9E5F;
+  --nx-color-status-warning: #D97706;
+  --nx-color-status-error:   #DC2626;
+  --nx-color-status-info:    #7054AB;
+
+  /* ─── Typography › Font Family ─── */
+  --nx-font-ui:      -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  /* --font-geist is injected by Next.js localFont() in layout.tsx */
+  --nx-font-display: var(--font-geist, "Geist"), -apple-system, sans-serif;
+  --nx-font-mono:    "SF Mono", "Fira Code", monospace;
+
+  /* ─── Typography › Font Size ─── */
+  --nx-text-xs:   10px;
+  --nx-text-sm:   11.5px;
+  --nx-text-base: 13px;
+  --nx-text-md:   13.5px;
+  --nx-text-lg:   15px;
+  --nx-text-xl:   16px;
+  --nx-text-2xl:  16.5px;
+  --nx-text-3xl:  19px;
+  --nx-text-4xl:  22px;
+  --nx-text-5xl:  26px;
+  --nx-text-6xl:  32px;
+  --nx-text-7xl:  40px;
+
+  /* ─── Typography › Font Weight ─── */
+  --nx-weight-regular:   400;
+  --nx-weight-medium:    500;
+  --nx-weight-semibold:  600;
+  --nx-weight-bold:      700;
+  --nx-weight-extrabold: 800;
+
+  /* ─── Typography › Line Height ─── */
+  --nx-leading-tight:   1.2;
+  --nx-leading-snug:    1.3;
+  --nx-leading-normal:  1.4;
+  --nx-leading-relaxed: 1.55;
+  --nx-leading-loose:   1.6;
+
+  /* ─── Typography › Letter Spacing ─── */
+  --nx-tracking-tightest: -0.8px;
+  --nx-tracking-tighter:  -0.5px;
+  --nx-tracking-tight:    -0.4px;
+  --nx-tracking-snug:     -0.2px;
+  --nx-tracking-normal:   -0.1px;
+  --nx-tracking-wide:     0;
+  --nx-tracking-wider:    0.05em;
+  --nx-tracking-widest:   0.08em;
+
+  /* ─── Spacing ─── */
+  --nx-space-0:  0px;
+  --nx-space-1:  4px;
+  --nx-space-2:  8px;
+  --nx-space-3:  12px;
+  --nx-space-4:  14px;
+  --nx-space-5:  16px;
+  --nx-space-6:  20px;
+  --nx-space-7:  24px;
+  --nx-space-8:  28px;
+  --nx-space-10: 32px;
+  --nx-space-12: 40px;
+  --nx-space-14: 44px;
+  --nx-space-16: 48px;
+  --nx-space-20: 60px;
+  --nx-space-24: 96px;
+
+  /* ─── Border Radius ─── */
+  --nx-radius-none: 0px;
+  --nx-radius-xs:   6px;
+  --nx-radius-sm:   9px;
+  --nx-radius-base: 13px;
+  --nx-radius-md:   14px;
+  --nx-radius-lg:   16px;
+  --nx-radius-xl:   22px;
+  --nx-radius-2xl:  24px;
+  --nx-radius-3xl:  26px;
+  --nx-radius-full: 9999px;
+
+  /* ─── Border Width ─── */
+  --nx-border-none:   0px;
+  --nx-border-hair:   0.5px;
+  --nx-border-base:   1px;
+  --nx-border-medium: 1.5px;
+  --nx-border-thick:  2px;
+
+  /* ─── Shadow ─── */
+  --nx-shadow-xs:     0 1px 2px rgba(19, 14, 26, 0.03);
+  --nx-shadow-sm:     0 2px 6px rgba(19, 14, 26, 0.06);
+  --nx-shadow-md:     0 4px 12px rgba(19, 14, 26, 0.10);
+  --nx-shadow-lg:     0 8px 24px rgba(19, 14, 26, 0.15);
+  --nx-shadow-xl:     0 22px 58px rgba(19, 14, 26, 0.20);
+  --nx-shadow-sheet:  0 -12px 40px rgba(19, 14, 26, 0.20);
+  --nx-shadow-focus:  0 0 0 3px #F4F2F9;
+  --nx-shadow-inner:  inset 0 1px 3px rgba(19, 14, 26, 0.08);
+
+  /* ─── Layout ─── */
+  --nx-max-xs:   320px;
+  --nx-max-sm:   390px;   /* iPhone 14 Pro */
+  --nx-max-md:   430px;   /* iPhone 14 Plus */
+  --nx-max-lg:   768px;
+  --nx-max-xl:   1024px;
+  --nx-max-2xl:  1280px;
+  --nx-max-full: 100%;
+
+  --nx-pad-mobile:  14px;
+  --nx-pad-tablet:  24px;
+  --nx-pad-desktop: 32px;
+
+  --nx-safe-top:    60px;  /* Dynamic Island + status bar */
+  --nx-safe-bottom: 34px;  /* Home indicator */
+
+  /* ─── Motion › Duration ─── */
+  --nx-dur-instant:   50ms;
+  --nx-dur-fast:      150ms;
+  --nx-dur-base:      240ms;
+  --nx-dur-moderate:  380ms;
+  --nx-dur-slow:      480ms;
+  --nx-dur-slower:    520ms;
+  --nx-dur-sheet:     520ms;
+  --nx-dur-menu-open: 420ms;
+  --nx-dur-menu-close:260ms;
+  --nx-dur-shimmer:   1600ms;
+
+  /* ─── Motion › Easing ─── */
+  --nx-ease-linear:     cubic-bezier(0.0, 0.0, 1.0, 1.0);
+  --nx-ease-in:         cubic-bezier(0.4, 0.0, 0.9, 0.35);
+  --nx-ease-out:        cubic-bezier(0.2, 0.8, 0.2, 1.0);
+  --nx-ease-in-out:     cubic-bezier(0.4, 0.0, 0.2, 1.0);
+  --nx-ease-spring:     cubic-bezier(0.18, 1.5, 0.4, 1.0);
+  --nx-ease-snappy:     cubic-bezier(0.32, 0.72, 0.28, 1.0);
+  --nx-ease-emphasized: cubic-bezier(0.22, 1.18, 0.36, 1.0);
+  /* springTrue uses CSS linear() — cannot express as a single custom property value portably;
+     see tokens/motion.json for the full linear() string to use inline where needed. */
+
+  /* ─── Motion › Transition Shorthands ─── */
+  --nx-transition-micro:        240ms cubic-bezier(0.18, 1.5, 0.4, 1);
+  --nx-transition-micro-back:   440ms cubic-bezier(0.18, 1.5, 0.4, 1);
+  --nx-transition-element:      260ms cubic-bezier(0.4, 0.0, 0.9, 0.35);
+  --nx-transition-panel:        520ms cubic-bezier(0.32, 0.72, 0.28, 1);
+  --nx-transition-page-forward: 480ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --nx-transition-page-back:    380ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --nx-transition-pivot:        380ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --nx-transition-footer:       400ms cubic-bezier(0.22, 1.18, 0.36, 1);
+  --nx-transition-modal-exit:   260ms cubic-bezier(0.4, 0.0, 0.9, 0.35);
+
+  /* ─── Motion › Scale ─── */
+  --nx-scale-press-light:  0.97;
+  --nx-scale-press-base:   0.93;
+  --nx-scale-press-heavy:  0.88;
+  --nx-scale-press-avatar: 0.84;
+  --nx-scale-menu-origin:  0.12;
+  --nx-scale-tab-squash-x: 1.13;
+  --nx-scale-tab-squash-y: 0.87;
+}
+
+/* ─── Dark Mode Overrides ─── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --nx-color-bg-primary:   #0F0D13;
+    --nx-color-bg-secondary: #1A1720;
+    --nx-color-bg-elevated:  #231F2A;
+    --nx-color-bg-overlay:   rgba(0, 0, 0, 0.70);
+
+    --nx-color-text-primary:   #F0EBF8;
+    --nx-color-text-secondary: #9E97B0;
+    --nx-color-text-tertiary:  #6B6480;
+    --nx-color-text-disabled:  #4A4458;
+    --nx-color-text-inverse:   #130E1A;
+
+    --nx-color-border-default: #2E2A38;
+    --nx-color-border-subtle:  #241F2E;
+    --nx-color-border-strong:  #3D3850;
+  }
+}

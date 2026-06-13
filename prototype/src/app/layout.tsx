@@ -13,8 +13,8 @@ const geist = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Nexus",
-  description: "AI-native content curation",
+  title: "Nexus — Prototype",
+  description: "Nexus iOS prototype — core screens",
 };
 
 export default function RootLayout({

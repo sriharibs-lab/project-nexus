@@ -11,12 +11,48 @@
   box-sizing: border-box;
 }
 
+/* Design tokens as CSS custom properties — consumed by prototype screens */
+:root {
+  /* Brand */
+  --plum: #7054ab;
+  --bloom: #E7DCF4;
+
+  /* Neutrals */
+  --ink: #130E1A;
+  --muted: #68607A;
+  --faint: #9A93AC;
+  --ghost: #B7B1C4;
+
+  /* Surfaces */
+  --surface: #FFFFFF;
+  --surface2: #F4F2F9;
+  --surface3: #FBFAFD;
+
+  /* Borders */
+  --border: #E9E5F2;
+  --border-strong: #DCD7EA;
+  --hair: #EEEBF5;
+
+  /* Page */
+  --page: radial-gradient(135% 60% at 50% -8%, #E7DCF4 0%, #F9F8FC 50%);
+
+  /* Typography */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
+
+  /* Motion */
+  --ease: cubic-bezier(.2,.8,.2,1);
+  --spring: cubic-bezier(.34,1.4,.64,1);
+  --spring-bounce: cubic-bezier(.18,1.5,.4,1);
+}
+
 /* ─── Page defaults ─── */
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+html,
 body {
   font-family: var(--nx-font-ui);
   font-size: var(--nx-text-lg);
@@ -146,3 +182,39 @@ body {
     transform: scale(var(--nx-scale-press-heavy));
   }
 }
+
+/* Keyframes used by prototype components */
+@keyframes nxFade {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes nxShimmer {
+  from { background-position: -400px 0; }
+  to   { background-position: 400px 0; }
+}
+
+@keyframes nxSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes nxEcho {
+  0%   { transform: scale(.45); opacity: 0; }
+  30%  { opacity: .9; }
+  100% { transform: scale(1.45); opacity: 0; }
+}
+
+@keyframes nxPop {
+  0%   { transform: scale(1); }
+  32%  { transform: scale(.84); }
+  66%  { transform: scale(1.09); }
+  100% { transform: scale(1); }
+}
+
+@keyframes nxDot {
+  0%, 60%, 100% { opacity: .25; transform: none; }
+  30% { opacity: 1; transform: translateY(-3px); }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 0; }

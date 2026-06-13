@@ -11,6 +11,13 @@ from app.core.database import Base
 
 
 class ContentType(str, enum.Enum):
+    """Canonical ContentType enum — single source of truth.
+
+    Previously duplicated in api/pipeline/base.py (ARTICLE/VIDEO/PODCAST only).
+    api/pipeline/base.py now imports from here to avoid silent routing mismatches.
+    Covers all content types the ingest router accepts and the AI pipeline routes on.
+    """
+
     article = "article"
     podcast = "podcast"
     video = "video"

@@ -43,7 +43,7 @@ cycle_policy:
 **Web Prototype (`/prototype/` — Next.js 14):**
 - [x] Project scaffold: Next.js + Tailwind + Framer Motion <!-- nbl:id=0A-proto-scaffold status=done -->
 - [x] Token integration (CSS custom properties from JSON) <!-- nbl:id=0A-tok-css agent=swe deps=[0A-tok-colors,0A-tok-type] est=2h -->
-- [ ] Core screens: Home (collections), Collection detail, Nexus tab, Sources tab <!-- nbl:id=0A-screens agent=swe deps=[0A-tok-css] est=6h -->
+- [x] Core screens: Home (collections), Collection detail, Nexus tab, Sources tab <!-- nbl:id=0A-screens agent=swe deps=[0A-tok-css] est=6h -->
 - [ ] Responsive (mobile 390px primary, desktop 1280px) <!-- nbl:id=0A-responsive agent=swe deps=[0A-screens] est=2h -->
 
 ---
@@ -63,6 +63,7 @@ cycle_policy:
 - [x] Background job queue (async AI processing) — in-process asyncio, full pipeline wired <!-- nbl:id=1A-010 status=done -->
 - [x] Feedback API: POST /v1/feedback + DB model + screenshot_url field <!-- nbl:id=1A-011 status=done -->
 - [x] Collections model + migration — items need collection_id per SPEC §5a (IA locked: no global library) <!-- nbl:id=1A-012 agent=swe deps=[1A-001] est=2h -->
+- [!] Items ↔ Collections many-to-many — replace items.collection_id FK with collection_items join table; update /v1/ingest + items router; migration 0004 <!-- nbl:id=1A-013 agent=swe deps=[1A-012] est=2h -->
 
 ### 1B — iPhone App Foundation (Weeks 1–3, parallel)
 - [x] Xcode project setup — SwiftUI, iOS 17+, bundle ID app.nexus, at app-ios/Nexus/ <!-- nbl:id=1B-001 status=done -->
@@ -146,6 +147,8 @@ cycle_policy:
 | 2026-06-06 | 5 JTBDs locked | Capture / Understand / Research / Answer / Stay informed |
 | 2026-06-12 | Auth: Sign in with Apple + Magic link email in v1 | Apple required by App Store if any third-party login; magic link = passwordless, no reset flows, works cross-platform when web launches; Sign in with Google deferred to Phase 2 |
 | 2026-06-12 | Apple Developer Program enrolled | Srihari's existing Apple ID enrolled at $99/year; unblocks Xcode provisioning and App Store distribution |
+| 2026-06-13 | Items ↔ Collections: many-to-many | A link can appear in multiple collections; replace items.collection_id FK with collection_items join table before any iOS work depends on the API shape |
+| 2026-06-13 | Dark mode page background | Deferred — Srihari to check Claude design system for reference before deciding |
 
 ---
 

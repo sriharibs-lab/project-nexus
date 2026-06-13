@@ -3,36 +3,40 @@
 
 ## What was built
 
-Nexus now enforces the core product rule: every saved item must belong to a Collection, with no floating or orphaned content. The backend was updated so that creating, listing, and deleting items all go through a Collection — the data shape now mirrors what the iOS app will see. Separately, the web prototype's visual design is now fully connected to the design system: all colors, fonts, spacing, and motion values from the token files are live in the browser, including automatic dark-mode switching.
+Nexus now has four fully designed and interactive prototype screens you can open in a browser: a Home screen showing your collections as cards (with AI-ready badges and source counts), a Collection detail screen with two tabs, a Nexus AI tab (chat interface with starter prompts and typing indicator), and a Sources tab (list of saved links with expandable AI summaries). These screens use the locked design tokens — plum accent, soft bloom background, correct typography — and represent the reference that the iOS build will match exactly.
+
+On the backend, a Collection database model was added with a denormalized source count field (so the home screen never needs a slow database count query). The content type validation bug was also fixed: the ingest API now rejects invalid content types instead of silently passing them through to the AI pipeline.
 
 ## ✅ Verify it worked
 
-- [ ] **Collections enforcement** — Start the API (`cd api && uvicorn app.main:app`), then `POST /v1/ingest` without a `collection_id` body field. It must return HTTP 422. With a valid `collection_id`, it must return HTTP 202.
-- [ ] **Collection ownership** — `GET /v1/collections/{id}/items` with a collection owned by a different user must return HTTP 404.
-- [ ] **Token integration** — `cd prototype && npm run dev`, open http://localhost:3000. Body background must show the plum bloom radial gradient (not white/black). Switch OS to dark mode — background should flip to deep gray (#0F0D13). Inspect `:root` in DevTools and confirm ~80 `--nx-*` CSS variables are present.
+- [ ] **Prototype screens** — `cd prototype && npm run dev`, then open http://localhost:3000 — should show the Home screen with 4 collection cards inside an iPhone frame
+- [ ] **Collection detail** — tap any collection card → lands on Nexus tab (AI chat) by default; Sources tab shows saved links with expandable summaries
+- [ ] **Nexus AI chat** — tap any starter prompt chip → typing indicator appears ~1.4s → AI response with citation pills appears
+- [ ] **Invalid content type rejected** — `POST /v1/ingest` with `content_type: "garbage"` should return 422 Unprocessable Entity (was previously accepted silently)
 
 ## 📋 Decisions made this cycle (no action needed)
 
 | What was decided | Options considered | Why |
 |---|---|---|
-| Items use CSS variables as truth; Tailwind aliases point to var(--nx-*) | Inline values in Tailwind config; build-time JSON plugin | CSS variables let dark mode flip automatically at runtime without extra Tailwind class prefixes |
-| Dark mode page gradient not yet defined | Add dark gradient; keep light gradient in dark | The source design token file (colors.json) has no dark.page entry — gap logged, needs a design decision before prototype screens are authored |
-| Dead credentials parameter in auth.py left as cleanup | Remove now; escalate | Auth works correctly via the existing header path; the parameter has no security or functional impact — clean up in next cycle |
+| Next.js prototype uses inline CSS token values, not Tailwind layout classes | Tailwind utilities, CSS Modules, styled-components | Design uses exact pixel values (#7054AB, precise radii, letter-spacing) that don't map cleanly to Tailwind's scale — inline styles give 1:1 fidelity to iOS handoff values |
+| Nexus/Sources tab switch uses fade (not slide) | Horizontal slide, mount/unmount | These are distinct modes (chat vs document list), not sibling views — a fade signals "mode switch" better than navigation |
+| Mock AI responses generated client-side | Call real API, static placeholder | Prototype validates full interaction flow without requiring credentials or network |
+| Collection.items relationship uses passive_deletes=True | cascade="all, delete-orphan" | Fixes ORM/FK conflict flagged in review — the DB FK handles deletion, ORM should not also try to delete-orphan |
 
 ## 🚨 Decisions that need your input
 
-**Collections: one item = one collection (no multi-collection linking in v1)**
-The data model was built so each saved item belongs to exactly one collection, matching SPEC §5a. The alternative — letting items appear in multiple collections via a join table — was explicitly deferred. This is the right call for launch, but worth a quick confirmation: is there any saving flow you envision where a user would want one link to live in two collections simultaneously?
+**Task 1A-013 (many-to-many items↔collections) was not merged — request_changes verdict.**
 
-**Dark-mode background gradient missing from design tokens**
-The light-mode plum bloom gradient exists in `design-system/tokens/colors.json` but there is no dark-mode equivalent. Right now, dark mode shows a dark background color for most elements but the page body would still render the light gradient. Before any prototype screens are built, a dark-mode page background value needs to be added to `colors.json`. What should the dark-mode page background look like — a deep neutral, a very dark plum tint, or something else?
+The SWE's retry introduced a duplicate Alembic revision ID "0002" (two migration files claim the same revision). This breaks `alembic upgrade head` entirely. The review also found that `content_type` in the ingest request was still a plain string, not the enum, and a leftover `ContentType = Literal[...]` remained in `pipeline.py`. All three issues are auto-fixable by the SWE — no product decision needed from you. The worktree is preserved at `.claude/worktrees/wf_2188d297-b65-9/` for the next retry.
+
+Note: the many-to-many schema change (allowing a link to live in multiple collections) is recorded in the Key Decisions Log but has not been implemented yet. It will be re-attempted next cycle.
 
 ## 🔜 Next cycle will work on
 
-Next up: the iOS app architecture scaffold (task 1B-001b) — folder structure, MVVM pattern, and root navigation — which unlocks every subsequent iOS screen. In parallel, CSS prototype screens (Home/Collections list and Collection detail) can begin now that tokens are live.
+Retry 1A-013 (fix the three code issues and merge the many-to-many schema). Once that lands, the next unblocked tasks are iOS SwiftUI architecture scaffold (1B-001b) and the API client layer (1B-004) — these are the first steps toward a working iPhone app.
 
 ## ⏳ Waiting on you (blocked tasks)
 
 | Task | What you need to do | What it unlocks |
 |---|---|---|
-| S3/R2 full-text storage (1A-008) | Create an R2 or S3 bucket and paste credentials into `api/.env` | Full-text article content persisted after ingestion; required before TestFlight |
+| S3/R2 storage (1A-008) | Create an R2 or S3 bucket and paste credentials into `api/.env` | Stores full article text in cloud instead of PostgreSQL TEXT — needed before production launch, not before TestFlight |

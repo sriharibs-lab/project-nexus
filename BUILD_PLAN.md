@@ -42,7 +42,7 @@ cycle_policy:
 
 **Web Prototype (`/prototype/` — Next.js 14):**
 - [x] Project scaffold: Next.js + Tailwind + Framer Motion <!-- nbl:id=0A-proto-scaffold status=done -->
-- [ ] Token integration (CSS custom properties from JSON) <!-- nbl:id=0A-tok-css agent=swe deps=[0A-tok-colors,0A-tok-type] est=2h -->
+- [x] Token integration (CSS custom properties from JSON) <!-- nbl:id=0A-tok-css agent=swe deps=[0A-tok-colors,0A-tok-type] est=2h -->
 - [ ] Core screens: Home (collections), Collection detail, Nexus tab, Sources tab <!-- nbl:id=0A-screens agent=swe deps=[0A-tok-css] est=6h -->
 - [ ] Responsive (mobile 390px primary, desktop 1280px) <!-- nbl:id=0A-responsive agent=swe deps=[0A-screens] est=2h -->
 
@@ -62,7 +62,7 @@ cycle_policy:
 - [x] Anthropic API integration: summarize + insights pipeline — Claude Haiku 4.5, cost-tracked <!-- nbl:id=1A-009 status=done -->
 - [x] Background job queue (async AI processing) — in-process asyncio, full pipeline wired <!-- nbl:id=1A-010 status=done -->
 - [x] Feedback API: POST /v1/feedback + DB model + screenshot_url field <!-- nbl:id=1A-011 status=done -->
-- [ ] Collections model + migration — items need collection_id per SPEC §5a (IA locked: no global library) <!-- nbl:id=1A-012 agent=swe deps=[1A-001] est=2h -->
+- [x] Collections model + migration — items need collection_id per SPEC §5a (IA locked: no global library) <!-- nbl:id=1A-012 agent=swe deps=[1A-001] est=2h -->
 
 ### 1B — iPhone App Foundation (Weeks 1–3, parallel)
 - [x] Xcode project setup — SwiftUI, iOS 17+, bundle ID app.nexus, at app-ios/Nexus/ <!-- nbl:id=1B-001 status=done -->

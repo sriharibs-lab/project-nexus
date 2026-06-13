@@ -1,31 +1,27 @@
 # Nexus Build — Cycle Checkpoint
-**Date:** 2026-06-13   **Status:** ✅ Clean
+**Date:** 2026-06-13   **Status:** 🚨 Action required
 
 ## What was built
 
-The Nexus prototype now works on a real iPhone. When you open it in Safari on your phone, the app fills the full screen edge-to-edge — no browser chrome visible, status bar and home indicator spacing handled correctly for Dynamic Island and Home Button devices alike. On a desktop browser at normal width, it still shows the centered iPhone mockup on the warm canvas, exactly as before. The prototype now behaves like a real app on any device you hand it to.
+Nothing new was built this cycle. The two tasks ready to run both require actions only you can take — cloud storage credentials and Xcode provisioning setup. The build loop is paused and waiting.
 
 ## ✅ Verify it worked
 
-- [ ] **Mobile Safari (iPhone)** — open the prototype URL on an iPhone; the app should fill the full screen with no horizontal scroll, status bar area at top, and bottom tab bar above the home indicator
-- [ ] **Desktop browser (1280px)** — the centered 390×844 iPhone mockup should appear on the warm canvas, unchanged from before
-- [ ] **DevTools emulation** — in Chrome, toggle device emulation to 390px width; the app should switch to full-screen mode with no frame chrome; toggle back to 1280px and the phone mockup returns
+No tasks completed this cycle — nothing to verify.
 
-## 📋 Decisions made this cycle (no action needed)
+## 🚨 Decisions that need your input
 
-| What was decided | Options considered | Why |
-|---|---|---|
-| Runtime JS hook (useIsNarrow) for mobile/desktop switch | Pure CSS media queries, Tailwind responsive classes | All screens use inline React styles, so only a JS hook can switch the component tree structure — not just styling |
-| 640px as the breakpoint | 390px, 768px, 480px | Cleanly splits phone-width browsers from desktop; 390px target still fills the screen at any width below 640px |
-| 100dvh for mobile frame height | 100vh, minHeight | dvh accounts for the mobile browser address bar collapsing; 100vh does not; minHeight breaks height: 100% on child screens |
-| SSR defaults to desktop layout | Default to mobile | Desktop is where prototype reviews happen — defaulting to desktop avoids layout shift on every page load for reviewers |
+Two tasks are gate-blocked on human setup steps before the agents can proceed. See the table below.
 
 ## 🔜 Next cycle will work on
 
-Retry 1A-013 — fix the many-to-many items↔collections join table (Alembic revision conflict + enum fixes). Once merged, the next tasks are iOS SwiftUI architecture scaffold (1B-001b) and the API client layer (1B-004), which are the first steps toward a working iPhone app.
+Once you unblock either gate, the next tasks are:
+- **1A-008 unblocked:** Cloud storage goes live — full article text stores in R2/S3 instead of Postgres TEXT columns; pipeline becomes production-ready.
+- **1B-002 unblocked:** Sign in with Apple + Magic link email — first real auth flow in the iOS app, required by App Store rules before any third-party login.
 
 ## ⏳ Waiting on you (blocked tasks)
 
 | Task | What you need to do | What it unlocks |
 |---|---|---|
-| S3/R2 storage (1A-008) | Create an R2 or S3 bucket and paste credentials into `api/.env` | Stores full article text in cloud instead of PostgreSQL TEXT — needed before production launch, not before TestFlight |
+| **S3/R2 storage (1A-008)** | Create a Cloudflare R2 or AWS S3 bucket; paste `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_ENDPOINT_URL` into `api/.env` | Stores full article text in cloud — pipeline is production-ready |
+| **Sign in with Apple + Magic link (1B-002)** | Set up Xcode provisioning profile with your Apple Developer account (bundle ID `app.nexus`); confirm provisioning is active | First working auth flow in the iPhone app; required by App Store before TestFlight |

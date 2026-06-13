@@ -25,3 +25,11 @@ Tasks completed: 0A-responsive
 Tasks blocked: none
 Gated (waiting on human): 1A-008 (S3/R2 bucket — needs cloud storage credentials in api/.env)
 Commit SHA: 633e097
+
+---
+
+## Cycle 2026-06-13T20:00:00Z
+Tasks completed: none
+Tasks blocked: none
+Gated (waiting on human): 1A-008 (S3/R2 bucket — needs cloud storage credentials in api/.env), 1B-002 (Sign in with Apple + Magic link — needs Xcode provisioning profile with Apple Developer account for bundle ID app.nexus)
+Commit SHA: (no merge — no tasks completed)

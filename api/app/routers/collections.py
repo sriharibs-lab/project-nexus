@@ -37,6 +37,7 @@ class CollectionResponse(BaseModel):
     description: Optional[str]
     framing_paragraph: Optional[str]
     created_by: CollectionCreatedBy
+    source_count: int
     created_at: datetime
     updated_at: datetime
 

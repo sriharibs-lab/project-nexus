@@ -41,6 +41,14 @@ item_tags = Table(
     Column("tag_id", UUID(as_uuid=True), ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True),
 )
 
+collection_items = Table(
+    "collection_items",
+    Base.metadata,
+    Column("collection_id", UUID(as_uuid=True), ForeignKey("collections.id", ondelete="CASCADE"), primary_key=True),
+    Column("item_id", UUID(as_uuid=True), ForeignKey("items.id", ondelete="CASCADE"), primary_key=True),
+    Column("created_at", DateTime(timezone=True), server_default=func.now()),
+)
+
 
 class Item(Base):
     __tablename__ = "items"
@@ -48,9 +56,6 @@ class Item(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
-    )
-    collection_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("collections.id", ondelete="CASCADE"), nullable=False, index=True
     )
     url: Mapped[str] = mapped_column(Text, nullable=False)
     title: Mapped[Optional[str]] = mapped_column(String(500))
@@ -73,7 +78,9 @@ class Item(Base):
     )
 
     user: Mapped["User"] = relationship("User", back_populates="items")  # noqa: F821
-    collection: Mapped["Collection"] = relationship("Collection", back_populates="items")  # noqa: F821
+    collections: Mapped[List["Collection"]] = relationship(  # noqa: F821
+        "Collection", secondary="collection_items", back_populates="items"
+    )
     tags: Mapped[List["Tag"]] = relationship("Tag", secondary="item_tags", back_populates="items")  # noqa: F821
     embedding: Mapped[Optional["Embedding"]] = relationship(  # noqa: F821
         "Embedding", back_populates="item", uselist=False, cascade="all, delete-orphan"

@@ -4,13 +4,13 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.middleware.auth import get_current_user
 from app.models.collection import Collection
-from app.models.item import ContentType, IngestStatus, Item
+from app.models.item import ContentType, IngestStatus, Item, collection_items
 from app.models.user import User
 
 router = APIRouter(prefix="/collections/{collection_id}/items", tags=["items"])
@@ -21,7 +21,6 @@ router = APIRouter(prefix="/collections/{collection_id}/items", tags=["items"])
 class ItemResponse(BaseModel):
     id: uuid.UUID
     user_id: uuid.UUID
-    collection_id: uuid.UUID
     url: str
     title: Optional[str]
     content_type: ContentType
@@ -70,8 +69,9 @@ async def list_items(
     await _get_owned_collection(collection_id, user, db)
     result = await db.execute(
         select(Item)
-        .where(Item.collection_id == collection_id)
-        .order_by(Item.created_at.desc())
+        .join(collection_items, collection_items.c.item_id == Item.id)
+        .where(collection_items.c.collection_id == collection_id)
+        .order_by(collection_items.c.created_at.desc())
     )
     return list(result.scalars().all())
 
@@ -86,7 +86,12 @@ async def get_item(
     user = await _resolve_user(current_user["supabase_id"], db)
     await _get_owned_collection(collection_id, user, db)
     result = await db.execute(
-        select(Item).where(Item.id == item_id, Item.collection_id == collection_id)
+        select(Item)
+        .join(collection_items, collection_items.c.item_id == Item.id)
+        .where(
+            collection_items.c.collection_id == collection_id,
+            Item.id == item_id,
+        )
     )
     item = result.scalar_one_or_none()
     if item is None:
@@ -103,11 +108,38 @@ async def delete_item(
 ) -> None:
     user = await _resolve_user(current_user["supabase_id"], db)
     await _get_owned_collection(collection_id, user, db)
-    result = await db.execute(
-        select(Item).where(Item.id == item_id, Item.collection_id == collection_id)
+
+    # Verify item is in this collection
+    exists = await db.execute(
+        select(collection_items).where(
+            collection_items.c.collection_id == collection_id,
+            collection_items.c.item_id == item_id,
+        )
     )
-    item = result.scalar_one_or_none()
-    if item is None:
+    if exists.first() is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
-    await db.delete(item)
+
+    # Remove from this collection; decrement source_count
+    await db.execute(
+        delete(collection_items).where(
+            collection_items.c.collection_id == collection_id,
+            collection_items.c.item_id == item_id,
+        )
+    )
+    await db.execute(
+        update(Collection)
+        .where(Collection.id == collection_id)
+        .values(source_count=Collection.source_count - 1)
+    )
+
+    # Delete the item itself only if it no longer belongs to any collection
+    remaining = await db.execute(
+        select(collection_items).where(collection_items.c.item_id == item_id)
+    )
+    if remaining.first() is None:
+        item_result = await db.execute(select(Item).where(Item.id == item_id))
+        item = item_result.scalar_one_or_none()
+        if item:
+            await db.delete(item)
+
     await db.commit()

@@ -45,5 +45,5 @@ class Collection(Base):
 
     user: Mapped["User"] = relationship("User", back_populates="collections")  # noqa: F821
     items: Mapped[list["Item"]] = relationship(  # noqa: F821
-        "Item", back_populates="collection", passive_deletes=True
+        "Item", secondary="collection_items", back_populates="collections"
     )

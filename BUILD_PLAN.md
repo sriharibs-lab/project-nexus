@@ -63,7 +63,7 @@ cycle_policy:
 - [x] Background job queue (async AI processing) — in-process asyncio, full pipeline wired <!-- nbl:id=1A-010 status=done -->
 - [x] Feedback API: POST /v1/feedback + DB model + screenshot_url field <!-- nbl:id=1A-011 status=done -->
 - [x] Collections model + migration — items need collection_id per SPEC §5a (IA locked: no global library) <!-- nbl:id=1A-012 agent=swe deps=[1A-001] est=2h -->
-- [!] Items ↔ Collections many-to-many — replace items.collection_id FK with collection_items join table; update /v1/ingest + items router; migration 0004 <!-- nbl:id=1A-013 agent=swe deps=[1A-012] est=2h -->
+- [x] Items ↔ Collections many-to-many — collection_items join table; updated ingest + items router; migration 0003 live; source_count in CollectionResponse <!-- nbl:id=1A-013 status=done -->
 
 ### 1B — iPhone App Foundation (Weeks 1–3, parallel)
 - [x] Xcode project setup — SwiftUI, iOS 17+, bundle ID app.nexus, at app-ios/Nexus/ <!-- nbl:id=1B-001 status=done -->

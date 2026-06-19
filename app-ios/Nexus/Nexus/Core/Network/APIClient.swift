@@ -48,7 +48,7 @@ final class APIClient {
         return try await post(.ingest, body: body)
     }
 
-    func submitFeedback(_ request: FeedbackRequest) async throws -> EmptyResponse {
+    func submitFeedback(_ request: FeedbackRequest) async throws -> FeedbackSubmitResponse {
         try await post(.feedback, body: request)
     }
 
@@ -111,6 +111,11 @@ struct FeedbackRequest: Encodable {
     let appVersion: String?
     let iosVersion: String?
     let deviceModel: String?
+}
+
+struct FeedbackSubmitResponse: Decodable {
+    let id: String
+    let status: String
 }
 
 struct EmptyResponse: Codable {

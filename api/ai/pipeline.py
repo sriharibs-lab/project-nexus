@@ -1,22 +1,23 @@
 """
 Nexus AI Processing Pipeline
-Summarization + semantic tagging via Claude Haiku 4.5, embedding stub (pgvector-ready).
+Summarization + semantic tagging via Claude Haiku 4.5.
+Embeddings via OpenAI text-embedding-3-small (1536-dim, pgvector-ready).
 Collection research streaming via Claude Sonnet (SPEC §9c).
 """
 
 import asyncio
 import json
 import os
-import struct
-import hashlib
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Literal
 
 import anthropic
+from openai import AsyncOpenAI
 
 _client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+_openai = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY", ""))
 
 ContentType = Literal["article", "youtube", "podcast"]
 
@@ -256,27 +257,19 @@ async def build_collection_framing(collection_name: str, first_summary: str) -> 
 
 
 async def compute_embedding(content: str) -> EmbeddingResult:
-    """
-    Stub embedding — deterministic 1536-dim float32 vector.
-    Replace body with a real embedding call (e.g. text-embedding-3-small)
-    when the Anthropic embedding endpoint ships. Output is pgvector-compatible.
-    Async to match the production signature.
-    """
-    DIMS = 1536
-
-    # deterministic hash-based stub so tests are reproducible
-    seed = hashlib.sha256(content.encode()).digest()
-    raw_bytes = (seed * (DIMS // 8 + 1))[:DIMS * 4]
-    raw_floats = list(struct.unpack(f"{DIMS}f", raw_bytes))
-
-    # normalize to unit sphere (pgvector cosine distance expects this)
-    magnitude = sum(v * v for v in raw_floats) ** 0.5
-    vector = [v / magnitude for v in raw_floats]
-
+    """Embed content via OpenAI text-embedding-3-small (1536-dim, pgvector-ready)."""
+    _EMBED_COST = Decimal("0.00000002")  # $0.020 / 1M tokens
+    response = await _openai.embeddings.create(
+        input=content[:8000],
+        model="text-embedding-3-small",
+    )
+    vector = response.data[0].embedding
+    tokens = response.usage.total_tokens
     return EmbeddingResult(
         vector=vector,
-        dimensions=DIMS,
-        model="stub-sha256-1536",
+        dimensions=len(vector),
+        model="text-embedding-3-small",
+        cost_usd=Decimal(tokens) * _EMBED_COST,
     )
 
 

@@ -115,7 +115,7 @@ struct FeedbackRequest: Encodable {
 
 struct EmptyResponse: Codable {
     init() {}
-    init?(from decoder: Decoder) throws { self.init() }
+    init(from decoder: Decoder) throws {}
 }
 
 // Type-erased Encodable wrapper for heterogeneous bodies

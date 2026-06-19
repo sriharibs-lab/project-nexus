@@ -1,3 +1,11 @@
+"""
+Nexus API — FastAPI application entry point.
+
+Deploy target: app.main:app   (i.e.  uvicorn app.main:app)
+A Procfile at api/Procfile pins this explicitly to prevent misconfigured
+deploys from accidentally loading the skeleton api/main.py stub instead.
+"""
+
 import asyncio
 import logging
 from contextlib import asynccontextmanager
@@ -7,7 +15,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.queue.ingestion import start_worker
+from app.queue.ingestion import close_pgq_pool, init_pgq_pool, start_worker
 from app.routers import health, ingest
 
 logging.basicConfig(level=settings.log_level.upper())
@@ -19,15 +27,24 @@ _worker_task: asyncio.Task | None = None
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     global _worker_task
-    _worker_task = asyncio.create_task(start_worker())
     logger.info("Nexus API starting — environment=%s", settings.environment)
+
+    # Initialise pgqueuer pool BEFORE starting the worker.
+    # get_pgq_pool() raises RuntimeError if this is skipped.
+    await init_pgq_pool()
+
+    _worker_task = asyncio.create_task(start_worker())
+
     yield
+
+    # Graceful shutdown: cancel worker first, then drain pool.
     if _worker_task:
         _worker_task.cancel()
         try:
             await _worker_task
         except asyncio.CancelledError:
             pass
+    await close_pgq_pool()
     logger.info("Nexus API shut down")
 
 

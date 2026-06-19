@@ -1,57 +1,141 @@
 """
-Async content ingestion queue stub.
+Durable content ingestion queue backed by pgqueuer (Postgres).
 
-Currently an in-process asyncio queue. Replace the backend (Redis/BullMQ,
-Celery, or a Postgres-backed queue like pgqueuer) without changing the
-public interface: enqueue_item / start_worker.
+Jobs survive deploys and crashes. Public interface is unchanged:
+  enqueue_item(url, content_type, user_id) -> job_id
+  init_pgq_pool() -> called once from app lifespan
+  close_pgq_pool() -> called once on shutdown
+  start_worker() -> long-running coroutine, called once from app lifespan
+
+pgqueuer uses the same Supabase Postgres as the rest of the app — no
+new infrastructure required.
 """
 
-import asyncio
+from __future__ import annotations
+
+import json
 import logging
 import uuid
-from dataclasses import dataclass, field
+
+import asyncpg
+from pgqueuer import PgQueuer
+from pgqueuer.models import Job
+
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-_queue: asyncio.Queue["IngestJob"] = asyncio.Queue()
+# ---------------------------------------------------------------------------
+# Module-level asyncpg pool — initialised once in lifespan
+# ---------------------------------------------------------------------------
+
+_pool: asyncpg.Pool | None = None
+
+QUEUE_NAME = "nexus_ingest"
 
 
-@dataclass
-class IngestJob:
-    job_id: str
-    url: str
-    content_type: str
-    user_id: str
-    retries: int = field(default=0)
+async def init_pgq_pool() -> None:
+    """Create the asyncpg connection pool. Call once in app lifespan startup."""
+    global _pool
+    # pgqueuer requires asyncpg (not SQLAlchemy) — use the same DATABASE_URL
+    # but strip the +asyncpg driver prefix if present (asyncpg expects plain DSN)
+    dsn = settings.database_url.replace("postgresql+asyncpg://", "postgresql://")
+    _pool = await asyncpg.create_pool(dsn, min_size=2, max_size=10)
+    logger.info("pgqueuer asyncpg pool created")
+
+
+async def close_pgq_pool() -> None:
+    """Drain and close the asyncpg pool. Call once in app lifespan shutdown."""
+    global _pool
+    if _pool is not None:
+        await _pool.close()
+        _pool = None
+        logger.info("pgqueuer asyncpg pool closed")
+
+
+def get_pgq_pool() -> asyncpg.Pool:
+    """Return the module-level pool. Raises if init_pgq_pool() was not called."""
+    if _pool is None:
+        raise RuntimeError(
+            "pgqueuer pool is not initialised — call init_pgq_pool() in app lifespan startup"
+        )
+    return _pool
+
+
+# ---------------------------------------------------------------------------
+# Public enqueue interface (unchanged signature)
+# ---------------------------------------------------------------------------
 
 
 async def enqueue_item(url: str, content_type: str, user_id: str) -> str:
+    """
+    Persist a new ingest job to Postgres via pgqueuer and return its job_id.
+
+    The returned job_id is a client-generated UUID stored in the job payload so
+    callers can reference it before the row is inserted by pgqueuer internals.
+    """
     job_id = str(uuid.uuid4())
-    job = IngestJob(job_id=job_id, url=url, content_type=content_type, user_id=user_id)
-    await _queue.put(job)
+    payload = json.dumps({"job_id": job_id, "url": url, "content_type": content_type, "user_id": user_id})
+
+    pool = get_pgq_pool()
+    async with pool.acquire() as conn:
+        pgq = PgQueuer(conn)
+        await pgq.queries.enqueue(
+            QUEUE_NAME,
+            payload,  # type: ignore[arg-type]
+            priority=0,
+        )
+
     logger.info("Enqueued job %s for url=%s user=%s", job_id, url, user_id)
     return job_id
 
 
-async def _process_job(job: IngestJob) -> None:
-    """
-    Stub processor — replace with real fetch → parse → embed → store pipeline.
-    """
-    logger.info("Processing job %s url=%s", job.job_id, job.url)
-    # TODO: fetch content, extract text, generate embedding, persist Item + Embedding
-    await asyncio.sleep(0)  # yield to event loop
+# ---------------------------------------------------------------------------
+# Worker
+# ---------------------------------------------------------------------------
 
 
 async def start_worker() -> None:
     """
-    Long-running coroutine. Called once from app lifespan.
+    Long-running coroutine — call once from app lifespan.
+
+    pgqueuer polls Postgres with LISTEN/NOTIFY so idle CPU is near zero.
+    Failed jobs use on_failure='log' — they stay in the DB with status='exception'
+    for inspection, and are not silently discarded.
     """
-    logger.info("Ingestion worker started")
-    while True:
-        job = await _queue.get()
-        try:
-            await _process_job(job)
-        except Exception:
-            logger.exception("Failed to process job %s", job.job_id)
-        finally:
-            _queue.task_done()
+    pool = get_pgq_pool()
+    async with pool.acquire() as conn:
+        pgq = PgQueuer(conn)
+
+        @pgq.entrypoint(QUEUE_NAME)
+        async def handle_ingest(job: Job) -> None:
+            data = json.loads(job.payload)  # type: ignore[arg-type]
+            await _process_job(
+                job_id=data["job_id"],
+                url=data["url"],
+                content_type=data["content_type"],
+                user_id=data["user_id"],
+            )
+
+        logger.info("pgqueuer ingestion worker started, listening on queue=%s", QUEUE_NAME)
+        await pgq.run()
+
+
+# ---------------------------------------------------------------------------
+# Job processor (stub — will be replaced with pipeline wiring in 1C-005)
+# ---------------------------------------------------------------------------
+
+
+async def _process_job(job_id: str, url: str, content_type: str, user_id: str) -> None:
+    """
+    Stub processor — replace with real fetch → parse → embed → store pipeline.
+
+    Raising an exception here marks the job 'exception' in pgqueuer's DB table,
+    making it visible for inspection rather than silently discarded.
+    """
+    logger.info(
+        "Processing job %s url=%s content_type=%s user=%s",
+        job_id, url, content_type, user_id,
+    )
+    # TODO (1C-005): fetch content, extract text, generate embedding, persist Item + Embedding
+    # TODO (1C-010): update UserInterestProfile topic weights post-ingest

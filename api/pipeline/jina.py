@@ -6,7 +6,13 @@ Free tier: 1 RPM without key, 200 RPM with JINA_API_KEY.
 Paid: ~$0.02 / 1M tokens beyond free quota (~$0.00002 per avg article).
 
 Docs: https://jina.ai/reader
+
+Implementation note: uses httpx.AsyncClient directly (no asyncio.to_thread
+wrapper) so the event loop is not blocked and no thread-pool slots are
+consumed during extraction — important for concurrent ingest load.
 """
+
+from __future__ import annotations
 
 import os
 import time
@@ -20,7 +26,7 @@ JINA_BASE = "https://r.jina.ai/"
 TIMEOUT = 30  # seconds; Jina can be slow on heavy pages
 
 
-def extract(url: str) -> ExtractionResult:
+async def extract(url: str) -> ExtractionResult:
     api_key: Optional[str] = os.getenv("JINA_API_KEY")
 
     headers = {
@@ -34,12 +40,8 @@ def extract(url: str) -> ExtractionResult:
 
     t0 = time.perf_counter()
     try:
-        resp = httpx.get(
-            f"{JINA_BASE}{url}",
-            headers=headers,
-            timeout=TIMEOUT,
-            follow_redirects=True,
-        )
+        async with httpx.AsyncClient(timeout=TIMEOUT, follow_redirects=True) as client:
+            resp = await client.get(f"{JINA_BASE}{url}", headers=headers)
         resp.raise_for_status()
         content = resp.text.strip()
         elapsed = (time.perf_counter() - t0) * 1000

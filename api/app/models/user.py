@@ -21,3 +21,4 @@ class User(Base):
 
     items: Mapped[list["Item"]] = relationship("Item", back_populates="user", cascade="all, delete-orphan")  # noqa: F821
     tags: Mapped[list["Tag"]] = relationship("Tag", back_populates="user", cascade="all, delete-orphan")  # noqa: F821
+    collections: Mapped[list["Collection"]] = relationship("Collection", back_populates="user", cascade="all, delete-orphan")  # noqa: F821

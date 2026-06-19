@@ -1,5 +1,5 @@
 from jose import JWTError, jwt
-from fastapi import HTTPException, Request, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.config import settings
@@ -28,7 +28,7 @@ def _decode_supabase_jwt(token: str) -> dict:
 
 async def get_current_user(
     request: Request,
-    credentials: HTTPAuthorizationCredentials | None = None,
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
 ) -> dict:
     """
     FastAPI dependency. Returns the decoded Supabase JWT payload.

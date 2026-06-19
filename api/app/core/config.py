@@ -7,6 +7,9 @@ class Settings(BaseSettings):
     # Database
     database_url: str
 
+    # AI
+    anthropic_api_key: str = ""  # Required for research + summarization; see .nbl/config.md
+
     # Supabase
     supabase_url: str
     supabase_jwt_secret: str

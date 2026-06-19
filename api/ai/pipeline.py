@@ -1,20 +1,30 @@
 """
 Nexus AI Processing Pipeline
 Summarization + semantic tagging via Claude Haiku 4.5, embedding stub (pgvector-ready).
+Collection research streaming via Claude Sonnet (SPEC §9c).
 """
 
+import asyncio
 import json
 import os
 import struct
 import hashlib
-from dataclasses import dataclass
+from collections.abc import AsyncGenerator
+from dataclasses import dataclass, field
+from decimal import Decimal
 from typing import Literal
 
 import anthropic
 
-client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+_client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
 
 ContentType = Literal["article", "youtube", "podcast"]
+
+# Pricing constants (per token)
+_HAIKU_INPUT_COST = Decimal("0.0000008")   # $0.80 / 1M
+_HAIKU_OUTPUT_COST = Decimal("0.000004")   # $4.00 / 1M
+_SONNET_INPUT_COST = Decimal("0.000003")   # $3.00 / 1M
+_SONNET_OUTPUT_COST = Decimal("0.000015")  # $15.00 / 1M
 
 SYSTEM_PROMPT = """\
 You are an expert content analyst for Nexus, an AI-native content curation app. \
@@ -41,12 +51,62 @@ Return JSON with this exact structure:
   "tags": ["string", ...]
 }}"""
 
+# Research prompt — Sonnet only (SPEC §9c: collection research requires judgment and web knowledge)
+_RESEARCH_SYSTEM = """\
+You are Nexus, an AI-native content curation assistant. \
+Your job is to find the most authoritative, insightful sources on a topic so the user \
+can build a collection that becomes their trusted knowledge base on that topic.
+
+Output rules:
+- Return exactly 8 sources. Quality over quantity — each source must be worth reading.
+- Prefer: long-form articles, research papers, definitive essays, high-signal newsletters, \
+  authoritative explainers. Avoid: listicles, generic overview posts, outdated content.
+- Each source must have a real, specific, resolvable URL.
+- Provide a 1-sentence rationale for why this source is worth reading.
+
+Stream output as a JSON array of objects with this exact structure:
+[
+  {
+    "title": "string",
+    "url": "https://...",
+    "domain": "string (site name, e.g. 'Nature', 'Stratechery')",
+    "rationale": "string (1 sentence — why this source matters for the topic)",
+    "content_type": "article | video | podcast | thread | paper"
+  },
+  ...
+]
+
+Respond with valid JSON only. No markdown fences. No preamble."""
+
+_RESEARCH_SYSTEM_CACHE_CONTROL = [
+    {
+        "type": "text",
+        "text": _RESEARCH_SYSTEM,
+        "cache_control": {"type": "ephemeral"},
+    }
+]
+
 
 @dataclass
 class ProcessedItem:
     tldr: str
     insights: list[str]
     tags: list[str]
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cache_read_tokens: int = 0
+    model: str = "claude-haiku-4-5"
+    cost_usd: Decimal = field(default_factory=lambda: Decimal("0"))
+
+
+@dataclass
+class SourceRow:
+    """One AI-suggested source returned by research_topic."""
+    title: str
+    url: str
+    domain: str
+    rationale: str
+    content_type: str
 
 
 @dataclass
@@ -55,17 +115,24 @@ class EmbeddingResult:
     vector: list[float]
     dimensions: int
     model: str
+    cost_usd: Decimal = field(default_factory=lambda: Decimal("0"))
 
 
-def summarize_item(content: str, content_type: ContentType) -> ProcessedItem:
+async def summarize_item(content: str, content_type: str) -> ProcessedItem:
     """
-    Summarize content and extract semantic tags.
+    Summarize content and extract semantic tags via Claude Haiku.
     Returns TL;DR, 3-5 key insights, and semantic tags.
     """
-    response = client.messages.create(
+    response = await _client.messages.create(
         model="claude-haiku-4-5",
         max_tokens=512,
-        system=SYSTEM_PROMPT,
+        system=[
+            {
+                "type": "text",
+                "text": SYSTEM_PROMPT,
+                "cache_control": {"type": "ephemeral"},
+            }
+        ],
         messages=[
             {
                 "role": "user",
@@ -86,18 +153,114 @@ def summarize_item(content: str, content_type: ContentType) -> ProcessedItem:
             raw = raw[4:]
 
     data = json.loads(raw.strip())
+
+    input_tokens = response.usage.input_tokens
+    output_tokens = response.usage.output_tokens
+    cache_tokens = getattr(response.usage, "cache_read_input_tokens", 0) or 0
+    cost = (
+        Decimal(input_tokens) * _HAIKU_INPUT_COST
+        + Decimal(output_tokens) * _HAIKU_OUTPUT_COST
+    )
+
     return ProcessedItem(
         tldr=data["tldr"],
         insights=data["insights"],
         tags=data["tags"],
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cache_read_tokens=cache_tokens,
+        model="claude-haiku-4-5",
+        cost_usd=cost,
     )
 
 
-def compute_embedding(content: str) -> EmbeddingResult:
+async def research_topic(
+    topic: str,
+) -> AsyncGenerator[SourceRow, None]:
+    """
+    Stream AI-suggested sources for a topic using Claude Sonnet (SPEC §9c).
+
+    Yields SourceRow objects one at a time as the model completes each JSON
+    object in its streamed array. The iOS FRE screen receives one SSE event
+    per source so the user sees sources appear progressively.
+
+    Parsing strategy: buffer the full streamed text, then parse the JSON array
+    once complete. Claude reliably completes valid JSON with streaming=True and
+    structured output instruction. We do not attempt streaming JSON parsing
+    (fragile) — instead we yield all rows at once after the stream closes.
+    Latency is acceptable at 10-15s total (SPEC §9c).
+
+    Note on 'total' count: because we buffer the full response before yielding,
+    the caller can count rows from the done event. The SSE source events do not
+    include a 'total' field — the iOS client uses the source_count from the
+    final 'done' event to display the count retroactively.
+    """
+    async with _client.messages.stream(
+        model="claude-sonnet-4-6",
+        max_tokens=2048,
+        system=_RESEARCH_SYSTEM_CACHE_CONTROL,
+        messages=[
+            {
+                "role": "user",
+                "content": f"Find the 8 best sources to understand this topic deeply: {topic}",
+            }
+        ],
+    ) as stream:
+        full_text = ""
+        async for text in stream.text_stream:
+            full_text += text
+
+    # Strip accidental markdown fences
+    raw = full_text.strip()
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+        raw = raw.strip()
+
+    try:
+        rows = json.loads(raw)
+    except json.JSONDecodeError:
+        # Graceful degradation: return empty rather than crashing the FRE
+        return
+
+    for row in rows:
+        yield SourceRow(
+            title=row.get("title", ""),
+            url=row.get("url", ""),
+            domain=row.get("domain", ""),
+            rationale=row.get("rationale", ""),
+            content_type=row.get("content_type", "article"),
+        )
+
+
+async def build_collection_framing(collection_name: str, first_summary: str) -> str:
+    """
+    Generate the Nexus-tab hero sentence shown after the first source ingests.
+    Called once per collection; result stored in Collection.framing_paragraph.
+    """
+    response = await _client.messages.create(
+        model="claude-haiku-4-5",
+        max_tokens=80,
+        messages=[{
+            "role": "user",
+            "content": (
+                f'Write a single warm, direct sentence for the collection "{collection_name}" '
+                f"in Nexus after its first source was added. The source summary: {first_summary}\n\n"
+                "Requirements: acknowledge what was saved, invite the user to ask anything. "
+                'Don\'t start with "I". No quotes. Return only the sentence.'
+            ),
+        }],
+    )
+    return response.content[0].text.strip()
+
+
+async def compute_embedding(content: str) -> EmbeddingResult:
     """
     Stub embedding — deterministic 1536-dim float32 vector.
     Replace body with a real embedding call (e.g. text-embedding-3-small)
     when the Anthropic embedding endpoint ships. Output is pgvector-compatible.
+    Async to match the production signature.
     """
     DIMS = 1536
 
@@ -182,7 +345,7 @@ companies worth trillions of dollars. We tried to be transparent and first-in \
 first-out where possible. But yes, there were painful conversations."""
 
 
-def run_examples():
+async def _run_examples_async() -> None:
     examples = [
         ("article", ARTICLE),
         ("youtube", YOUTUBE),
@@ -194,8 +357,8 @@ def run_examples():
         print(f"  {content_type.upper()}")
         print("=" * 60)
 
-        result = summarize_item(content, content_type)
-        embedding = compute_embedding(content)
+        result = await summarize_item(content, content_type)
+        embedding = await compute_embedding(content)
 
         print(f"\nTL;DR:\n  {result.tldr}")
         print("\nKey Insights:")
@@ -204,6 +367,11 @@ def run_examples():
         print(f"\nTags: {', '.join(result.tags)}")
         print(f"\nEmbedding: {embedding.dimensions}-dim {embedding.model}")
         print(f"  Vector[:5]: {[round(v, 6) for v in embedding.vector[:5]]}")
+
+
+def run_examples() -> None:
+    """Entry point for CLI smoke-test. Runs all async pipeline functions correctly."""
+    asyncio.run(_run_examples_async())
 
 
 if __name__ == "__main__":

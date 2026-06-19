@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     supabase_url: str
     supabase_jwt_secret: str
     supabase_anon_key: str
+    # service_role key — never expose to clients; used only server-side to call
+    # Supabase Admin API (e.g. send magic link OTP, invite users).
+    supabase_service_role_key: str
 
     # App
     environment: str = "development"

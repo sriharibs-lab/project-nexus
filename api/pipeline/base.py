@@ -4,9 +4,9 @@ from typing import Optional
 
 
 class ContentType(str, Enum):
-    ARTICLE = "article"
-    VIDEO = "video"
-    PODCAST = "podcast"
+    article = "article"
+    video = "video"
+    podcast = "podcast"
 
 
 @dataclass

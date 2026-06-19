@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     supabase_url: str
     supabase_publishable_key: str
     supabase_secret_key: str
+    # service_role key — NEVER expose to clients; server-side only (magic link OTP, admin calls)
+    supabase_service_role_key: str = ""
 
     # Derived from supabase_url — no separate env var needed
     @property

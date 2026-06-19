@@ -30,7 +30,7 @@ def extract(audio_url: str, *, diarize: bool = True) -> ExtractionResult:
         return ExtractionResult(
             extractor="Deepgram Nova-3",
             url=audio_url,
-            content_type=ContentType.PODCAST,
+            content_type=ContentType.podcast,
             title=None,
             content="",
             word_count=0,
@@ -84,7 +84,7 @@ def extract(audio_url: str, *, diarize: bool = True) -> ExtractionResult:
         return ExtractionResult(
             extractor="Deepgram Nova-3",
             url=audio_url,
-            content_type=ContentType.PODCAST,
+            content_type=ContentType.podcast,
             title=None,
             content=content,
             word_count=len(content.split()),
@@ -103,7 +103,7 @@ def extract(audio_url: str, *, diarize: bool = True) -> ExtractionResult:
         return ExtractionResult(
             extractor="Deepgram Nova-3",
             url=audio_url,
-            content_type=ContentType.PODCAST,
+            content_type=ContentType.podcast,
             title=None,
             content="",
             word_count=0,

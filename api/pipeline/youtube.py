@@ -94,7 +94,7 @@ def extract(url: str, language: str = "en") -> ExtractionResult:
         return ExtractionResult(
             extractor="YouTube Transcript API",
             url=url,
-            content_type=ContentType.VIDEO,
+            content_type=ContentType.video,
             title=title,
             content=timestamped,  # timestamped version as primary output
             word_count=len(content.split()),
@@ -108,7 +108,7 @@ def extract(url: str, language: str = "en") -> ExtractionResult:
         return ExtractionResult(
             extractor="YouTube Transcript API",
             url=url,
-            content_type=ContentType.VIDEO,
+            content_type=ContentType.video,
             title=None,
             content="",
             word_count=0,
@@ -122,7 +122,7 @@ def extract(url: str, language: str = "en") -> ExtractionResult:
         return ExtractionResult(
             extractor="YouTube Transcript API",
             url=url,
-            content_type=ContentType.VIDEO,
+            content_type=ContentType.video,
             title=None,
             content="",
             word_count=0,

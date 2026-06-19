@@ -55,7 +55,7 @@ def extract(url: str) -> ExtractionResult:
         return ExtractionResult(
             extractor="Jina AI Reader",
             url=url,
-            content_type=ContentType.ARTICLE,
+            content_type=ContentType.article,
             title=title,
             content=content,
             word_count=len(content.split()),
@@ -72,7 +72,7 @@ def extract(url: str) -> ExtractionResult:
         return ExtractionResult(
             extractor="Jina AI Reader",
             url=url,
-            content_type=ContentType.ARTICLE,
+            content_type=ContentType.article,
             title=None,
             content="",
             word_count=0,

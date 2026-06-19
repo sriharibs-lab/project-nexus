@@ -65,3 +65,8 @@ class Item(Base):
     embedding: Mapped["Embedding | None"] = relationship(  # noqa: F821
         "Embedding", back_populates="item", uselist=False, cascade="all, delete-orphan"
     )
+    collections: Mapped[list["Collection"]] = relationship(  # noqa: F821
+        "Collection",
+        secondary="collection_items",
+        back_populates="items",
+    )

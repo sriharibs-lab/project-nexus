@@ -1,0 +1,38 @@
+import Foundation
+
+enum Endpoint {
+    // Configured at launch via Info.plist key "API_BASE_URL";
+    // falls back to localhost for simulator runs.
+    static var baseURL: String {
+        Bundle.main.object(forInfoDictionaryKey: "API_BASE_URL") as? String
+            ?? "http://localhost:8000"
+    }
+
+    case collections
+    case collection(id: UUID)
+    case items(collectionId: UUID)
+    case item(collectionId: UUID, itemId: UUID)
+    case ingest
+    case feedback
+
+    var path: String {
+        switch self {
+        case .collections:
+            return "/v1/collections"
+        case .collection(let id):
+            return "/v1/collections/\(id.uuidString.lowercased())"
+        case .items(let cid):
+            return "/v1/collections/\(cid.uuidString.lowercased())/items"
+        case .item(let cid, let iid):
+            return "/v1/collections/\(cid.uuidString.lowercased())/items/\(iid.uuidString.lowercased())"
+        case .ingest:
+            return "/v1/ingest"
+        case .feedback:
+            return "/v1/feedback"
+        }
+    }
+
+    var url: URL {
+        URL(string: Endpoint.baseURL + path)!
+    }
+}

@@ -69,7 +69,7 @@ cycle_policy:
 - [x] Xcode project setup — SwiftUI, iOS 17+, bundle ID app.nexus, at app-ios/Nexus/ <!-- nbl:id=1B-001 status=done -->
 - [x] SwiftUI architecture scaffold — MVVM, DesignSystem/Core/Models/Features, NexusApp root routing with auth state, dev bypass button <!-- nbl:id=1B-001b status=done -->
 - [x] Sign in with Apple + Magic link email — both in v1 (Apple required by App Store; magic link = passwordless, no reset flows, cross-platform ready) <!-- nbl:id=1B-002 agent=swe deps=[1B-001,1A-001] est=4h -->
-- [!] Share Extension: capture URL from any app <!-- nbl:id=1B-003 agent=swe deps=[1B-001] est=3h -->
+- [x] Share Extension: capture URL from any app — NexusShare target, custom SwiftUI UI, collection picker, App Groups token sharing <!-- nbl:id=1B-003 status=done -->
 - [x] API client layer (async/await) — URLSession+async/await, snake_case ↔ camelCase, auth header injection, typed endpoints <!-- nbl:id=1B-004 status=done -->
 - [x] Design tokens: colors, typography, spacing (Swift from design-system/tokens/*.json) — Colors.swift, Typography.swift, Spacing.swift, Motion.swift <!-- nbl:id=1B-005 status=done -->
 - [x] In-app feedback UI: Settings → "Send Feedback" → auto-screenshot capture → text + screenshot toggle → POST /feedback <!-- nbl:id=1B-006 agent=swe deps=[1B-001,1A-011] est=3h -->

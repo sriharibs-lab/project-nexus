@@ -7,9 +7,6 @@ class Settings(BaseSettings):
     # Database
     database_url: str
 
-    # AI
-    anthropic_api_key: str = ""  # Required for research + summarization; see .nbl/config.md
-
     # Supabase
     supabase_url: str
     supabase_jwt_secret: str
@@ -25,7 +22,7 @@ class Settings(BaseSettings):
 
     # Chat RAG settings
     chat_rag_top_k: int = 8          # number of similar chunks retrieved per query
-    chat_model: str = "claude-sonnet-4-5"  # model used for chat streaming
+    chat_model: str = "claude-sonnet-4-6"  # model used for chat streaming; must match pipeline.py and research.py
     chat_max_tokens: int = 1024       # max tokens in the streamed reply
 
     @property

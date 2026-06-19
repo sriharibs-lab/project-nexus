@@ -7,10 +7,10 @@ class Settings(BaseSettings):
     # Database
     database_url: str
 
-    # Supabase
+    # Supabase — key names match api/.env exactly
     supabase_url: str
-    supabase_jwt_secret: str
-    supabase_anon_key: str
+    supabase_secret_key: str       # JWT secret for HS256 token validation
+    supabase_publishable_key: str  # anon/public key for client-side use
 
     # Anthropic — required for AI endpoints (1C-001 research, 1C-008 chat)
     # Gate: add ANTHROPIC_API_KEY to api/.env before live testing

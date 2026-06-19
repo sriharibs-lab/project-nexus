@@ -14,7 +14,7 @@ def _decode_supabase_jwt(token: str) -> dict:
     try:
         payload = jwt.decode(
             token,
-            settings.supabase_jwt_secret,
+            settings.supabase_secret_key,
             algorithms=_SUPABASE_ALGORITHMS,
             audience="authenticated",
         )

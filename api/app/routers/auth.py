@@ -203,7 +203,7 @@ async def refresh_token(payload: TokenRefreshRequest) -> TokenRefreshResponse:
     """
     url = f"{settings.supabase_url}/auth/v1/token"
     headers = {
-        "apikey": settings.supabase_anon_key,
+        "apikey": settings.supabase_publishable_key,
         "Content-Type": "application/json",
     }
 

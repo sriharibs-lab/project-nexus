@@ -17,7 +17,10 @@ import anthropic
 from openai import AsyncOpenAI
 
 _client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
-_openai = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY", ""))
+_fireworks = AsyncOpenAI(
+    api_key=os.environ.get("FIREWORKS_API_KEY", ""),
+    base_url="https://api.fireworks.ai/inference/v1",
+)
 
 ContentType = Literal["article", "youtube", "podcast"]
 
@@ -257,18 +260,18 @@ async def build_collection_framing(collection_name: str, first_summary: str) -> 
 
 
 async def compute_embedding(content: str) -> EmbeddingResult:
-    """Embed content via OpenAI text-embedding-3-small (1536-dim, pgvector-ready)."""
-    _EMBED_COST = Decimal("0.00000002")  # $0.020 / 1M tokens
-    response = await _openai.embeddings.create(
+    """Embed content via Fireworks nomic-embed-text-v1.5 (768-dim, pgvector-ready)."""
+    _EMBED_COST = Decimal("0.000000008")  # $0.008 / 1M tokens (Fireworks pricing)
+    response = await _fireworks.embeddings.create(
         input=content[:8000],
-        model="text-embedding-3-small",
+        model="nomic-ai/nomic-embed-text-v1.5",
     )
     vector = response.data[0].embedding
     tokens = response.usage.total_tokens
     return EmbeddingResult(
         vector=vector,
         dimensions=len(vector),
-        model="text-embedding-3-small",
+        model="nomic-ai/nomic-embed-text-v1.5",
         cost_usd=Decimal(tokens) * _EMBED_COST,
     )
 

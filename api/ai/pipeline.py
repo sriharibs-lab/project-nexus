@@ -138,6 +138,27 @@ async def summarize_item(content: str, content_type: ContentType) -> ProcessedIt
     )
 
 
+async def build_collection_framing(collection_name: str, first_summary: str) -> str:
+    """
+    Generate the Nexus-tab hero sentence shown after the first source ingests.
+    Called once per collection; result stored in Collection.framing_paragraph.
+    """
+    response = await _anthropic.messages.create(
+        model="claude-haiku-4-5",
+        max_tokens=80,
+        messages=[{
+            "role": "user",
+            "content": (
+                f'Write a single warm, direct sentence for the collection "{collection_name}" '
+                f"in Nexus after its first source was added. The source summary: {first_summary}\n\n"
+                "Requirements: acknowledge what was saved, invite the user to ask anything. "
+                'Don\'t start with "I". No quotes. Return only the sentence.'
+            ),
+        }],
+    )
+    return response.content[0].text.strip()
+
+
 async def compute_embedding(content: str) -> EmbeddingResult:
     response = await _openai.embeddings.create(
         input=content[:8000],

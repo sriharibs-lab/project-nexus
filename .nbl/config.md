@@ -4,7 +4,7 @@
 nbl_version: "1"
 cycle_policy:
   max_tasks_per_run: 3
-  allow_phases: ["0A", "1A", "1B"]
+  allow_phases: ["0A", "1A", "1B", "1C"]
 
 # Human gates — tasks with these gate values are never auto-selected
 # The loop skips them and reports them in DAILY_REPORT.md as "waiting on you"

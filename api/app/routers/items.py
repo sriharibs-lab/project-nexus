@@ -3,9 +3,10 @@ from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.middleware.auth import get_current_user
@@ -26,9 +27,17 @@ class ItemResponse(BaseModel):
     content_type: ContentType
     summary: Optional[str]
     insights: Optional[List[str]]
+    tags: List[str] = []
     ingest_status: IngestStatus
     created_at: datetime
     updated_at: datetime
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def _coerce_tags(cls, v: object) -> List[str]:
+        if not v:
+            return []
+        return [t.name if hasattr(t, "name") else str(t) for t in v]
 
     model_config = {"from_attributes": True}
 
@@ -69,6 +78,7 @@ async def list_items(
     await _get_owned_collection(collection_id, user, db)
     result = await db.execute(
         select(Item)
+        .options(selectinload(Item.tags))
         .join(collection_items, collection_items.c.item_id == Item.id)
         .where(collection_items.c.collection_id == collection_id)
         .order_by(collection_items.c.created_at.desc())
@@ -87,6 +97,7 @@ async def get_item(
     await _get_owned_collection(collection_id, user, db)
     result = await db.execute(
         select(Item)
+        .options(selectinload(Item.tags))
         .join(collection_items, collection_items.c.item_id == Item.id)
         .where(
             collection_items.c.collection_id == collection_id,

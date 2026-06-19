@@ -73,17 +73,12 @@ async def _process_job(job: IngestJob) -> None:
         db.add(item)
         await db.flush()  # get item.id without committing
 
-        # Wire item into collection via join table; increment source_count
+        # Wire item into collection via join table (visible immediately as processing)
         collection_id = uuid.UUID(job.collection_id)
         await db.execute(
             pg_insert(collection_items)
             .values(collection_id=collection_id, item_id=item.id)
             .on_conflict_do_nothing()
-        )
-        await db.execute(
-            update(Collection)
-            .where(Collection.id == collection_id)
-            .values(source_count=Collection.source_count + 1)
         )
         await db.commit()
 
@@ -135,6 +130,13 @@ async def _process_job(job: IngestJob) -> None:
             }
             item.ingest_status = IngestStatus.completed
 
+            # Increment source_count only on success — avoids phantom counts on failure
+            await db.execute(
+                update(Collection)
+                .where(Collection.id == collection_id)
+                .values(source_count=Collection.source_count + 1)
+            )
+
             # ── 4. Embedding ───────────────────────────────────────────────
             db.add(Embedding(
                 id=uuid.uuid4(),
@@ -177,6 +179,32 @@ async def _process_job(job: IngestJob) -> None:
             ))
 
             await db.commit()
+
+            # ── 7. Framing paragraph (first source only) ───────────────────
+            # Generates the Nexus-tab hero sentence after the very first item
+            # in a collection completes, so the tab is never blank.
+            try:
+                from sqlalchemy import func as sqlfunc
+                completed_count_result = await db.execute(
+                    select(sqlfunc.count()).select_from(Item)
+                    .join(collection_items, collection_items.c.item_id == Item.id)
+                    .where(
+                        collection_items.c.collection_id == collection_id,
+                        Item.ingest_status == IngestStatus.completed,
+                    )
+                )
+                if completed_count_result.scalar() == 1 and item.summary:
+                    col_res = await db.execute(
+                        select(Collection).where(Collection.id == collection_id)
+                    )
+                    col = col_res.scalar_one_or_none()
+                    if col and not col.framing_paragraph:
+                        from ai.pipeline import build_collection_framing
+                        col.framing_paragraph = await build_collection_framing(col.name, item.summary)
+                        await db.commit()
+            except Exception as framing_exc:
+                logger.warning("Framing generation failed for collection %s: %s", collection_id, framing_exc)
+
             total_ms = int((time.perf_counter() - t0) * 1000)
             logger.info("Job completed item_id=%s total_ms=%d", item.id, total_ms)
 

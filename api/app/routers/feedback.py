@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import uuid
-from typing import Literal
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
@@ -16,10 +18,10 @@ router = APIRouter(prefix="/feedback", tags=["feedback"])
 class FeedbackRequest(BaseModel):
     text: str
     category: Literal["bug", "suggestion", "other"] = "other"
-    screenshot_url: str | None = None
-    app_version: str | None = None
-    ios_version: str | None = None
-    device_model: str | None = None
+    screenshot_url: Optional[str] = None
+    app_version: Optional[str] = None
+    ios_version: Optional[str] = None
+    device_model: Optional[str] = None
 
 
 class FeedbackResponse(BaseModel):

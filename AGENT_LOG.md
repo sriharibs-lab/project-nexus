@@ -49,3 +49,19 @@ Tasks completed: 1B-002 (Sign in with Apple + Magic link auth — merged approve
 Tasks blocked: 1B-003 (Share Extension — request_changes after 2 retries; save.py missing, iOS Swift files absent, uppercase ContentType enum still live in 3 extractors, pgqueuer migration absent, source_count increments before ingest completes, feedback router unregistered in main.py), 1B-006 (In-app feedback UI — request_changes after 2 retries; feedback router not registered in main.py, ContentType enum uppercase bug still live in 3 extractors, field named `text` not `message` despite SWE claim)
 Gated (waiting on human): 1A-008 (S3/R2 bucket — needs cloud storage credentials in api/.env)
 Commit SHA: 8f2de72
+
+---
+
+## Cycle 2026-06-18T18:00:00Z
+Tasks completed: none
+Tasks blocked: none
+Gated (waiting on human): 1A-008 (S3/R2 bucket — needs cloud storage credentials in api/.env)
+Commit SHA: (no merge — no tasks completed)
+
+---
+
+## Cycle 2026-06-19T00:00:00Z
+Tasks completed: 1B-006 (In-app feedback UI — merged approve_with_notes; 11 backend tests pass, full iOS flow implemented)
+Tasks blocked: 1B-003 (Share Extension — request_changes after 2 retries; auth.py still has `= None` instead of `= Depends(bearer_scheme)`; requirements.txt had major deps stripped; collection_id removed from ingest violating locked IA; Swift NexusShare files absent from branch; SWE must restart from main and make only targeted auth.py fix)
+Gated (waiting on human): 1A-008 (S3/R2 bucket — needs cloud storage credentials in api/.env)
+Commit SHA: f37aeb6

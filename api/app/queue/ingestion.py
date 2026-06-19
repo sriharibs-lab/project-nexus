@@ -23,6 +23,7 @@ from pgqueuer import PgQueuer
 from pgqueuer.models import Job
 from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal
@@ -31,6 +32,7 @@ from app.models.collection import Collection
 from app.models.embedding import Embedding
 from app.models.item import ContentType, IngestStatus, Item, collection_items, item_tags
 from app.models.tag import Tag
+from app.models.user_interest_profile import UserInterestProfile
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +108,85 @@ async def start_worker() -> None:
 
         logger.info("pgqueuer ingestion worker started, queue=%s", QUEUE_NAME)
         await pgq.run()
+
+
+# ---------------------------------------------------------------------------
+# Interest profile helpers
+# ---------------------------------------------------------------------------
+
+# Weight applied to each new tag on every ingest
+_INTEREST_BUMP = 0.1
+# Gentle per-tag decay applied to all existing topics that were NOT seen in
+# this ingest. Keeps old interests from dominating the profile forever.
+_INTEREST_DECAY = 0.02
+# Minimum weight below which a topic is pruned from the profile (keeps JSONB small)
+_INTEREST_PRUNE_THRESHOLD = 0.05
+
+
+async def _update_interest_profile(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    tags: list[str],
+) -> None:
+    """
+    Upsert the UserInterestProfile for `user_id` using `tags` from the just-ingested item.
+
+    Algorithm (MVP, no ML):
+      1. Load existing topics dict (or start from {}).
+      2. Decay all existing weights by _INTEREST_DECAY (floor 0.0).
+      3. Bump each incoming tag by _INTEREST_BUMP (cap 1.0).
+      4. Prune topics whose weight fell below _INTEREST_PRUNE_THRESHOLD.
+      5. Upsert the row (INSERT … ON CONFLICT DO UPDATE).
+
+    This is intentionally simple: deterministic, testable, no external API call.
+    Replace with a model-based approach (e.g. embeddings centroid) when
+    Daily Briefing accuracy becomes a product priority.
+    """
+    # Load existing profile (if any)
+    result = await db.execute(
+        select(UserInterestProfile).where(UserInterestProfile.user_id == user_id)
+    )
+    profile = result.scalar_one_or_none()
+    existing_topics: dict[str, float] = dict(profile.topics) if profile else {}
+
+    # Decay all existing topic weights
+    decayed: dict[str, float] = {
+        topic: max(0.0, weight - _INTEREST_DECAY)
+        for topic, weight in existing_topics.items()
+    }
+
+    # Bump incoming tags
+    for tag in tags:
+        decayed[tag] = min(1.0, decayed.get(tag, 0.0) + _INTEREST_BUMP)
+
+    # Prune near-zero topics to keep the JSONB compact
+    pruned: dict[str, float] = {
+        topic: weight
+        for topic, weight in decayed.items()
+        if weight >= _INTEREST_PRUNE_THRESHOLD
+    }
+
+    # Upsert: create profile if missing, or update topics + updated_at in place
+    await db.execute(
+        pg_insert(UserInterestProfile)
+        .values(
+            id=uuid.uuid4(),
+            user_id=user_id,
+            topics=pruned,
+        )
+        .on_conflict_do_update(
+            index_elements=["user_id"],
+            set_={"topics": pruned},
+        )
+    )
+    await db.commit()
+
+    logger.debug(
+        "Interest profile updated user=%s tags=%s active_topics=%d",
+        user_id,
+        tags,
+        len(pruned),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -240,7 +321,17 @@ async def _process_job(
 
             await db.commit()
 
-            # ── 7. Framing paragraph (first completed source only) ─────────
+            # ── 7. Interest profile update ─────────────────────────────────
+            # Update topic weights for Daily Briefing (1C-010) and Connections.
+            # Non-fatal: a failure here must never roll back the ingest job.
+            try:
+                await _update_interest_profile(db, user_id=item.user_id, tags=processed.tags)
+            except Exception as profile_exc:
+                logger.warning(
+                    "Interest profile update failed for user %s: %s", item.user_id, profile_exc
+                )
+
+            # ── 8. Framing paragraph (first completed source only) ─────────
             try:
                 from sqlalchemy import func as sqlfunc
                 count_result = await db.execute(

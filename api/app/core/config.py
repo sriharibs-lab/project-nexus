@@ -7,17 +7,14 @@ class Settings(BaseSettings):
     # Database
     database_url: str
 
-    # AI
-    anthropic_api_key: str = ""  # Required for research + summarization; see .nbl/config.md
+    # Anthropic — required for AI endpoints (1C-001 research, 1C-008 chat)
+    # Gate: add ANTHROPIC_API_KEY to api/.env before live testing
+    anthropic_api_key: str = ""
 
     # Supabase
     supabase_url: str
     supabase_jwt_secret: str
     supabase_anon_key: str
-
-    # Anthropic — required for AI endpoints (1C-001 research, 1C-008 chat)
-    # Gate: add ANTHROPIC_API_KEY to api/.env before live testing
-    anthropic_api_key: str = ""
 
     # App
     environment: str = "development"
@@ -25,7 +22,7 @@ class Settings(BaseSettings):
 
     # Chat RAG settings
     chat_rag_top_k: int = 8          # number of similar chunks retrieved per query
-    chat_model: str = "claude-sonnet-4-5"  # model used for chat streaming
+    chat_model: str = "claude-sonnet-4-6"  # model used for chat streaming; keep in sync with pipeline.py
     chat_max_tokens: int = 1024       # max tokens in the streamed reply
 
     @property

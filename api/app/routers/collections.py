@@ -211,18 +211,17 @@ Rules:
 """
 
 
-def _embed_query(text: str) -> list[float]:
+async def _embed_query(text: str) -> list[float]:
     """
-    Generate a query embedding. Currently uses the deterministic stub in
-    api/ai/pipeline.py — replace with a real embedding call when available.
+    Generate a query embedding. Currently delegates to the stub in
+    api/ai/pipeline.py; the stub is already async so this is safe to await.
 
-    TODO: when replacing stub with a real embedding API call, this must be
-    converted to async and awaited in the route handler to avoid blocking
-    the event loop.
+    When the stub is replaced with a real embedding API call (text-embedding-3-small)
+    the event loop will not block because this function is already async.
     """
     from ai.pipeline import compute_embedding  # type: ignore[import]
 
-    result = compute_embedding(text)
+    result = await compute_embedding(text)
     return result.vector
 
 
@@ -348,7 +347,7 @@ async def chat_with_collection(
         query_vector = payload.query_embedding
     else:
         try:
-            query_vector = _embed_query(payload.message)
+            query_vector = await _embed_query(payload.message)
         except Exception:
             logger.exception("Failed to embed query for collection=%s", collection_id)
             raise HTTPException(

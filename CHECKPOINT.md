@@ -3,41 +3,42 @@
 
 ## What was built
 
-Users can now send feedback directly from within the Nexus app. From the Settings screen, tapping "Send Feedback" automatically captures a screenshot of the current screen before opening the feedback form. The form lets users pick a category (Bug, Suggestion, or Other), write a message, and choose whether to include the screenshot. Submitting sends everything to the backend and shows a confirmation screen.
+Nexus can now create AI-seeded collections from a topic: type a subject, and the app streams back a curated list of sources in real time while Claude assembles them. Once a collection has sources, users can ask questions about them — the app finds the most relevant saved content using semantic search, passes it to Claude Sonnet, and streams back a grounded answer with citations. The ingest queue was also upgraded from in-memory (lost on restart) to a Postgres-backed durable queue — jobs survive server restarts and can be retried on failure.
 
 ## ✅ Verify it worked
 
-- [ ] **In-app feedback (backend)** — `cd "/Users/srihari/Documents/Projects/Project Nexus/api" && python3 -m pytest tests/routers/test_feedback.py -v` — all 11 tests must pass
-- [ ] **In-app feedback (iOS)** — Open Nexus app in Simulator → Settings → Send Feedback → the screenshot shown should capture the Settings screen (not a blank form); submit a test message → spinner appears → thank-you screen shows; Done dismisses
-- [ ] **Screenshot toggle** — In feedback form, toggle the screenshot switch off → preview collapses with animation, "Screenshot excluded" label appears
-- [ ] **Empty text validation** — Leave text field blank → Send button stays disabled (grayed out)
-- [ ] **Category picker** — All three categories (Bug / Suggestion / Other) selectable via segmented control
+- [ ] **Research endpoint** — `curl -N -X POST http://localhost:8000/v1/collections/research -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"topic":"longevity and aging"}' ` — should stream `data:` events ending with `{"event":"done","collection_id":"...","source_count":N}`
+- [ ] **Chat endpoint** — `curl -N -X POST http://localhost:8000/v1/collections/<id>/chat -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"message":"What are the key themes?"}' ` — should stream `{"type":"sources",...}` then `{"type":"chunk",...}` events, ending with `{"type":"done"}`
+- [ ] **Durable queue** — start server, queue an ingest job via `POST /v1/ingest`, kill the server, restart — the job should still be in `pgqueuer_jobs` table (`SELECT * FROM pgqueuer_jobs WHERE queue_name='nexus_ingest'`)
+- [ ] **Auth body fix** — `POST /v1/collections` with `{"name":"test"}` and a Bearer token should return 201, not 422 (the body-schema nesting bug is fixed)
 
 ## 📋 Decisions made this cycle (no action needed)
 
 | What was decided | Options considered | Why |
 |---|---|---|
-| Screenshot stored inline as base64 in the database (for now) | Upload to Supabase Storage instead | No storage credentials configured yet; base64 works immediately. ~150–400KB per row is fine for MVP volume. Can migrate to a storage URL later with a simple search-and-replace. |
-| Screenshot captured before the feedback form opens | Capture on form appear, or manual button | Capturing after navigation would show the feedback form itself — useless. Capturing on tap shows the actual screen the user was looking at. |
-| Screenshot passed as an init parameter to the feedback view | Shared ViewModel, UserDefaults | Single-use data for one submission — simplest design with no shared state. |
-| JPEG at 50% quality before encoding | PNG (3–5x larger), raw pixel buffer | Keeps POST body under ~500KB in practice. |
+| SSE (Server-Sent Events) for both AI endpoints | WebSocket, polling | SSE is one-way — exactly right for streaming AI; works natively on iOS with URLSessionDataTask |
+| Claude Sonnet for research and chat (not Haiku) | Haiku for cost, Opus for quality | SPEC §9c requires Sonnet quality floor for user-facing AI; Opus reserved for internal tooling only |
+| pgvector RAG read path as a shared module (`rag.py`) | Inline per-endpoint | Both chat and semantic search (1C-006) share the same cosine similarity query; centralise once |
+| pgqueuer over Redis for queue durability | Redis+Celery, Redis+custom | No new infrastructure — reuses existing Supabase Postgres; zero extra ops cost before TestFlight |
+| Auth fix: `Depends(bearer_scheme)` in auth.py | Add `Body()` to every route | Root cause fix in one place; fixes all routers, not just the new ones |
+| Always emit terminal SSE event (done or error) | Let exceptions propagate | iOS cannot see HTTP status codes mid-stream; a torn connection shows as a stuck spinner |
+| Sources event emitted before chat text | Sources after response | Users see citation list instantly while Claude types; feels faster and more transparent |
+| Double security filter (collection_id + user_id) in RAG SQL | Filter on collection_id only | Defense in depth: guessed UUID cannot leak another user's saved content even if route auth is bypassed |
 
 ## 🚨 Decisions that need your input
 
-**Auth bug in Share Extension (1B-003) — blocked after 2 retries.**
-The Save URL feature (Share Extension) has been attempted twice and failed both times. The core bug — a one-line fix in `api/app/middleware/auth.py` changing `= None` to `= Depends(bearer_scheme)` — was not applied correctly in either retry. The second retry also accidentally deleted half of `requirements.txt` (making the API unable to boot) and removed the collection ownership requirement, violating the locked product spec ("Collections are the root. No global library.").
+**1C-001 + 1C-008 merge:** Both tasks wrote a `collections.py` router in parallel. The ALM combined them into one file with all CRUD routes plus the chat SSE endpoint. Scan `api/app/routers/collections.py` once to confirm the combined file looks right before the next cycle builds iOS screens on top of it.
 
-The task needs a clean retry starting from main, touching only `auth.py`. No action needed from you — the next cycle will attempt this again — but you should know this is now blocked twice and the agent will make a third attempt.
-
-**Screenshot storage debt (minor, 1B-006 note).**
-Storing screenshots as base64 in Postgres is fine for MVP but will balloon at TestFlight volume. The fix (upload to Supabase Storage, store the URL) should be added as a 1C cleanup task. No action needed now.
+**Token telemetry is still estimated:** Both AI endpoints log approximate token counts rather than exact usage from the Anthropic API. Documented in code with a `# TODO: upgrade before TestFlight` comment. No action now — but add `ANTHROPIC_API_KEY` to `api/.env` before any live AI testing.
 
 ## 🔜 Next cycle will work on
 
-1B-003 (Share Extension) will be retried with a narrow, surgical fix — only `auth.py` changes, nothing else. Once that lands, iOS users will be able to share URLs from Safari or any app directly into Nexus without opening the app.
+The research and chat endpoints are live — next is the iOS side: the "Research a topic" FRE flow (1C-005) that calls the research endpoint and shows sources arriving in real time, and the Library view (1C-002) that displays your collections. These two screens are the core product loop a user experiences on first launch.
 
 ## ⏳ Waiting on you (blocked tasks)
 
 | Task | What you need to do | What it unlocks |
 |---|---|---|
-| S3/R2 storage bucket (1A-008) | Create a Cloudflare R2 or AWS S3 bucket and paste credentials into `api/.env` | Full-text storage for saved articles; required before production-scale content ingestion and the Reader view |
+| S3/R2 full-text storage (1A-008) | Create an R2 or S3 bucket and paste credentials into `api/.env` | Full article text stored durably; reader view can load offline |
+| ANTHROPIC_API_KEY | Add your Anthropic API key to `api/.env` | Research and chat endpoints return real AI responses (currently return a structured error event) |
+| APNs key (1C-011) | Add Apple Push Notification key to `api/.env` | Daily Briefing push notifications to iPhone |

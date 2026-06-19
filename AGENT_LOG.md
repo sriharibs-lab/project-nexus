@@ -65,3 +65,11 @@ Tasks completed: 1B-006 (In-app feedback UI — merged approve_with_notes; 11 ba
 Tasks blocked: 1B-003 (Share Extension — request_changes after 2 retries; auth.py still has `= None` instead of `= Depends(bearer_scheme)`; requirements.txt had major deps stripped; collection_id removed from ingest violating locked IA; Swift NexusShare files absent from branch; SWE must restart from main and make only targeted auth.py fix)
 Gated (waiting on human): 1A-008 (S3/R2 bucket — needs cloud storage credentials in api/.env)
 Commit SHA: f37aeb6
+
+---
+
+## Cycle 2026-06-19T12:00:00Z
+Tasks completed: 1C-001 (POST /collections/research SSE endpoint — approve_with_notes; 21 tests pass), 1C-008 (POST /collections/{id}/chat SSE endpoint — approve_with_notes; 9 tests pass; collections.py merge conflict resolved by ALM combining CRUD + chat into single router), 1C-queue-durability (pgqueuer upgrade — approve_with_notes; 11 tests pass)
+Tasks blocked: none
+Gated (waiting on human): 1A-008 (S3/R2 bucket — needs cloud storage credentials in api/.env), 1C-011 (Daily Briefing push UI — needs APNs key)
+Commit SHA: b21fbb1

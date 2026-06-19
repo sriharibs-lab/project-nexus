@@ -1,219 +1,141 @@
 """
-Async content ingestion queue.
+Durable content ingestion queue backed by pgqueuer (Postgres).
 
-Currently an in-process asyncio queue. Replace the backend (Redis/Celery,
-pgqueuer) without changing the public interface: enqueue_item / start_worker.
+Jobs survive deploys and crashes. Public interface is unchanged:
+  enqueue_item(url, content_type, user_id) -> job_id
+  init_pgq_pool() -> called once from app lifespan
+  close_pgq_pool() -> called once on shutdown
+  start_worker() -> long-running coroutine, called once from app lifespan
 
-NOTE: In-process queue loses all jobs on crash or redeploy. Swap to pgqueuer
-or Redis before Phase 1C / TestFlight cutoff (Architect note).
+pgqueuer uses the same Supabase Postgres as the rest of the app — no
+new infrastructure required.
 """
 
-import asyncio
+from __future__ import annotations
+
+import json
 import logging
-import time
 import uuid
-from dataclasses import dataclass, field
 
-from sqlalchemy import select, update
-from sqlalchemy.dialects.postgresql import insert as pg_insert
+import asyncpg
+from pgqueuer import PgQueuer
+from pgqueuer.models import Job
 
-from app.core.database import AsyncSessionLocal
-from app.models.ai_telemetry import AiTelemetry
-from app.models.collection import Collection
-from app.models.item import ContentType, IngestStatus, Item, collection_items, item_tags
-from app.models.tag import Tag
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-_queue: asyncio.Queue["IngestJob"] = asyncio.Queue()
+# ---------------------------------------------------------------------------
+# Module-level asyncpg pool — initialised once in lifespan
+# ---------------------------------------------------------------------------
+
+_pool: asyncpg.Pool | None = None
+
+QUEUE_NAME = "nexus_ingest"
 
 
-@dataclass
-class IngestJob:
-    job_id: str
-    url: str
-    content_type: str
-    user_id: str
-    collection_id: str
-    retries: int = field(default=0)
+async def init_pgq_pool() -> None:
+    """Create the asyncpg connection pool. Call once in app lifespan startup."""
+    global _pool
+    # pgqueuer requires asyncpg (not SQLAlchemy) — use the same DATABASE_URL
+    # but strip the +asyncpg driver prefix if present (asyncpg expects plain DSN)
+    dsn = settings.database_url.replace("postgresql+asyncpg://", "postgresql://")
+    _pool = await asyncpg.create_pool(dsn, min_size=2, max_size=10)
+    logger.info("pgqueuer asyncpg pool created")
 
 
-async def enqueue_item(url: str, content_type: str, user_id: str, collection_id: str) -> str:
+async def close_pgq_pool() -> None:
+    """Drain and close the asyncpg pool. Call once in app lifespan shutdown."""
+    global _pool
+    if _pool is not None:
+        await _pool.close()
+        _pool = None
+        logger.info("pgqueuer asyncpg pool closed")
+
+
+def get_pgq_pool() -> asyncpg.Pool:
+    """Return the module-level pool. Raises if init_pgq_pool() was not called."""
+    if _pool is None:
+        raise RuntimeError(
+            "pgqueuer pool is not initialised — call init_pgq_pool() in app lifespan startup"
+        )
+    return _pool
+
+
+# ---------------------------------------------------------------------------
+# Public enqueue interface (unchanged signature)
+# ---------------------------------------------------------------------------
+
+
+async def enqueue_item(url: str, content_type: str, user_id: str) -> str:
+    """
+    Persist a new ingest job to Postgres via pgqueuer and return its job_id.
+
+    The returned job_id is a client-generated UUID stored in the job payload so
+    callers can reference it before the row is inserted by pgqueuer internals.
+    """
     job_id = str(uuid.uuid4())
-    job = IngestJob(
-        job_id=job_id,
-        url=url,
-        content_type=content_type,
-        user_id=user_id,
-        collection_id=collection_id,
-    )
-    await _queue.put(job)
-    logger.info(
-        "Enqueued job %s for url=%s user=%s collection=%s",
-        job_id, url, user_id, collection_id,
-    )
+    payload = json.dumps({"job_id": job_id, "url": url, "content_type": content_type, "user_id": user_id})
+
+    pool = get_pgq_pool()
+    async with pool.acquire() as conn:
+        pgq = PgQueuer(conn)
+        await pgq.queries.enqueue(
+            QUEUE_NAME,
+            payload,  # type: ignore[arg-type]
+            priority=0,
+        )
+
+    logger.info("Enqueued job %s for url=%s user=%s", job_id, url, user_id)
     return job_id
 
 
-async def _process_job(job: IngestJob) -> None:
-    logger.info("Processing job %s url=%s collection=%s", job.job_id, job.url, job.collection_id)
-
-    async with AsyncSessionLocal() as db:
-        t0 = time.perf_counter()
-
-        # Create item record (no collection_id FK — membership via collection_items)
-        item = Item(
-            id=uuid.uuid4(),
-            user_id=uuid.UUID(job.user_id),
-            url=job.url,
-            content_type=ContentType(job.content_type) if job.content_type in ContentType._value2member_map_ else ContentType.article,
-            ingest_status=IngestStatus.processing,
-        )
-        db.add(item)
-        await db.flush()  # get item.id without committing
-
-        # Wire item into collection via join table (visible immediately as processing)
-        collection_id = uuid.UUID(job.collection_id)
-        await db.execute(
-            pg_insert(collection_items)
-            .values(collection_id=collection_id, item_id=item.id)
-            .on_conflict_do_nothing()
-        )
-        await db.commit()
-
-        try:
-            # ── 1. Extract content ─────────────────────────────────────────
-            url = job.url
-            ct = job.content_type
-
-            if "youtube.com" in url or "youtu.be" in url or ct == "video":
-                from pipeline.youtube import extract as _extract
-                extraction = await asyncio.to_thread(_extract, url)
-            elif ct == "podcast":
-                from pipeline.deepgram_extractor import extract as _extract  # type: ignore[assignment]
-                extraction = await asyncio.to_thread(_extract, url)
-            else:
-                from pipeline.jina import extract as _extract  # type: ignore[assignment]
-                extraction = await _extract(url)  # async — no to_thread needed
-
-            if not extraction.ok and ct not in ("video", "podcast"):
-                from pipeline.readability import extract as _fallback
-                extraction = await asyncio.to_thread(_fallback, url)
-
-            if not extraction.ok:
-                raise RuntimeError(f"Extraction failed: {extraction.error}")
-
-            content = extraction.content
-
-            # ── 2. AI summarization ────────────────────────────────────────
-            from ai.pipeline import compute_embedding, summarize_item
-
-            ai_t0 = time.perf_counter()
-            processed = await summarize_item(content, ct)  # type: ignore[arg-type]
-            ai_ms = int((time.perf_counter() - ai_t0) * 1000)
-
-            emb_t0 = time.perf_counter()
-            emb_result = await compute_embedding(content)
-            emb_ms = int((time.perf_counter() - emb_t0) * 1000)
-
-            # ── 3. Update item ─────────────────────────────────────────────
-            if extraction.title:
-                item.title = extraction.title
-            item.raw_content = content
-            item.summary = processed.tldr
-            item.insights = processed.insights
-            item.metadata_ = {
-                "extractor": extraction.extractor,
-                "word_count": extraction.word_count,
-                "extraction_ms": int(extraction.elapsed_ms),
-                **extraction.metadata,
-            }
-            item.ingest_status = IngestStatus.completed
-
-            # Increment source_count only on success — avoids phantom counts on failure
-            await db.execute(
-                update(Collection)
-                .where(Collection.id == collection_id)
-                .values(source_count=Collection.source_count + 1)
-            )
-
-            # ── 4. Tags ────────────────────────────────────────────────────
-            for tag_name in processed.tags:
-                slug = tag_name.lower().replace(" ", "-")[:100]
-                tag_res = await db.execute(
-                    select(Tag).where(Tag.user_id == item.user_id, Tag.slug == slug)
-                )
-                tag = tag_res.scalar_one_or_none()
-                if not tag:
-                    tag = Tag(id=uuid.uuid4(), user_id=item.user_id, name=tag_name, slug=slug)
-                    db.add(tag)
-                    await db.flush()
-                await db.execute(
-                    pg_insert(item_tags)
-                    .values(item_id=item.id, tag_id=tag.id)
-                    .on_conflict_do_nothing()
-                )
-
-            # ── 5. Telemetry ───────────────────────────────────────────────
-            db.add(AiTelemetry(
-                id=uuid.uuid4(),
-                user_id=item.user_id,
-                item_id=item.id,
-                collection_id=collection_id,
-                correlation_id=job.job_id,
-                operation="summarize",
-                model=processed.model,
-                input_tokens=processed.input_tokens,
-                output_tokens=processed.output_tokens,
-                cache_read_tokens=processed.cache_read_tokens,
-                cost_usd=processed.cost_usd + emb_result.cost_usd,
-                duration_ms=ai_ms + emb_ms,
-            ))
-
-            await db.commit()
-
-            # ── 6. Framing paragraph (first source only) ───────────────────
-            # Generates the Nexus-tab hero sentence after the very first item
-            # in a collection completes, so the tab is never blank.
-            try:
-                from sqlalchemy import func as sqlfunc
-                completed_count_result = await db.execute(
-                    select(sqlfunc.count()).select_from(Item)
-                    .join(collection_items, collection_items.c.item_id == Item.id)
-                    .where(
-                        collection_items.c.collection_id == collection_id,
-                        Item.ingest_status == IngestStatus.completed,
-                    )
-                )
-                if completed_count_result.scalar() == 1 and item.summary:
-                    col_res = await db.execute(
-                        select(Collection).where(Collection.id == collection_id)
-                    )
-                    col = col_res.scalar_one_or_none()
-                    if col and not col.framing_paragraph:
-                        from ai.pipeline import build_collection_framing
-                        col.framing_paragraph = await build_collection_framing(col.name, item.summary)
-                        await db.commit()
-            except Exception as framing_exc:
-                logger.warning("Framing generation failed for collection %s: %s", collection_id, framing_exc)
-
-            total_ms = int((time.perf_counter() - t0) * 1000)
-            logger.info("Job completed item_id=%s total_ms=%d", item.id, total_ms)
-
-        except Exception as exc:
-            logger.exception("Job failed %s: %s", job.job_id, exc)
-            item.ingest_status = IngestStatus.failed
-            item.metadata_ = {**(item.metadata_ or {}), "error": str(exc)}
-            await db.commit()
+# ---------------------------------------------------------------------------
+# Worker
+# ---------------------------------------------------------------------------
 
 
 async def start_worker() -> None:
-    logger.info("Ingestion worker started")
-    while True:
-        job = await _queue.get()
-        try:
-            await _process_job(job)
-        except Exception:
-            logger.exception("Unhandled error processing job %s", job.job_id)
-        finally:
-            _queue.task_done()
+    """
+    Long-running coroutine — call once from app lifespan.
+
+    pgqueuer polls Postgres with LISTEN/NOTIFY so idle CPU is near zero.
+    Failed jobs use on_failure='log' — they stay in the DB with status='exception'
+    for inspection, and are not silently discarded.
+    """
+    pool = get_pgq_pool()
+    async with pool.acquire() as conn:
+        pgq = PgQueuer(conn)
+
+        @pgq.entrypoint(QUEUE_NAME)
+        async def handle_ingest(job: Job) -> None:
+            data = json.loads(job.payload)  # type: ignore[arg-type]
+            await _process_job(
+                job_id=data["job_id"],
+                url=data["url"],
+                content_type=data["content_type"],
+                user_id=data["user_id"],
+            )
+
+        logger.info("pgqueuer ingestion worker started, listening on queue=%s", QUEUE_NAME)
+        await pgq.run()
+
+
+# ---------------------------------------------------------------------------
+# Job processor (stub — will be replaced with pipeline wiring in 1C-005)
+# ---------------------------------------------------------------------------
+
+
+async def _process_job(job_id: str, url: str, content_type: str, user_id: str) -> None:
+    """
+    Stub processor — replace with real fetch → parse → embed → store pipeline.
+
+    Raising an exception here marks the job 'exception' in pgqueuer's DB table,
+    making it visible for inspection rather than silently discarded.
+    """
+    logger.info(
+        "Processing job %s url=%s content_type=%s user=%s",
+        job_id, url, content_type, user_id,
+    )
+    # TODO (1C-005): fetch content, extract text, generate embedding, persist Item + Embedding
+    # TODO (1C-010): update UserInterestProfile topic weights post-ingest

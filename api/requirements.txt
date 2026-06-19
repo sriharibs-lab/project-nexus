@@ -2,6 +2,17 @@ fastapi>=0.111.0
 uvicorn[standard]>=0.29.0
 python-dotenv>=1.0.0
 httpx>=0.28.0
+pydantic-settings>=2.7.0
+
+# Database & queue
+asyncpg>=0.30.0
+sqlalchemy[asyncio]>=2.0.0
+alembic>=1.14.0
+pgvector>=0.3.0
+pgqueuer>=0.16.0
+
+# Auth
+python-jose[cryptography]>=3.3.0
 
 # Database + ORM
 sqlalchemy[asyncio]>=2.0.0

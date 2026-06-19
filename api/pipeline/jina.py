@@ -13,6 +13,8 @@ for up to 30 seconds per request. This async version yields control to the event
 loop during I/O and scales correctly under concurrent ingest load.
 """
 
+from __future__ import annotations
+
 import os
 import time
 from typing import Optional

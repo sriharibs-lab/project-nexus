@@ -20,7 +20,14 @@ JINA_BASE = "https://r.jina.ai/"
 TIMEOUT = 30  # seconds; Jina can be slow on heavy pages
 
 
-def extract(url: str) -> ExtractionResult:
+async def extract(url: str) -> ExtractionResult:
+    """
+    Async extraction via Jina AI Reader.
+
+    Uses httpx.AsyncClient directly (not asyncio.to_thread) to avoid consuming
+    a thread-pool slot for up to 30s per request under concurrent ingest load
+    (Architect note: converts from sync httpx.get to async).
+    """
     api_key: Optional[str] = os.getenv("JINA_API_KEY")
 
     headers = {
@@ -34,12 +41,8 @@ def extract(url: str) -> ExtractionResult:
 
     t0 = time.perf_counter()
     try:
-        resp = httpx.get(
-            f"{JINA_BASE}{url}",
-            headers=headers,
-            timeout=TIMEOUT,
-            follow_redirects=True,
-        )
+        async with httpx.AsyncClient(timeout=TIMEOUT, follow_redirects=True) as client:
+            resp = await client.get(f"{JINA_BASE}{url}", headers=headers)
         resp.raise_for_status()
         content = resp.text.strip()
         elapsed = (time.perf_counter() - t0) * 1000

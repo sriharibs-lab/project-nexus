@@ -1,3 +1,11 @@
+"""
+Collections CRUD router.
+
+Note on source_count: maintained as a denormalized integer. Incremented by
+the ingest pipeline on completion, decremented on item removal. Uses
+GREATEST(source_count - 1, 0) to prevent negative counts from race conditions
+or double-deletes (Architect note — would display incorrectly on iOS home screen).
+"""
 import uuid
 from datetime import datetime
 from typing import List, Optional

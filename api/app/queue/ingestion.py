@@ -20,7 +20,6 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from app.core.database import AsyncSessionLocal
 from app.models.ai_telemetry import AiTelemetry
 from app.models.collection import Collection
-from app.models.embedding import Embedding
 from app.models.item import ContentType, IngestStatus, Item, collection_items, item_tags
 from app.models.tag import Tag
 
@@ -89,12 +88,13 @@ async def _process_job(job: IngestJob) -> None:
 
             if "youtube.com" in url or "youtu.be" in url or ct == "video":
                 from pipeline.youtube import extract as _extract
+                extraction = await asyncio.to_thread(_extract, url)
             elif ct == "podcast":
                 from pipeline.deepgram_extractor import extract as _extract  # type: ignore[assignment]
+                extraction = await asyncio.to_thread(_extract, url)
             else:
                 from pipeline.jina import extract as _extract  # type: ignore[assignment]
-
-            extraction = await asyncio.to_thread(_extract, url)
+                extraction = await _extract(url)  # async — no to_thread needed
 
             if not extraction.ok and ct not in ("video", "podcast"):
                 from pipeline.readability import extract as _fallback
@@ -137,16 +137,7 @@ async def _process_job(job: IngestJob) -> None:
                 .values(source_count=Collection.source_count + 1)
             )
 
-            # ── 4. Embedding ───────────────────────────────────────────────
-            db.add(Embedding(
-                id=uuid.uuid4(),
-                item_id=item.id,
-                embedding=emb_result.vector,
-                model=emb_result.model,
-                dimensions=emb_result.dimensions,
-            ))
-
-            # ── 5. Tags ────────────────────────────────────────────────────
+            # ── 4. Tags ────────────────────────────────────────────────────
             for tag_name in processed.tags:
                 slug = tag_name.lower().replace(" ", "-")[:100]
                 tag_res = await db.execute(
@@ -163,11 +154,12 @@ async def _process_job(job: IngestJob) -> None:
                     .on_conflict_do_nothing()
                 )
 
-            # ── 6. Telemetry ───────────────────────────────────────────────
+            # ── 5. Telemetry ───────────────────────────────────────────────
             db.add(AiTelemetry(
                 id=uuid.uuid4(),
                 user_id=item.user_id,
                 item_id=item.id,
+                collection_id=collection_id,
                 correlation_id=job.job_id,
                 operation="summarize",
                 model=processed.model,
@@ -180,7 +172,7 @@ async def _process_job(job: IngestJob) -> None:
 
             await db.commit()
 
-            # ── 7. Framing paragraph (first source only) ───────────────────
+            # ── 6. Framing paragraph (first source only) ───────────────────
             # Generates the Nexus-tab hero sentence after the very first item
             # in a collection completes, so the tab is never blank.
             try:

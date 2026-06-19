@@ -36,7 +36,6 @@ class Collection(Base):
         String(10), nullable=False, default=CollectionCreatedBy.user
     )
     # Denormalized count — maintained by app layer on item add/remove.
-    # Cheaper than COUNT(*) at scale; one migration, zero risk now.
     source_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

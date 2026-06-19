@@ -1,29 +1,23 @@
 import enum
 import uuid
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
-from sqlalchemy import ARRAY, Column, DateTime, Enum, ForeignKey, String, Table, Text, func
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, String, Table, Text, func
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 
 
 class ContentType(str, enum.Enum):
-    """Canonical ContentType enum — single source of truth.
-
-    Previously duplicated in api/pipeline/base.py (ARTICLE/VIDEO/PODCAST only).
-    api/pipeline/base.py now imports from here to avoid silent routing mismatches.
-    Covers all content types the ingest router accepts and the AI pipeline routes on.
-    """
-
     article = "article"
     podcast = "podcast"
     video = "video"
     thread = "thread"
     blog = "blog"
     announcement = "announcement"
+    youtube = "youtube"
     other = "other"
 
 
@@ -64,7 +58,7 @@ class Item(Base):
     )
     raw_content: Mapped[Optional[str]] = mapped_column(Text)
     summary: Mapped[Optional[str]] = mapped_column(Text)
-    insights: Mapped[Optional[List[str]]] = mapped_column(ARRAY(Text))
+    insights: Mapped[Optional[list]] = mapped_column(ARRAY(Text))
     metadata_: Mapped[Optional[dict]] = mapped_column("metadata", JSONB, default=dict)
     ingest_status: Mapped[IngestStatus] = mapped_column(
         Enum(IngestStatus, name="ingest_status_enum"),
@@ -78,10 +72,10 @@ class Item(Base):
     )
 
     user: Mapped["User"] = relationship("User", back_populates="items")  # noqa: F821
-    collections: Mapped[List["Collection"]] = relationship(  # noqa: F821
-        "Collection", secondary="collection_items", back_populates="items"
-    )
-    tags: Mapped[List["Tag"]] = relationship("Tag", secondary="item_tags", back_populates="items")  # noqa: F821
-    embedding: Mapped[Optional["Embedding"]] = relationship(  # noqa: F821
+    tags: Mapped[list["Tag"]] = relationship("Tag", secondary="item_tags", back_populates="items")  # noqa: F821
+    embedding: Mapped["Embedding | None"] = relationship(  # noqa: F821
         "Embedding", back_populates="item", uselist=False, cascade="all, delete-orphan"
+    )
+    collections: Mapped[list["Collection"]] = relationship(  # noqa: F821
+        "Collection", secondary="collection_items", back_populates="items"
     )

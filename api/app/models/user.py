@@ -1,6 +1,5 @@
 import uuid
 from datetime import datetime
-from typing import List
 
 from sqlalchemy import DateTime, String, func
 from sqlalchemy.dialects.postgresql import UUID
@@ -20,11 +19,6 @@ class User(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    collections: Mapped[List["Collection"]] = relationship(  # noqa: F821
-        "Collection", back_populates="user", cascade="all, delete-orphan"
-    )
-    items: Mapped[List["Item"]] = relationship("Item", back_populates="user", cascade="all, delete-orphan")  # noqa: F821
-    tags: Mapped[List["Tag"]] = relationship("Tag", back_populates="user", cascade="all, delete-orphan")  # noqa: F821
-    interest_profile: Mapped["UserInterestProfile | None"] = relationship(  # noqa: F821
-        "UserInterestProfile", back_populates="user", uselist=False, cascade="all, delete-orphan"
-    )
+    items: Mapped[list["Item"]] = relationship("Item", back_populates="user", cascade="all, delete-orphan")  # noqa: F821
+    tags: Mapped[list["Tag"]] = relationship("Tag", back_populates="user", cascade="all, delete-orphan")  # noqa: F821
+    collections: Mapped[list["Collection"]] = relationship("Collection", back_populates="user", cascade="all, delete-orphan")  # noqa: F821

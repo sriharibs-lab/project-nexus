@@ -1,6 +1,7 @@
 import uuid
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 from pydantic import BaseModel, HttpUrl
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,7 +32,7 @@ class IngestResponse(BaseModel):
 
 @router.post("", status_code=status.HTTP_202_ACCEPTED, response_model=IngestResponse)
 async def ingest_item(
-    payload: IngestRequest,
+    payload: Annotated[IngestRequest, Body()],
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> IngestResponse:

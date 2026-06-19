@@ -1,10 +1,17 @@
+"""
+Collection items router.
+
+source_count floor fix: delete uses GREATEST(source_count - 1, 0) to prevent
+negative counts from race conditions or double-deletes. A negative source_count
+would display incorrectly on the iOS home screen (Architect note).
+"""
 import uuid
 from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, field_validator
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -130,17 +137,21 @@ async def delete_item(
     if exists.first() is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
 
-    # Remove from this collection; decrement source_count
+    # Remove from this collection
     await db.execute(
         delete(collection_items).where(
             collection_items.c.collection_id == collection_id,
             collection_items.c.item_id == item_id,
         )
     )
+
+    # Decrement source_count with floor at 0.
+    # GREATEST prevents negative counts from race conditions or double-deletes
+    # (Architect note — would show wrong count on iOS home screen).
     await db.execute(
         update(Collection)
         .where(Collection.id == collection_id)
-        .values(source_count=Collection.source_count - 1)
+        .values(source_count=func.greatest(Collection.source_count - 1, 0))
     )
 
     # Delete the item itself only if it no longer belongs to any collection

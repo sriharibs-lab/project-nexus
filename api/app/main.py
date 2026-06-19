@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.queue.ingestion import start_worker
-from app.routers import auth, feedback, health, ingest, collections, items
+from app.routers import auth, feedback, health, ingest, collections, items, research
 
 logging.basicConfig(level=settings.log_level.upper())
 logger = logging.getLogger(__name__)
@@ -54,3 +54,4 @@ app.include_router(feedback.router, prefix="/v1")
 app.include_router(ingest.router, prefix="/v1")
 app.include_router(collections.router, prefix="/v1")
 app.include_router(items.router, prefix="/v1")
+app.include_router(research.router, prefix="/v1")

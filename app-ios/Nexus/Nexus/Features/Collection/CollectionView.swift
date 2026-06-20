@@ -25,7 +25,9 @@ struct CollectionView: View {
             Color.Nexus.pageBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                tabPicker
+                // Liquid Glass floating tab capsule (DESIGN_LANGUAGE §3 + §8)
+                // Floats above content — uses backdrop blur material, spring thumb.
+                LiquidGlassTabCapsule(selectedTab: $selectedTab)
                     .padding(.horizontal, NexusSpacing.sideGutter)
                     .padding(.top, NexusSpacing.sm)
                     .padding(.bottom, NexusSpacing.xs)
@@ -40,33 +42,6 @@ struct CollectionView: View {
         .navigationTitle(vm.collection.name)
         .navigationBarTitleDisplayMode(.inline)
         .task { await vm.load() }
-    }
-
-    // MARK: - Tab picker (pill capsule style per DESIGN_LANGUAGE §8)
-
-    private var tabPicker: some View {
-        HStack(spacing: NexusSpacing.xs) {
-            ForEach(Tab.allCases, id: \.self) { tab in
-                Button {
-                    withAnimation(NexusAnimation.pivot) { selectedTab = tab }
-                } label: {
-                    Text(tab.rawValue)
-                        .font(.Nexus.labelMedium)
-                        .kerning(NexusKerning.normal)
-                        .foregroundColor(selectedTab == tab ? .Nexus.ink : .Nexus.muted)
-                        .padding(.vertical, NexusSpacing.xs + 2)
-                        .padding(.horizontal, NexusSpacing.md)
-                        .background(
-                            selectedTab == tab
-                                ? Color.Nexus.surface2
-                                : Color.clear,
-                            in: Capsule()
-                        )
-                }
-                .buttonStyle(.plain)
-            }
-            Spacer()
-        }
     }
 
     // MARK: - Tab content
@@ -84,32 +59,6 @@ struct CollectionView: View {
                 collectionId: vm.collection.id
             )
             .transition(.opacity)
-        }
-    }
-}
-
-// MARK: - Nexus tab (AI chat shell)
-
-struct NexusTabView: View {
-    let collection: NexusCollection
-
-    var body: some View {
-        VStack(spacing: NexusSpacing.lg) {
-            Spacer()
-            if let framing = collection.framingParagraph {
-                Text(framing)
-                    .font(.Nexus.bodyLarge)
-                    .foregroundColor(.Nexus.ink)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, NexusSpacing.xl)
-            } else {
-                Text("Ask anything about your sources in \"\(collection.name)\".")
-                    .font(.Nexus.bodyLarge)
-                    .foregroundColor(.Nexus.muted)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, NexusSpacing.xl)
-            }
-            Spacer()
         }
     }
 }

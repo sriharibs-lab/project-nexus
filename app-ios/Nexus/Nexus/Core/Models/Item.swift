@@ -11,6 +11,10 @@ struct Item: Codable, Identifiable, Hashable {
     // tags defaults to [] so Codable never throws DecodingError.keyNotFound
     // when the backend omits the key (backend ItemResponse already returns [] by default)
     var tags: [String] = []
+    // rawContent is the full extracted text; returned only by GET /items/{id},
+    // not the list endpoint (avoids large payload on list). Will be nil when
+    // decoded from list responses — that is expected.
+    let rawContent: String?
     let ingestStatus: IngestStatus
     let createdAt: Date
     let updatedAt: Date

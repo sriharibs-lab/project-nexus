@@ -1,5 +1,12 @@
 import SwiftUI
 
+// Navigation value for pushing ItemDetailView from the Sources list.
+// Wrapped in a dedicated struct so it is Hashable without polluting Item.
+struct ItemDetailRoute: Hashable {
+    let item: Item
+    let collectionId: UUID
+}
+
 struct CollectionView: View {
     @StateObject private var vm: CollectionViewModel
     @State private var selectedTab: Tab = .nexus
@@ -71,8 +78,12 @@ struct CollectionView: View {
             NexusTabView(collection: vm.collection)
                 .transition(.opacity)
         case .sources:
-            SourcesTabView(items: vm.items, isLoading: vm.isLoading)
-                .transition(.opacity)
+            SourcesTabView(
+                items: vm.items,
+                isLoading: vm.isLoading,
+                collectionId: vm.collection.id
+            )
+            .transition(.opacity)
         }
     }
 }
@@ -108,6 +119,7 @@ struct NexusTabView: View {
 struct SourcesTabView: View {
     let items: [Item]
     let isLoading: Bool
+    let collectionId: UUID
 
     var body: some View {
         Group {
@@ -134,7 +146,10 @@ struct SourcesTabView: View {
                 ScrollView {
                     LazyVStack(spacing: NexusSpacing.sm) {
                         ForEach(items) { item in
-                            SourceCard(item: item)
+                            NavigationLink(value: ItemDetailRoute(item: item, collectionId: collectionId)) {
+                                SourceCard(item: item)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                     .padding(.horizontal, NexusSpacing.sideGutter)
@@ -142,6 +157,9 @@ struct SourcesTabView: View {
                     .padding(.bottom, NexusSpacing.xl)
                 }
             }
+        }
+        .navigationDestination(for: ItemDetailRoute.self) { route in
+            ItemDetailView(item: route.item, collectionId: route.collectionId)
         }
     }
 }

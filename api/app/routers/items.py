@@ -27,6 +27,10 @@ router = APIRouter(prefix="/collections/{collection_id}/items", tags=["items"])
 # ── Schemas ───────────────────────────────────────────────────────────────────
 
 class ItemResponse(BaseModel):
+    """
+    Lightweight item used in list responses.
+    Does NOT include raw_content — avoids large payloads on the list endpoint.
+    """
     id: uuid.UUID
     user_id: uuid.UUID
     url: str
@@ -47,6 +51,15 @@ class ItemResponse(BaseModel):
         return [t.name if hasattr(t, "name") else str(t) for t in v]
 
     model_config = {"from_attributes": True}
+
+
+class ItemDetailResponse(ItemResponse):
+    """
+    Full item for the Reader view (GET /items/{id}).
+    Adds raw_content — the full extracted text — so the iOS Reader can render it.
+    raw_content may be None if extraction failed or is still in progress.
+    """
+    raw_content: Optional[str] = None
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -93,13 +106,13 @@ async def list_items(
     return list(result.scalars().all())
 
 
-@router.get("/{item_id}", response_model=ItemResponse)
+@router.get("/{item_id}", response_model=ItemDetailResponse)
 async def get_item(
     collection_id: uuid.UUID,
     item_id: uuid.UUID,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> ItemResponse:
+) -> ItemDetailResponse:
     user = await _resolve_user(current_user["supabase_id"], db)
     await _get_owned_collection(collection_id, user, db)
     result = await db.execute(

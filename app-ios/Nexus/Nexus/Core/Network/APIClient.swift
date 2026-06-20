@@ -43,6 +43,11 @@ final class APIClient {
         try await get(.items(collectionId: collectionId))
     }
 
+    /// Fetch a single item including its raw extracted text (for Reader view).
+    func fetchItem(id itemId: UUID, in collectionId: UUID) async throws -> Item {
+        try await get(.item(collectionId: collectionId, itemId: itemId))
+    }
+
     func ingest(url: String, collectionId: UUID, contentType: String = "article") async throws -> IngestResponse {
         let body = IngestRequest(url: url, collectionId: collectionId, contentType: contentType)
         return try await post(.ingest, body: body)

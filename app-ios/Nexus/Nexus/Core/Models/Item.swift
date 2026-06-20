@@ -13,8 +13,9 @@ struct Item: Codable, Identifiable, Hashable {
     var tags: [String] = []
     // rawContent is the full extracted text; returned only by GET /items/{id},
     // not the list endpoint (avoids large payload on list). Will be nil when
-    // decoded from list responses — that is expected.
-    let rawContent: String?
+    // decoded from list responses — that is expected and must not throw
+    // DecodingError.keyNotFound (hence var with default nil, matching tags pattern).
+    var rawContent: String? = nil
     let ingestStatus: IngestStatus
     let createdAt: Date
     let updatedAt: Date

@@ -145,7 +145,7 @@ struct ItemDetailView: View {
 
     @ViewBuilder
     private var summaryHero: some View {
-        if let summary = vm.displayItem.summary {
+        if vm.displayItem.ingestStatus == .completed, let summary = vm.displayItem.summary {
             VStack(alignment: .leading, spacing: NexusSpacing.xs) {
                 Label("Summary", systemImage: "sparkles")
                     .font(.Nexus.labelSmall)
@@ -177,7 +177,8 @@ struct ItemDetailView: View {
 
     @ViewBuilder
     private var insightsBlock: some View {
-        if let insights = vm.displayItem.insights, !insights.isEmpty {
+        if vm.displayItem.ingestStatus == .completed,
+           let insights = vm.displayItem.insights, !insights.isEmpty {
             VStack(alignment: .leading, spacing: NexusSpacing.md) {
                 Label("Key Insights", systemImage: "lightbulb")
                     .font(.Nexus.labelSmall)

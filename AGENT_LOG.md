@@ -89,3 +89,11 @@ Tasks completed: 1C-003 (Item detail / Reader view — approve_with_notes; rawCo
 Tasks blocked: 1C-006 (search — request_changes after 2 retries; dangling commit not on main, compute_embedding still sync stub, migration duplicate revision 0002, config field name drift supabase_jwt_secret vs supabase_secret_key, main.py missing 5 routers), 1C-010 (Daily Briefing backend — request_changes; branch cut from b435ac2, 20 merge conflict markers in pipeline.py, duplicate migration revision 0002, user_interest_profile field name collision weights vs topics, generate_daily_briefing() sync blocks event loop)
 Gated (waiting on human): 1A-008 (S3/R2 bucket — needs cloud storage credentials in api/.env), 1C-011 (Daily Briefing push UI — needs APNs key), 1C-007 (Nexus tab chat UI — gated on 1C-003 now complete)
 Commit SHA: 43fd26a
+
+---
+
+## Cycle 2026-06-20T00:00:00Z
+Tasks completed: BLOCKER-collections-enum (CollectionCreatedBy enum + created_by field — approve; 39 tests pass; FastAPI startup ImportError eliminated), 1C-007 (Nexus tab chat UI — approve_with_notes; iOS SSE consumer, EchoPulse wait state, citation chips, Liquid Glass tab capsule, 6-turn history; nexus-tab-chat.html + 26 tests pass), 1C-004 (Sources tab polish — approve_with_notes; ContentTypeIcon, TagChips, SwipeRow swipe-to-delete, PullToRefresh; 48 tests pass)
+Tasks blocked: none
+Gated (waiting on human): 1A-008 (S3/R2 bucket — needs cloud storage credentials in api/.env), 1C-011 (Daily Briefing iOS UI — needs APNs key from Apple Developer portal)
+Commit SHA: 96f7846

@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.queue.ingestion import close_pgq_pool, init_pgq_pool, start_worker
-from app.routers import auth, feedback, health, ingest, collections, items, research
+from app.routers import auth, briefing, feedback, health, ingest, collections, items, research, search
 
 logging.basicConfig(level=settings.log_level.upper())
 logger = logging.getLogger(__name__)
@@ -72,3 +72,5 @@ app.include_router(ingest.router, prefix="/v1")
 app.include_router(collections.router, prefix="/v1")
 app.include_router(items.router, prefix="/v1")
 app.include_router(research.router, prefix="/v1")
+app.include_router(briefing.router, prefix="/v1")
+app.include_router(search.router, prefix="/v1")

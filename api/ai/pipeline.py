@@ -306,6 +306,150 @@ async def compute_embedding(content: str) -> EmbeddingResult:
 
 
 # ---------------------------------------------------------------------------
+# Daily Briefing
+# ---------------------------------------------------------------------------
+
+BRIEFING_SYSTEM = """You are the Nexus Daily Briefing engine. Your job is to synthesize a user's recent saved content into a concise, high-signal morning briefing.
+
+Rules:
+- Headline: one punchy sentence capturing the most important theme or trend across all items.
+- Sections: 2-5 thematic sections. Each section has a title (\u22646 words) and 2-4 bullet points.
+  Each bullet must cite the source item by its id using the format [item:<id>].
+- Do not fabricate insights not present in the source items.
+- Tone: direct, intelligent, non-corporate. Like a smart colleague's Slack summary.
+
+Respond with valid JSON only. No markdown fences."""
+
+BRIEFING_USER_TEMPLATE = """\
+User interest weights (higher = more relevant to user):
+{interest_profile}
+
+Recent saved items (newest first):
+{items_block}
+
+Return JSON with this exact structure:
+{{
+  "headline": "string",
+  "sections": [
+    {{
+      "title": "string",
+      "bullets": ["string", ...]
+    }}
+  ]
+}}"""
+
+
+@dataclass
+class BriefingSection:
+    title: str
+    bullets: list[str]
+
+
+@dataclass
+class BriefingResult:
+    headline: str
+    sections: list[BriefingSection]
+    input_tokens: int
+    output_tokens: int
+    items_used: int
+
+
+@dataclass
+class BriefingItem:
+    """Minimal item descriptor passed to generate_daily_briefing()."""
+    id: str
+    title: str | None
+    summary: str | None
+    tags: list[str] = field(default_factory=list)
+
+
+async def generate_daily_briefing(
+    items: list[BriefingItem],
+    interest_weights: dict[str, float],
+) -> BriefingResult:
+    """
+    Generate a structured daily briefing from recent completed items and the
+    user's interest profile (tag \u2192 weight mapping).
+
+    Args:
+        items: Recent completed items, ordered newest-first. Pass at most 20;
+               caller is responsible for fetching via fetch_recent_items_for_briefing().
+        interest_weights: Tag-to-weight map from UserInterestProfile.topics.
+                          Empty dict is accepted (briefing still generated, unweighted).
+
+    Returns:
+        BriefingResult with headline, thematic sections, and token telemetry.
+
+    Raises:
+        RuntimeError: if ANTHROPIC_API_KEY is not set.
+        ValueError: if items list is empty (nothing to brief on).
+        json.JSONDecodeError: if the model returns malformed JSON.
+    """
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        raise RuntimeError("ANTHROPIC_API_KEY is not set")
+    if not items:
+        raise ValueError("items must not be empty \u2014 no completed items to brief on")
+
+    # Build interest profile block (top-15 by weight, descending)
+    sorted_weights = sorted(interest_weights.items(), key=lambda kv: kv[1], reverse=True)[:15]
+    if sorted_weights:
+        interest_block = "\n".join(f"  {tag}: {weight:.2f}" for tag, weight in sorted_weights)
+    else:
+        interest_block = "  (no profile yet \u2014 treat all topics equally)"
+
+    # Build items block \u2014 one entry per item, concise
+    item_lines: list[str] = []
+    for item in items[:20]:  # hard cap at 20 to control context size
+        tag_str = ", ".join(item.tags[:5]) if item.tags else "no tags"
+        summary_text = item.summary or "(no summary)"
+        title_text = item.title or "(untitled)"
+        item_lines.append(
+            f"[item:{item.id}] {title_text}\n"
+            f"  tags: {tag_str}\n"
+            f"  summary: {summary_text}"
+        )
+    items_block = "\n\n".join(item_lines)
+
+    response = await _client.messages.create(
+        model="claude-haiku-4-5",
+        max_tokens=1024,
+        system=BRIEFING_SYSTEM,
+        messages=[
+            {
+                "role": "user",
+                "content": BRIEFING_USER_TEMPLATE.format(
+                    interest_profile=interest_block,
+                    items_block=items_block,
+                ),
+            }
+        ],
+    )
+
+    raw = next(b.text for b in response.content if b.type == "text")
+
+    # Strip accidental markdown fences
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+
+    data = json.loads(raw.strip())
+
+    sections = [
+        BriefingSection(title=s["title"], bullets=s["bullets"])
+        for s in data["sections"]
+    ]
+
+    return BriefingResult(
+        headline=data["headline"],
+        sections=sections,
+        input_tokens=response.usage.input_tokens,
+        output_tokens=response.usage.output_tokens,
+        items_used=len(items),
+    )
+
+
+# ---------------------------------------------------------------------------
 # Example outputs
 # ---------------------------------------------------------------------------
 

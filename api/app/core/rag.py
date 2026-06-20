@@ -105,6 +105,9 @@ def build_context_block(chunks: list[RagChunk], max_chars: int = 16_000) -> str:
     Render retrieved chunks into a single context string for the system prompt.
 
     Truncates to max_chars to keep within the model's context window budget.
+    Prefers summary over raw_content. Raw_content is capped at 2000 chars
+    to bound context window bloat (completed items must have a summary;
+    raw_content fallback is a safety net only).
     Each chunk leads with its title + URL so the model can attribute sources.
     """
     parts: list[str] = []
@@ -112,7 +115,12 @@ def build_context_block(chunks: list[RagChunk], max_chars: int = 16_000) -> str:
 
     for i, chunk in enumerate(chunks, 1):
         header = f"[Source {i}] {chunk.title or 'Untitled'}\n{chunk.url}\n"
-        body = chunk.summary or chunk.raw_content or ""
+        if chunk.summary:
+            body = chunk.summary
+        elif chunk.raw_content:
+            body = chunk.raw_content[:2000] + ("…" if len(chunk.raw_content) > 2000 else "")
+        else:
+            body = ""
         entry = f"{header}{body}\n\n"
 
         if total + len(entry) > max_chars:
@@ -125,3 +133,48 @@ def build_context_block(chunks: list[RagChunk], max_chars: int = 16_000) -> str:
         total += len(entry)
 
     return "".join(parts)
+
+
+# ---------------------------------------------------------------------------
+# Daily Briefing fetch helper
+# ---------------------------------------------------------------------------
+
+
+async def fetch_recent_items_for_briefing(
+    db,
+    user_id,
+    limit: int = 20,
+) -> list:
+    """
+    Return the most recent `limit` completed items for `user_id` as
+    BriefingItem objects ready for generate_daily_briefing().
+
+    Uses selectinload to avoid N+1 queries on tags.
+    Total = 2 queries regardless of item count.
+    """
+    from uuid import UUID
+    from sqlalchemy import desc, select
+    from sqlalchemy.orm import selectinload
+    from ai.pipeline import BriefingItem
+    from app.models.item import IngestStatus, Item
+
+    stmt = (
+        select(Item)
+        .where(Item.user_id == user_id)
+        .where(Item.ingest_status == IngestStatus.completed)
+        .order_by(desc(Item.created_at))
+        .limit(limit)
+        .options(selectinload(Item.tags))
+    )
+    result = await db.execute(stmt)
+    rows = result.scalars().all()
+
+    return [
+        BriefingItem(
+            id=str(row.id),
+            title=row.title,
+            summary=row.summary,
+            tags=[tag.slug for tag in row.tags],
+        )
+        for row in rows
+    ]

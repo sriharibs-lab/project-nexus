@@ -57,6 +57,52 @@ final class APIClient {
         try await post(.feedback, body: request)
     }
 
+    // MARK: - Search
+
+    /// GET /v1/search?q=<query>&mode=<mode>&limit=<limit>
+    ///
+    /// Passes query parameters via URL rather than a request body (GET semantics).
+    /// Returns up to `limit` results ranked by hybrid FTS + semantic score.
+    func search(
+        query: String,
+        mode: SearchRequest.SearchMode = .hybrid,
+        limit: Int = 20
+    ) async throws -> SearchResponse {
+        guard var components = URLComponents(url: Endpoint.search.url, resolvingAgainstBaseURL: false) else {
+            throw APIError.unknown
+        }
+        components.queryItems = [
+            URLQueryItem(name: "q", value: query),
+            URLQueryItem(name: "mode", value: mode.rawValue),
+            URLQueryItem(name: "limit", value: String(limit)),
+        ]
+        guard let url = components.url else { throw APIError.unknown }
+
+        var req = URLRequest(url: url)
+        req.httpMethod = "GET"
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        if let token = authToken {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await URLSession.shared.data(for: req)
+        } catch {
+            throw APIError.networkError(error)
+        }
+
+        guard let http = response as? HTTPURLResponse else { throw APIError.unknown }
+        switch http.statusCode {
+        case 200...299:
+            do { return try decoder.decode(SearchResponse.self, from: data) }
+            catch { throw APIError.decodingError(error) }
+        case 401: throw APIError.unauthorized
+        case 404: throw APIError.notFound
+        default:  throw APIError.serverError(http.statusCode)
+        }
+    }
+
     // MARK: - SSE Streaming
 
     /// Opens a POST SSE stream and calls `onEvent` for each parsed JSON payload.

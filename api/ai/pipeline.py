@@ -1,7 +1,7 @@
 """
 Nexus AI Processing Pipeline
 Summarization + semantic tagging via Claude Haiku 4.5.
-Embeddings via OpenAI text-embedding-3-small (1536-dim, pgvector-ready).
+Embeddings via Fireworks nomic-embed-text-v1.5 (768-dim, pgvector-ready).
 Collection research streaming via Claude Sonnet (SPEC §9c).
 """
 
@@ -124,7 +124,7 @@ class ResearchResult:
 
 @dataclass
 class EmbeddingResult:
-    """pgvector-ready: 1536-dim float32 vector stored as list[float]."""
+    """pgvector-ready: 768-dim float32 vector stored as list[float] (Fireworks nomic-embed-text-v1.5)."""
     vector: list[float]
     dimensions: int
     model: str

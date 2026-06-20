@@ -83,6 +83,11 @@ class ChatRequest(BaseModel):
     # Optional: caller may pass a pre-computed embedding to avoid re-computing
     # on the server. If absent, the server generates one via ai/pipeline.py.
     query_embedding: list[float] | None = None
+    # Optional: prior conversation turns for multi-turn context (SPEC §9a Pillar 4).
+    # Format: [{"role": "user"|"assistant", "content": "..."}, ...]
+    # iOS client should pass the last N turns (up to 50 per SPEC §9a).
+    # If None or empty, treated as a fresh single-turn request.
+    messages: list[dict] | None = None
 
 
 # ── CRUD Helpers ───────────────────────────────────────────────────────────────
@@ -213,11 +218,8 @@ Rules:
 
 async def _embed_query(text: str) -> list[float]:
     """
-    Generate a query embedding. Currently delegates to the stub in
-    api/ai/pipeline.py; the stub is already async so this is safe to await.
-
-    When the stub is replaced with a real embedding API call (text-embedding-3-small)
-    the event loop will not block because this function is already async.
+    Generate a query embedding via Fireworks nomic-embed-text-v1.5 (768-dim).
+    Delegates to compute_embedding() in api/ai/pipeline.py.
     """
     from ai.pipeline import compute_embedding  # type: ignore[import]
 
@@ -234,6 +236,7 @@ async def _stream_chat(
     collection: Collection,
     message: str,
     chunks: list[RagChunk],
+    prior_messages: list[dict] | None = None,
 ) -> AsyncGenerator[str, None]:
     """
     Core SSE generator — always emits a terminal event (done or error).
@@ -243,6 +246,11 @@ async def _stream_chat(
     2. Opens Anthropic streaming message and emits "chunk" events per token.
     3. Emits "done" when the stream closes.
     4. Emits "error" on any exception.
+
+    prior_messages: conversation history in Anthropic format
+    [{"role": "user"|"assistant", "content": "..."}].
+    Prepended before the current user message to enable multi-turn context
+    (SPEC §9a Pillar 4 — episodic memory, last 50 turns).
     """
     source_list = [
         {"title": c.title or "Untitled", "url": c.url, "similarity": round(c.similarity, 4)}
@@ -258,10 +266,29 @@ async def _stream_chat(
         return
 
     context = build_context_block(chunks)
-    system_prompt = _CHAT_SYSTEM.format(
+    system_prompt_text = _CHAT_SYSTEM.format(
         collection_name=collection.name,
         context=context if context else "(No completed sources in this collection yet.)",
     )
+    # Wrap in cache_control block so Anthropic caches the system prompt across
+    # turns in the same session — mirrors the pattern in api/ai/pipeline.py
+    # (_RESEARCH_SYSTEM_CACHE_CONTROL). At 2+ turns per session across 100K users
+    # this meaningfully reduces input-token cost.
+    system_with_cache = [
+        {
+            "type": "text",
+            "text": system_prompt_text,
+            "cache_control": {"type": "ephemeral"},
+        }
+    ]
+
+    # Build messages list: prior turns (if any) followed by the current user message.
+    # Only include roles Anthropic accepts ("user" / "assistant"); drop anything else.
+    safe_prior = [
+        m for m in (prior_messages or [])
+        if isinstance(m, dict) and m.get("role") in {"user", "assistant"} and m.get("content")
+    ]
+    anthropic_messages = safe_prior + [{"role": "user", "content": message}]
 
     try:
         client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
@@ -269,8 +296,8 @@ async def _stream_chat(
         async with client.messages.stream(
             model=settings.chat_model,
             max_tokens=settings.chat_max_tokens,
-            system=system_prompt,
-            messages=[{"role": "user", "content": message}],
+            system=system_with_cache,
+            messages=anthropic_messages,
         ) as stream:
             async for text_chunk in stream.text_stream:
                 yield await _sse_event({"type": "chunk", "text": text_chunk})
@@ -368,6 +395,7 @@ async def chat_with_collection(
             collection=collection,
             message=payload.message,
             chunks=chunks,
+            prior_messages=payload.messages,
         ),
         media_type="text/event-stream",
         headers={

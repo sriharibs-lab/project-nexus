@@ -3,6 +3,10 @@ import SwiftUI
 struct HomeView: View {
     @StateObject private var vm = HomeViewModel()
 
+    /// When true (passed from onboarding completion), open the ResearchFlowView sheet
+    /// automatically on first appear. Defaults to false for all non-onboarding entry points.
+    var openResearchOnAppear: Bool = false
+
     // Research sheet
     @State private var showingNewCollection = false
     // After research completes, hold the new collection to navigate to
@@ -38,6 +42,15 @@ struct HomeView: View {
                 }
             }
             .task { await vm.load() }
+            .onAppear {
+                // If arriving from onboarding with "Research a topic" selected,
+                // open the research sheet after a brief settle delay.
+                if openResearchOnAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                        showingNewCollection = true
+                    }
+                }
+            }
             .sheet(isPresented: $showingNewCollection) {
                 ResearchFlowView { collectionId in
                     // Research complete — reload collections and push to the new one

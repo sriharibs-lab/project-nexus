@@ -20,17 +20,42 @@ struct NexusApp: App {
     }
 }
 
-/// Root routing: auth state drives the view stack.
-/// Sign-in screens slot in here in 1B-002; for now a placeholder
-/// that goes straight to Home (dev build only).
+/// Root routing: auth state + onboarding state drive the view stack.
+///
+/// Priority order:
+///   1. Not authenticated → AuthPlaceholderView (replaced by Sign in with Apple in 1B-002)
+///   2. Authenticated + onboarding not done → OnboardingView
+///   3. Authenticated + onboarding done → HomeView
 private struct RootView: View {
     @EnvironmentObject var authManager: AuthManager
 
+    /// Tracks whether onboarding is complete within this session.
+    /// Initialized from UserDefaults; set to true when OnboardingView calls onComplete.
+    @State private var onboardingDone: Bool = OnboardingViewModel.hasCompletedOnboarding
+
+    /// When true, HomeView will immediately show the ResearchFlowView sheet.
+    @State private var launchResearchOnHome: Bool = false
+
     var body: some View {
-        if authManager.isAuthenticated {
-            HomeView()
-        } else {
+        if !authManager.isAuthenticated {
             AuthPlaceholderView()
+        } else if !onboardingDone {
+            OnboardingView { launchResearch in
+                launchResearchOnHome = launchResearch
+                withAnimation(NexusAnimation.pageForward) {
+                    onboardingDone = true
+                }
+            }
+            .transition(.asymmetric(
+                insertion: .opacity,
+                removal: .move(edge: .leading).combined(with: .opacity)
+            ))
+        } else {
+            HomeView(openResearchOnAppear: launchResearchOnHome)
+                .transition(.asymmetric(
+                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                    removal: .opacity
+                ))
         }
     }
 }

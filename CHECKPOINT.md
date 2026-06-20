@@ -3,42 +3,35 @@
 
 ## What was built
 
-Nexus can now create AI-seeded collections from a topic: type a subject, and the app streams back a curated list of sources in real time while Claude assembles them. Once a collection has sources, users can ask questions about them — the app finds the most relevant saved content using semantic search, passes it to Claude Sonnet, and streams back a grounded answer with citations. The ingest queue was also upgraded from in-memory (lost on restart) to a Postgres-backed durable queue — jobs survive server restarts and can be retried on failure.
+Nexus can now open a saved source in a full reader view. Tapping any card in the Sources tab pushes a clean reading screen showing the AI summary, key insights, and the full extracted article text — with a link to open the original. Two stability fixes landed with this: the app no longer crashes when the backend omits the raw text field on the list endpoint, and failed items no longer incorrectly show stale AI summaries.
 
 ## ✅ Verify it worked
 
-- [ ] **Research endpoint** — `curl -N -X POST http://localhost:8000/v1/collections/research -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"topic":"longevity and aging"}' ` — should stream `data:` events ending with `{"event":"done","collection_id":"...","source_count":N}`
-- [ ] **Chat endpoint** — `curl -N -X POST http://localhost:8000/v1/collections/<id>/chat -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"message":"What are the key themes?"}' ` — should stream `{"type":"sources",...}` then `{"type":"chunk",...}` events, ending with `{"type":"done"}`
-- [ ] **Durable queue** — start server, queue an ingest job via `POST /v1/ingest`, kill the server, restart — the job should still be in `pgqueuer_jobs` table (`SELECT * FROM pgqueuer_jobs WHERE queue_name='nexus_ingest'`)
-- [ ] **Auth body fix** — `POST /v1/collections` with `{"name":"test"}` and a Bearer token should return 201, not 422 (the body-schema nesting bug is fixed)
+- [ ] **Reader view** — In the Sources tab, tap any completed source card. A full-screen reader should open with a summary hero block, numbered key insights, tags, and the extracted full text. Tap the "Open original" link at the bottom — it should open Safari.
+- [ ] **No crash on Sources list** — With items in any processing or failed state, the Sources tab should load without crashing. Failed items must NOT show a summary or insights block.
+- [ ] **pgvector dimension** — Run `SELECT atttypmod FROM pg_attribute JOIN pg_class ON attrelid=pg_class.oid WHERE relname='embeddings' AND attname='embedding'` — should return 772 (768 + 4 overhead). Confirmed already on main.
 
 ## 📋 Decisions made this cycle (no action needed)
 
 | What was decided | Options considered | Why |
 |---|---|---|
-| SSE (Server-Sent Events) for both AI endpoints | WebSocket, polling | SSE is one-way — exactly right for streaming AI; works natively on iOS with URLSessionDataTask |
-| Claude Sonnet for research and chat (not Haiku) | Haiku for cost, Opus for quality | SPEC §9c requires Sonnet quality floor for user-facing AI; Opus reserved for internal tooling only |
-| pgvector RAG read path as a shared module (`rag.py`) | Inline per-endpoint | Both chat and semantic search (1C-006) share the same cosine similarity query; centralise once |
-| pgqueuer over Redis for queue durability | Redis+Celery, Redis+custom | No new infrastructure — reuses existing Supabase Postgres; zero extra ops cost before TestFlight |
-| Auth fix: `Depends(bearer_scheme)` in auth.py | Add `Body()` to every route | Root cause fix in one place; fixes all routers, not just the new ones |
-| Always emit terminal SSE event (done or error) | Let exceptions propagate | iOS cannot see HTTP status codes mid-stream; a torn connection shows as a stuck spinner |
-| Sources event emitted before chat text | Sources after response | Users see citation list instantly while Claude types; feels faster and more transparent |
-| Double security filter (collection_id + user_id) in RAG SQL | Filter on collection_id only | Defense in depth: guessed UUID cannot leak another user's saved content even if route auth is bypassed |
+| Used `var rawContent: String? = nil` instead of custom Codable override | Custom CodingKeys init, try? wrapping | Matches existing `var tags: [String] = []` pattern — consistent and the Swift synthesiser handles it automatically |
+| Guard summaryHero and insightsBlock on ingestStatus == .completed at the view layer | Guard in view model, add computed property on Item | View already checks ingestStatus for the processing branch — adding it as a leading condition is minimal and self-contained |
+| Fireworks nomic-embed-text-v1.5 at 768-dim locked in; 1536-dim stub deleted | OpenAI text-embedding-3-small (1536-dim), self-hosted bge-m3 | 2.5x cost advantage, no meaningful quality difference for collection-scoped RAG at v1 scale |
 
 ## 🚨 Decisions that need your input
 
-**1C-001 + 1C-008 merge:** Both tasks wrote a `collections.py` router in parallel. The ALM combined them into one file with all CRUD routes plus the chat SSE endpoint. Scan `api/app/routers/collections.py` once to confirm the combined file looks right before the next cycle builds iOS screens on top of it.
+**1C-006 (Search) needs a full retry — 5 errors, not close to mergeable.** The SWE agent's retry commit is a dangling commit not reachable from main. The search router file exists only in the worktree, not on the branch. Key issues: `compute_embedding` is still a sync stub generating 1536-dim vectors (creating a DB dimension mismatch); `main.py` only registers 3 routers instead of 8 (regression); the config uses renamed Supabase field names that would break auth on merge; and the Alembic migration has a duplicate revision ID that would crash `alembic upgrade head`. Two retries exhausted. Recommend: discard the worktree, have SWE restart from current main HEAD and implement search as a focused add-only PR.
 
-**Token telemetry is still estimated:** Both AI endpoints log approximate token counts rather than exact usage from the Anthropic API. Documented in code with a `# TODO: upgrade before TestFlight` comment. No action now — but add `ANTHROPIC_API_KEY` to `api/.env` before any live AI testing.
+**1C-010 (Daily Briefing backend) needs a rebase — merge conflicts, not close to mergeable.** The implementation is functionally correct in the worktree but the branch was cut from an old base commit (b435ac2), and main has moved 15+ commits since then. There are 20 conflict markers in pipeline.py alone. Also: the migration is numbered 0002 (already exists on main), the user_interest_profile model uses `weights` but main's version uses `topics` (would be a silent runtime AttributeError), and `generate_daily_briefing()` is synchronous (blocks the event loop for 2-8 seconds per call). Recommend: SWE rebases onto current main, resolves conflicts, renames migration to 0005, unifies field name to `weights`, and converts to async.
 
 ## 🔜 Next cycle will work on
 
-The research and chat endpoints are live — next is the iOS side: the "Research a topic" FRE flow (1C-005) that calls the research endpoint and shows sources arriving in real time, and the Library view (1C-002) that displays your collections. These two screens are the core product loop a user experiences on first launch.
+With 1C-003 (Reader) now done, 1C-007 (Nexus tab chat UI — the "Ask your library" SSE streaming screen) is unblocked. That is the last piece needed to complete the save → read → ask loop, which is the core demo. After that, the retried 1C-006 (search) and 1C-010 (briefing backend) can follow.
 
 ## ⏳ Waiting on you (blocked tasks)
 
 | Task | What you need to do | What it unlocks |
 |---|---|---|
-| S3/R2 full-text storage (1A-008) | Create an R2 or S3 bucket and paste credentials into `api/.env` | Full article text stored durably; reader view can load offline |
-| ANTHROPIC_API_KEY | Add your Anthropic API key to `api/.env` | Research and chat endpoints return real AI responses (currently return a structured error event) |
-| APNs key (1C-011) | Add Apple Push Notification key to `api/.env` | Daily Briefing push notifications to iPhone |
+| S3/R2 storage (1A-008) | Create an R2 or S3 bucket and paste the credentials into `api/.env` | Full-text storage for large articles; currently articles are held in memory only |
+| APNs key (1C-011) | Generate an APNs key in your Apple Developer account and paste it into `api/.env` | Daily Briefing push notifications to iPhone |

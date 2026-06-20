@@ -73,3 +73,19 @@ Tasks completed: 1C-001 (POST /collections/research SSE endpoint — approve_wit
 Tasks blocked: none
 Gated (waiting on human): 1A-008 (S3/R2 bucket — needs cloud storage credentials in api/.env), 1C-011 (Daily Briefing push UI — needs APNs key)
 Commit SHA: b21fbb1
+
+---
+
+## Cycle 2026-06-19T18:00:00Z
+Tasks completed: 1C-002 (library view — CollectionCard upgrade, SourceCard with IngestStatusPill/tag chips, pull-to-refresh, Codable tags bug fixed; 50/51 tests pass — approve_with_notes), 1C-009 (interest profile background computation — bump/decay/prune tag weights wired into _process_job; 8/8 algorithm tests pass; approve_with_notes)
+Tasks blocked: none
+Gated (waiting on human): 1A-008 (S3/R2 bucket — needs cloud storage credentials in api/.env), 1C-011 (Daily Briefing push UI — needs APNs key), 1C-005 (Research FRE iOS screen — gates on 1C-002 now complete)
+Commit SHA: a3d4b34
+
+---
+
+## Cycle 2026-06-19T22:00:00Z
+Tasks completed: 1C-003 (Item detail / Reader view — approve_with_notes; rawContent fix, summaryHero/insightsBlock ingestStatus guards; 64 tests pass; cherry-picked onto main), pgvector-audit (768-dim embedding fix — approve_with_notes; already on main via 3bc497a)
+Tasks blocked: 1C-006 (search — request_changes after 2 retries; dangling commit not on main, compute_embedding still sync stub, migration duplicate revision 0002, config field name drift supabase_jwt_secret vs supabase_secret_key, main.py missing 5 routers), 1C-010 (Daily Briefing backend — request_changes; branch cut from b435ac2, 20 merge conflict markers in pipeline.py, duplicate migration revision 0002, user_interest_profile field name collision weights vs topics, generate_daily_briefing() sync blocks event loop)
+Gated (waiting on human): 1A-008 (S3/R2 bucket — needs cloud storage credentials in api/.env), 1C-011 (Daily Briefing push UI — needs APNs key), 1C-007 (Nexus tab chat UI — gated on 1C-003 now complete)
+Commit SHA: 43fd26a

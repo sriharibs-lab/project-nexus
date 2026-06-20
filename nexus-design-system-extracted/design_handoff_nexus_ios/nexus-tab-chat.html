@@ -1,0 +1,778 @@
+<!-- @startingPoint section="Nexus tab" subtitle="Nexus iOS — collection Nexus tab: SSE chat, Echo-pulse wait, citation chips, Liquid Glass tab capsule" viewport="900x1000" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nexus iOS — Nexus Tab Chat (1C-007)</title>
+<style>
+  html, body { margin: 0; padding: 0; min-height: 100%; background: #EDEBE6; }
+  * { box-sizing: border-box; }
+  #root { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 28px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="ios-frame.jsx"></script>
+<script type="text/babel" src="landing-kit.jsx"></script>
+<script type="text/babel" src="landing-app.jsx"></script>
+
+<script type="text/babel">
+/**
+ * Nexus Tab Chat UI — task 1C-007
+ *
+ * Implements:
+ * 1. iOS SSE consumer (mirrors URLSessionDataTask incremental read pattern)
+ * 2. Echo-pulse wait state (brand mark with radiating arc pairs)
+ * 3. Citation chips inline in response text ([Source N] → pill)
+ * 4. Liquid Glass tab capsule (Nexus / Sources, spring thumb)
+ * 5. Client-side 6-turn rolling message history forwarded to API
+ *
+ * API contract (POST /v1/collections/{id}/chat):
+ *   Request:  { message, messages?: [{role,content}], query_embedding? }
+ *   Response: SSE stream
+ *     data: {"type":"sources","items":[{"title":...,"url":...,"similarity":0.92}]}\n\n
+ *     data: {"type":"chunk","text":"..."}\n\n
+ *     data: {"type":"done"}\n\n
+ *     data: {"type":"error","message":"..."}\n\n
+ *
+ * Set API_BASE below to point at the real FastAPI server.
+ * Leave empty to use the built-in mock SSE (no server needed for design QA).
+ */
+
+const { useState, useEffect, useRef, useLayoutEffect } = React;
+
+// ── Config ───────────────────────────────────────────────────────────────────
+const API_BASE = ''; // e.g. 'http://localhost:8000/v1' — empty = demo mode
+const COLLECTION_ID = 'demo-collection-id';
+const AUTH_TOKEN = 'demo-token';
+// Rolling window: 6 turns = 12 messages (6 user + 6 assistant)
+const MAX_HISTORY_MESSAGES = 12;
+
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const CV_ACCENT = '#7054AB';
+const EASE = 'cubic-bezier(.2,.8,.2,1)';
+const SPRING_BOUNCE = 'cubic-bezier(.18,1.5,.4,1)';
+const SPRING_LINEAR = 'linear(0.0035,0.0648,0.2067,0.3545,0.5093,0.6852,0.8131,0.9372,1.0144,1.0686,1.1067,1.1200,1.1204,1.1091,1.0935,1.0714,1.0528,1.0354,1.0176,1.0058,0.9969,0.9899,0.9866,0.9852,0.9857,0.9870,0.9894,0.9917,0.9940,0.9964,0.9981,0.9997,1.0007,1.0013,1.0017,1.0018)';
+
+function t() {
+  return {
+    page: 'radial-gradient(135% 60% at 50% -8%, #E7DCF4 0%, #F9F8FC 50%)',
+    surface: '#FFFFFF', surface2: '#F4F2F9', surface3: '#FBFAFD',
+    text: '#130E1A', muted: '#68607A', faint: '#9A93AC', ghost: '#B7B1C4',
+    border: '#E9E5F2', borderStrong: '#DCD7EA', hair: '#EEEBF5',
+    ink: '#130E1A',
+  };
+}
+
+// ── One-time CSS keyframes ────────────────────────────────────────────────────
+function ChatKeyframes() {
+  useEffect(() => {
+    if (document.getElementById('nx-chat-kf')) return;
+    const s = document.createElement('style');
+    s.id = 'nx-chat-kf';
+    s.textContent = [
+      '@keyframes nxEcho{0%{transform:scale(.45);opacity:0}30%{opacity:.9}100%{transform:scale(1.45);opacity:0}}',
+      '@keyframes nxNodeBreathe{0%,100%{opacity:1}50%{opacity:.5}}',
+      '@keyframes nxBubble{0%{transform:scale(1)}38%{transform:scale(1.13,.87)}68%{transform:scale(.95,1.05)}100%{transform:scale(1)}}',
+      '@keyframes nxFade{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}',
+      '@keyframes nxBlink{from{opacity:0}to{opacity:1}}',
+    ].join('');
+    document.head.appendChild(s);
+  }, []);
+  return null;
+}
+
+// ── Icon subset (matches landing-kit.jsx paths) ───────────────────────────────
+function Icon({ name, size = 22, color = 'currentColor', stroke = 1.6 }) {
+  const p = { fill: 'none', stroke: color, strokeWidth: stroke, strokeLinecap: 'round', strokeLinejoin: 'round' };
+  const defs = {
+    nexus: <><g {...p}><path d="M9.25 8 A5.5 5.5 0 0 0 9.25 16"/><path d="M14.75 8 A5.5 5.5 0 0 1 14.75 16"/></g><g {...p} opacity="0.35"><path d="M6.75 4.75 A8.75 8.75 0 0 0 6.75 19.25"/><path d="M17.25 4.75 A8.75 8.75 0 0 1 17.25 19.25"/></g><circle cx="12" cy="12" r="2.3" fill={color} stroke="none"/></>,
+    nexusFill: <><g stroke={color} strokeWidth="2.1" strokeLinecap="round" fill="none"><path d="M9.25 8 A5.5 5.5 0 0 0 9.25 16"/><path d="M14.75 8 A5.5 5.5 0 0 1 14.75 16"/></g><g stroke={color} strokeWidth="1.7" strokeLinecap="round" fill="none" opacity="0.5"><path d="M6.75 4.75 A8.75 8.75 0 0 0 6.75 19.25"/><path d="M17.25 4.75 A8.75 8.75 0 0 1 17.25 19.25"/></g><circle cx="12" cy="12" r="3" fill={color} stroke="none"/></>,
+    layers: <><path d="M12 3 21 8l-9 5-9-5 9-5Z" {...p}/><path d="M3 13l9 5 9-5" {...p}/></>,
+    layersFill: <><path d="M12 3 21 8l-9 5-9-5 9-5Z" fill={color} stroke={color} strokeWidth="1.4" strokeLinejoin="round"/><path d="M3 13l9 5 9-5" {...p}/></>,
+    arrowUp: <path d="M12 19V5m-6 6 6-6 6 6" {...p}/>,
+    plus: <path d="M12 5v14M5 12h14" {...p}/>,
+    mic: <><rect x="9" y="3" width="6" height="12" rx="3" {...p}/><path d="M5 11a7 7 0 0 0 14 0M12 18v3" {...p}/></>,
+    chevR: <path d="m9 5 7 7-7 7" {...p}/>,
+    globe: <><circle cx="12" cy="12" r="9" {...p}/><path d="M3 12h18" {...p}/><path d="M12 3C8 5 8 19 12 21M12 3C16 5 16 19 12 21" {...p}/></>,
+    file: <><path d="M7 3h7l4 4v14H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" {...p}/><path d="M14 3v4h4" {...p}/></>,
+    video: <><rect x="3" y="5.5" width="18" height="13" rx="3.5" {...p}/><path d="M10.5 9.3v5.4l4.4-2.7-4.4-2.7Z" fill={color} stroke={color} strokeWidth="1.2" strokeLinejoin="round"/></>,
+    x: <path d="M6 6l12 12M18 6 6 18" {...p}/>,
+  };
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ flex: '0 0 auto', display: 'block' }}>
+      {defs[name] || null}
+    </svg>
+  );
+}
+
+function AudioGlyph({ color = '#fff', size = 22 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: 'block' }}>
+      {[[5,8],[9.5,15],[14,7],[18.5,12]].map(([x,h],i) => (
+        <rect key={i} x={x-1.4} y={12-h/2} width={2.8} height={h} rx={1.4} fill={color} />
+      ))}
+    </svg>
+  );
+}
+
+function iconBtn(th, s = 36) {
+  return { width: s, height: s, borderRadius: 999, flex: '0 0 auto', cursor: 'pointer',
+    background: th.surface, border: `1px solid ${th.border}`,
+    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 };
+}
+
+// ── Press scale util ─────────────────────────────────────────────────────────
+function usePress(scale = 0.93) {
+  const [down, setDown] = useState(false);
+  return {
+    pressed: down,
+    handlers: {
+      onPointerDown: () => setDown(true),
+      onPointerUp: () => setDown(false),
+      onPointerLeave: () => setDown(false),
+      onPointerCancel: () => setDown(false),
+    },
+    style: { transform: `scale(${down ? scale : 1})`, transition: `transform .24s ${SPRING_BOUNCE}`,
+             WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' },
+  };
+}
+
+// ── Liquid Glass card ─────────────────────────────────────────────────────────
+function LiquidGlassCard({ radius = 26, width, children }) {
+  const l = { position: 'absolute', inset: 0, borderRadius: radius, pointerEvents: 'none' };
+  return (
+    <div style={{ position: 'relative', width, borderRadius: radius, isolation: 'isolate',
+      boxShadow: '0 22px 58px rgba(19,14,26,0.22),0 6px 18px rgba(19,14,26,0.13)' }}>
+      <div style={{ ...l, overflow: 'hidden',
+        backdropFilter: 'blur(8px) saturate(195%) brightness(1.05)',
+        WebkitBackdropFilter: 'blur(8px) saturate(195%) brightness(1.05)' }} />
+      <div style={{ ...l, background:
+        'linear-gradient(135deg,rgba(255,255,255,0.42) 0%,rgba(255,255,255,0.10) 30%,rgba(255,255,255,0.03) 54%,rgba(255,255,255,0.13) 78%,rgba(255,255,255,0.36) 100%)' }} />
+      <div style={{ ...l, boxShadow:
+        'inset 0 0 0 1px rgba(255,255,255,0.4),inset 3px 3px 8px rgba(255,255,255,0.5),inset -5px -6px 12px rgba(150,170,255,0.16),inset 5px 6px 13px rgba(255,150,205,0.11)' }} />
+      <div style={{ ...l, boxShadow:
+        'inset 1.6px 1.6px 1px rgba(255,255,255,0.95),inset -1.4px -1.4px 2px rgba(255,255,255,0.5),inset 0 0 16px rgba(255,255,255,0.18)' }} />
+      <div style={{ position: 'relative', zIndex: 1 }}>{children}</div>
+    </div>
+  );
+}
+
+// ── Segmented control with animated spring thumb ─────────────────────────────
+function Segmented({ items, value, onChange, getLabel, trackStyle, itemStyle, activeItemStyle, thumbStyle, pulse, dur = 520, ease = SPRING_LINEAR }) {
+  const refs = useRef({});
+  const [thumb, setThumb] = useState(null);
+  useLayoutEffect(() => {
+    const el = refs.current[value];
+    if (el) setThumb({ left: el.offsetLeft, top: el.offsetTop, width: el.offsetWidth, height: el.offsetHeight });
+  }, [value]);
+  return (
+    <div style={{ position: 'relative', ...trackStyle }}>
+      {thumb && (pulse
+        ? <div style={{ position: 'absolute', left: thumb.left, top: thumb.top, width: thumb.width, height: thumb.height,
+            transition: `left ${dur}ms ${ease},top ${dur}ms ${ease},width ${dur}ms ${ease}` }}>
+            <div key={value} style={{ width: '100%', height: '100%', animation: pulse, ...thumbStyle }} />
+          </div>
+        : <div style={{ position: 'absolute', left: thumb.left, top: thumb.top, width: thumb.width, height: thumb.height,
+            transition: `left ${dur}ms ${ease},top ${dur}ms ${ease},width ${dur}ms ${ease}`, ...thumbStyle }} />)}
+      {items.map(it => (
+        <button key={it} onClick={() => onChange(it)} ref={el => { refs.current[it] = el; }}
+          style={{ position: 'relative', zIndex: 1, fontFamily: L_FONT,
+            WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation', cursor: 'pointer',
+            ...itemStyle, ...(value === it ? activeItemStyle : {}) }}>
+          {getLabel ? getLabel(it) : it}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── Liquid Glass Tab Capsule ──────────────────────────────────────────────────
+// Floating, centered at bottom. Spring thumb travels between Nexus / Sources.
+function TabCapsule({ tab, setTab }) {
+  const th = t();
+  return (
+    <div style={{ flex: '0 0 auto', display: 'flex', justifyContent: 'center', padding: '6px 0 24px' }}>
+      <LiquidGlassCard radius={999}>
+        <Segmented
+          items={['Nexus', 'Sources']}
+          value={tab}
+          onChange={setTab}
+          dur={520}
+          ease={SPRING_LINEAR}
+          pulse={`nxBubble .56s ${EASE}`}
+          getLabel={it => {
+            const sel = tab === it;
+            const tint = sel ? CV_ACCENT : th.muted;
+            return (
+              <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                <Icon name={it === 'Nexus' ? (sel ? 'nexusFill' : 'nexus') : (sel ? 'layersFill' : 'layers')}
+                  size={26} color={tint} stroke={1.7} />
+                <span style={{ fontSize: 11.5, fontWeight: 600, letterSpacing: -0.1, color: tint,
+                  transition: 'color .25s ease' }}>{it}</span>
+              </span>
+            );
+          }}
+          trackStyle={{ display: 'flex', gap: 2, padding: 4 }}
+          itemStyle={{ padding: '8px 30px 7px', borderRadius: 999, background: 'transparent', border: 'none', cursor: 'pointer' }}
+          activeItemStyle={{}}
+          thumbStyle={{ background: 'rgba(255,255,255,0.66)', borderRadius: 999,
+            boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.85),inset 0 1.5px 1px rgba(255,255,255,0.95),0 5px 16px rgba(19,14,26,0.18)' }}
+        />
+      </LiquidGlassCard>
+    </div>
+  );
+}
+
+// ── Echo-pulse wait state ─────────────────────────────────────────────────────
+// The Echo brand mark: two arc pairs radiate outward while Nexus thinks.
+// Arc pairs + breathing center node → clear "AI is working" affordance.
+function EchoPulse() {
+  const ring = (delay) => (
+    <g style={{ transformOrigin: '24px 24px', animation: `nxEcho 1.7s ${delay}s cubic-bezier(.2,.6,.4,1) infinite` }}
+       stroke={CV_ACCENT} strokeWidth="3" strokeLinecap="round" fill="none">
+      <path d="M18.5 16 A11 11 0 0 0 18.5 32" />
+      <path d="M29.5 16 A11 11 0 0 1 29.5 32" />
+    </g>
+  );
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '6px 0 4px',
+                  animation: `nxFade .3s ${EASE}` }}>
+      <svg width="36" height="36" viewBox="0 0 48 48">
+        <circle cx="24" cy="24" r="4.4" fill={CV_ACCENT}
+          style={{ animation: 'nxNodeBreathe 1.7s ease-in-out infinite' }} />
+        {ring(0)}
+        {ring(0.85)}
+      </svg>
+      <span style={{ fontSize: 13.5, color: '#9A93AC', letterSpacing: -0.1 }}>Nexus is thinking…</span>
+    </div>
+  );
+}
+
+// ── Streaming cursor ─────────────────────────────────────────────────────────
+function StreamCursor() {
+  return (
+    <span style={{ display: 'inline-block', width: 1.5, height: 15,
+                   background: '#130E1A', marginLeft: 2, verticalAlign: -2,
+                   animation: 'nxBlink 0.9s steps(1) infinite alternate' }} />
+  );
+}
+
+// ── Citation chip ─────────────────────────────────────────────────────────────
+// Inline pill that replaces [Source N] tokens in the assistant's response.
+// Tapping opens the source URL (or navigates in iOS via deep-link).
+function CitationChip({ th, label, iconName = 'globe', url }) {
+  const press = usePress(0.88);
+  return (
+    <a href={url || '#'} target="_blank" rel="noopener noreferrer" {...press.handlers}
+       style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 22,
+                padding: '0 9px', margin: '0 2px', borderRadius: 999,
+                background: th.surface, border: `1px solid ${th.border}`,
+                fontSize: 11.5, fontWeight: 600, color: th.muted, letterSpacing: -0.1,
+                whiteSpace: 'nowrap', verticalAlign: -5, textDecoration: 'none',
+                cursor: 'pointer', ...press.style }}>
+      <Icon name={iconName} size={11} color={th.faint} />
+      {label}
+    </a>
+  );
+}
+
+// Infer icon from URL scheme
+function iconForUrl(url = '') {
+  if (!url) return 'globe';
+  if (url.includes('youtube.com') || url.includes('youtu.be')) return 'video';
+  if (url.endsWith('.pdf') || url.includes('/pdf/')) return 'file';
+  return 'globe';
+}
+
+/**
+ * ParsedResponse — render assistant text with [Source N] replaced by citation chips.
+ *
+ * sources: array from SSE "sources" event — [{title, url, similarity}]
+ * Chips are tappable; label is truncated to 26 chars for readability.
+ */
+function ParsedResponse({ th, text, sources, streaming }) {
+  if (!text) return streaming ? <EchoPulse /> : null;
+  const parts = text.split(/(\[Source \d+\])/g);
+  const elements = parts.map((part, i) => {
+    const m = part.match(/^\[Source (\d+)\]$/);
+    if (m) {
+      const idx = parseInt(m[1], 10) - 1;
+      const src = sources && sources[idx];
+      const raw = src ? src.title : null;
+      const label = raw ? (raw.length > 26 ? raw.slice(0, 26) + '…' : raw) : `Source ${idx + 1}`;
+      return <CitationChip key={i} th={th} label={label} iconName={src ? iconForUrl(src.url) : 'globe'} url={src && src.url} />;
+    }
+    return <React.Fragment key={i}>{part}</React.Fragment>;
+  });
+  return (
+    <div style={{ fontSize: 15, lineHeight: 1.65, letterSpacing: -0.2, color: th.text, textWrap: 'pretty' }}>
+      {elements}
+      {streaming && <StreamCursor />}
+    </div>
+  );
+}
+
+// ── Source reference pills (shown above assistant response) ───────────────────
+function SourcePills({ th, sources }) {
+  if (!sources || sources.length === 0) return null;
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+      {sources.slice(0, 5).map((src, i) => (
+        <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 24,
+                               padding: '0 10px', borderRadius: 999, background: th.surface2,
+                               border: `1px solid ${th.border}`, fontSize: 12, fontWeight: 500,
+                               color: th.muted, letterSpacing: -0.1, whiteSpace: 'nowrap' }}>
+          <Icon name={iconForUrl(src.url)} size={12} color={th.faint} />
+          {src.title ? (src.title.length > 22 ? src.title.slice(0, 22) + '…' : src.title) : `Source ${i+1}`}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// ── Starter prompt chips ─────────────────────────────────────────────────────
+const STARTERS = [
+  'What are the key ideas across these sources?',
+  'What should I read first?',
+  'Summarize this collection in 3 bullet points',
+  'What questions does this collection raise?',
+  'Are there any contradictions between sources?',
+  "What's missing from this collection?",
+];
+
+function StarterChip({ th, q, onClick, nowrap = false }) {
+  const press = usePress(0.95);
+  return (
+    <button {...press.handlers} onClick={onClick}
+      style={{ display: 'inline-flex', alignItems: 'center', padding: '10px 15px',
+               borderRadius: 999, background: th.surface, border: `1px solid ${th.border}`,
+               cursor: 'pointer', fontFamily: L_FONT, fontSize: 13.5, fontWeight: 500,
+               letterSpacing: -0.15, color: th.text, textAlign: 'left', lineHeight: 1.3,
+               whiteSpace: nowrap ? 'nowrap' : 'normal', flex: '0 0 auto', ...press.style }}>
+      {q}
+    </button>
+  );
+}
+
+// ── AI framing paragraph ─────────────────────────────────────────────────────
+function FramingParagraph({ th, text, sourceCount }) {
+  const display = text
+    || `This collection has ${sourceCount} source${sourceCount !== 1 ? 's' : ''}. I've read everything — ask me anything.`;
+  return (
+    <div style={{ paddingTop: 16, animation: `nxFade .32s ${EASE}` }}>
+      <Icon name="nexus" size={27} color={th.text} />
+      <div style={{ fontSize: 16.5, fontWeight: 500, lineHeight: 1.55, letterSpacing: -0.25,
+                    color: th.text, marginTop: 14, textWrap: 'pretty' }}>
+        {display}
+      </div>
+    </div>
+  );
+}
+
+// ── Chat message renders ──────────────────────────────────────────────────────
+function UserBubble({ th, text }) {
+  return (
+    <div style={{ alignSelf: 'flex-end', maxWidth: '82%', background: th.surface2,
+                  border: `1px solid ${th.hair}`, borderRadius: 18, padding: '10px 14px',
+                  fontSize: 15, letterSpacing: -0.2, color: th.text, lineHeight: 1.4,
+                  animation: `nxFade .26s ${EASE}` }}>
+      {text}
+    </div>
+  );
+}
+
+// ── Composer ─────────────────────────────────────────────────────────────────
+function ChatComposer({ th, value, onChange, onSubmit, busy }) {
+  const sendPress = usePress(0.88);
+  const canSend = value.trim().length > 0 && !busy;
+  return (
+    <div style={{ width: '100%', background: th.surface, borderRadius: 24,
+                  border: `1px solid ${th.borderStrong}`,
+                  boxShadow: `0 0 0 3px ${th.surface2},0 2px 10px rgba(19,14,26,0.05)`,
+                  padding: '15px 13px 12px' }}>
+      <div style={{ padding: '0 4px 15px', minHeight: 24, position: 'relative' }}>
+        <input
+          type="text"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && canSend) { e.preventDefault(); onSubmit(); } }}
+          placeholder="Ask Nexus anything"
+          disabled={busy}
+          style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent',
+                   fontSize: 17, color: th.text, letterSpacing: -0.2, lineHeight: 1.4,
+                   fontFamily: L_FONT, opacity: busy ? 0.5 : 1 }}
+        />
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <button aria-label="Attach" style={iconBtn(th, 32)}>
+          <Icon name="plus" size={18} color={th.text} />
+        </button>
+        <div style={{ flex: 1 }} />
+        <button aria-label="Dictate" style={iconBtn(th, 32)}>
+          <Icon name="mic" size={18} color={th.muted} />
+        </button>
+        {/* Send button (accent) or audio mode (ink) */}
+        <button {...sendPress.handlers} onClick={canSend ? onSubmit : undefined} aria-label={canSend ? 'Send' : 'Audio mode'}
+          style={{ width: 34, height: 34, borderRadius: 999, flex: '0 0 auto',
+                   cursor: canSend ? 'pointer' : 'default', padding: 0, border: 'none',
+                   background: canSend ? CV_ACCENT : th.ink,
+                   display: 'flex', alignItems: 'center', justifyContent: 'center',
+                   transition: `background .18s ease`, ...sendPress.style }}>
+          {canSend
+            ? <Icon name="arrowUp" size={18} color="#fff" stroke={2} />
+            : <AudioGlyph color="#fff" size={19} />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Mock SSE generator (no server needed for UI QA) ───────────────────────────
+async function* mockSSEStream(message, demoSources) {
+  yield { type: 'sources', items: demoSources };
+  await new Promise(r => setTimeout(r, 700));
+
+  // Response with [Source N] citation markers so we can QA chip rendering
+  const segments = [
+    'Based on ',
+    '[Source 1]',
+    ', the central tension here is that the short-term tactical picture ',
+    '(',
+    '[Source 3]',
+    ') contradicts the structural argument in ',
+    '[Source 2]',
+    '. Three things stand out:\n\n',
+    '1. The diplomatic channel exists but is fragile — ',
+    '[Source 1]',
+    ' documents three near-breaks in the last 18 months alone.\n\n',
+    '2. The economic lever (',
+    '[Source 4]',
+    ') is more constrained than it looks — sanctions have already been absorbed into the baseline.\n\n',
+    '3. The wildcard is domestic politics on both sides. ',
+    '[Source 2]',
+    ' and ',
+    '[Source 5]',
+    ' read the internal pressure very differently. Worth reading them side by side.',
+  ];
+
+  for (const seg of segments) {
+    await new Promise(r => setTimeout(r, 30 + Math.random() * 70));
+    yield { type: 'chunk', text: seg };
+  }
+  yield { type: 'done' };
+}
+
+// ── Real SSE consumer (mirrors iOS URLSessionDataTask pattern) ────────────────
+async function* realSSEStream(message, history, collectionId, token) {
+  const resp = await fetch(`${API_BASE}/collections/${collectionId}/chat`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'text/event-stream',
+    },
+    body: JSON.stringify({ message, messages: history.length ? history : undefined }),
+  });
+  if (!resp.ok) { yield { type: 'error', message: `HTTP ${resp.status}` }; return; }
+
+  const reader = resp.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const events = buf.split('\n\n');
+    buf = events.pop() || '';
+    for (const ev of events) {
+      const line = ev.trim();
+      if (!line.startsWith('data:')) continue;
+      try {
+        const payload = JSON.parse(line.slice(5).trim());
+        yield payload;
+        if (payload.type === 'done' || payload.type === 'error') return;
+      } catch { /* skip malformed */ }
+    }
+  }
+}
+
+// ── Nexus Chat Pane ───────────────────────────────────────────────────────────
+/**
+ * Core component. State machine:
+ *   empty  → framing + starter chips
+ *   busy   → EchoPulse (or streaming text if first chunk arrived)
+ *   active → scrollable chat thread
+ *
+ * Message history: client maintains last MAX_HISTORY_MESSAGES messages.
+ * Each API request sends the history so the server can forward it to Anthropic
+ * as the messages list (multi-turn context per SPEC §9a Pillar 4).
+ */
+function NexusChatPane({ th, collectionName, framingParagraph, demoSources }) {
+  // messages: [{role:'user'|'assistant', text:string, sources?:array}]
+  const [messages, setMessages] = useState([]);
+  const [streaming, setStreaming] = useState(false);
+  const [streamText, setStreamText] = useState('');
+  const [pendingSources, setPendingSources] = useState(null);
+  const [input, setInput] = useState('');
+  const [chatError, setChatError] = useState(null);
+  const scRef = useRef(null);
+
+  useEffect(() => {
+    const el = scRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages, streaming, streamText]);
+
+  // Build the history array for the API (alternating role/content)
+  const buildHistory = (msgs) =>
+    msgs.slice(-MAX_HISTORY_MESSAGES).map(m => ({ role: m.role, content: m.text }));
+
+  const send = async (text) => {
+    if (!text.trim() || streaming) return;
+    setInput('');
+    setChatError(null);
+    const userMsg = { role: 'user', text };
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
+    setStreaming(true);
+    setStreamText('');
+    setPendingSources(null);
+
+    const history = buildHistory(messages); // history before this user turn
+    let accText = '';
+    let turnSources = null;
+
+    try {
+      const stream = API_BASE
+        ? realSSEStream(text, history, COLLECTION_ID, AUTH_TOKEN)
+        : mockSSEStream(text, demoSources);
+
+      for await (const ev of stream) {
+        if (ev.type === 'sources') {
+          turnSources = ev.items;
+          setPendingSources(ev.items);
+        } else if (ev.type === 'chunk') {
+          accText += ev.text;
+          setStreamText(accText);
+        } else if (ev.type === 'done') {
+          break;
+        } else if (ev.type === 'error') {
+          setChatError(ev.message || 'Something went wrong.');
+          break;
+        }
+      }
+    } catch (e) {
+      setChatError(e.message || 'Connection failed.');
+    } finally {
+      if (accText) {
+        setMessages(prev => [...prev, { role: 'assistant', text: accText, sources: turnSources }]);
+      }
+      setStreaming(false);
+      setStreamText('');
+      setPendingSources(null);
+    }
+  };
+
+  const empty = messages.length === 0;
+  const asked = new Set(messages.filter(m => m.role === 'user').map(m => m.text));
+  const remaining = STARTERS.filter(q => !asked.has(q));
+
+  return (
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <div ref={scRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 18px 8px' }}>
+        {empty ? (
+          <>
+            <FramingParagraph th={th} text={framingParagraph} sourceCount={demoSources.length} />
+            <div style={{ fontSize: 11.5, fontWeight: 600, letterSpacing: 0.8, textTransform: 'uppercase',
+                          color: th.faint, marginTop: 28, marginBottom: 12 }}>Ask</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {STARTERS.map(q => <StarterChip key={q} th={th} q={q} onClick={() => send(q)} />)}
+            </div>
+          </>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18, paddingTop: 4 }}>
+            {messages.map((m, i) =>
+              m.role === 'user'
+                ? <UserBubble key={i} th={th} text={m.text} />
+                : (
+                  <div key={i} style={{ animation: `nxFade .34s ${EASE}` }}>
+                    <SourcePills th={th} sources={m.sources} />
+                    <ParsedResponse th={th} text={m.text} sources={m.sources} streaming={false} />
+                  </div>
+                )
+            )}
+
+            {/* In-flight streaming */}
+            {streaming && (
+              <div style={{ animation: `nxFade .34s ${EASE}` }}>
+                {pendingSources && <SourcePills th={th} sources={pendingSources} />}
+                {streamText
+                  ? <ParsedResponse th={th} text={streamText} sources={pendingSources} streaming={true} />
+                  : <EchoPulse />}
+              </div>
+            )}
+
+            {/* Error state */}
+            {chatError && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+                            background: '#FFF3F3', border: '1px solid #FFD0D0', borderRadius: 14,
+                            animation: `nxFade .3s ${EASE}` }}>
+                <span style={{ fontSize: 13.5, color: '#C0392B', flex: 1, letterSpacing: -0.2 }}>
+                  {chatError}
+                </span>
+                <button onClick={() => setChatError(null)}
+                  style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 4 }}>
+                  <Icon name="x" size={16} color="#C0392B" />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Contextual starter chips — horizontal scroll, 3 max */}
+      {!empty && remaining.length > 0 && (
+        <div style={{ flex: '0 0 auto', display: 'flex', gap: 8, overflowX: 'auto',
+                      padding: '6px 16px 4px', scrollbarWidth: 'none' }}>
+          {remaining.slice(0, 3).map(q => (
+            <StarterChip key={q} th={th} q={q} nowrap onClick={() => send(q)} />
+          ))}
+        </div>
+      )}
+
+      {/* Composer */}
+      <div style={{ flex: '0 0 auto', padding: '6px 16px 6px' }}>
+        <ChatComposer th={th} value={input} onChange={setInput} onSubmit={() => send(input)} busy={streaming} />
+      </div>
+    </div>
+  );
+}
+
+// ── Sources pane (basic for this task) ───────────────────────────────────────
+function SourcesPane({ th, sources }) {
+  return (
+    <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '14px 16px 8px' }}>
+      {sources.map((src, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12,
+                              padding: '11px 2px 11px 4px',
+                              borderBottom: i < sources.length - 1 ? `1px solid ${th.hair}` : 'none' }}>
+          <div style={{ width: 30, height: 30, flex: '0 0 auto', display: 'flex',
+                        alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name={iconForUrl(src.url)} size={19} color={th.muted} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: -0.2, color: th.text,
+                          lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {src.title || src.url}
+            </div>
+            <div style={{ fontSize: 12.5, color: th.faint, marginTop: 2,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {src.url}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Collection view shell ─────────────────────────────────────────────────────
+const DEMO_COLLECTION = {
+  name: 'US–Iran conflict',
+  meta: 'updated 2h ago',
+  framingParagraph: "Back-channel talks in Oman, a strait that carries a fifth of the world's oil, and two decades of almost-deals — your 6 sources don't agree on where this ends. I've read everything — ask me anything.",
+  sources: [
+    { title: 'US and Iran resume back-channel talks in Oman', url: 'https://reuters.com/world/middle-east/us-iran-talks-oman-2026' },
+    { title: "What's at stake in the Strait of Hormuz", url: 'https://bbc.co.uk/news/world-middle-east-strait-of-hormuz' },
+    { title: 'Iran update — June 2026 assessment', url: 'https://understandingwar.org/iran-update-june-2026.pdf' },
+    { title: 'Why the US and Iran keep colliding', url: 'https://youtube.com/watch?v=cfr-iran-usa' },
+    { title: 'The narrow deal that could end the standoff', url: 'https://foreignaffairs.com/iran/narrow-deal-2026' },
+    { title: 'Timeline: US–Iran tensions since 2020', url: 'https://aljazeera.com/iran-us-timeline-2020-2026' },
+  ],
+};
+
+function CollectionShell() {
+  const th = t();
+  const [tab, setTab] = useState('Nexus');
+  const c = DEMO_COLLECTION;
+
+  return (
+    <div style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex',
+                  flexDirection: 'column', fontFamily: L_FONT, color: th.text }}>
+      <ChatKeyframes />
+
+      {/* Nav header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '2px 12px 4px', flex: '0 0 auto' }}>
+        <button aria-label="Back"
+          style={{ width: 40, height: 40, borderRadius: 999, flex: '0 0 auto',
+                   border: `1px solid ${th.borderStrong}`, background: th.surface,
+                   display: 'flex', alignItems: 'center', justifyContent: 'center',
+                   cursor: 'pointer', padding: 0 }}>
+          <span style={{ transform: 'scaleX(-1)', display: 'inline-flex' }}>
+            <Icon name="chevR" size={20} color={th.text} stroke={1.8} />
+          </span>
+        </button>
+      </div>
+
+      {/* Collection title + meta */}
+      <div style={{ padding: '2px 18px 6px', flex: '0 0 auto' }}>
+        <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.7, lineHeight: 1.15, color: th.text }}>
+          {c.name}
+        </div>
+        <div style={{ fontSize: 13.5, color: th.faint, marginTop: 5, letterSpacing: -0.1 }}>
+          {c.sources.length} sources · {c.meta}
+        </div>
+      </div>
+
+      {/* Tab panes — fade between Nexus / Sources */}
+      <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+                      opacity: tab === 'Nexus' ? 1 : 0,
+                      pointerEvents: tab === 'Nexus' ? 'auto' : 'none',
+                      transition: `opacity 280ms ${EASE}` }}>
+          <NexusChatPane
+            th={th}
+            collectionName={c.name}
+            framingParagraph={c.framingParagraph}
+            demoSources={c.sources}
+          />
+        </div>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+                      opacity: tab === 'Sources' ? 1 : 0,
+                      pointerEvents: tab === 'Sources' ? 'auto' : 'none',
+                      transition: `opacity 280ms ${EASE}` }}>
+          <SourcesPane th={th} sources={c.sources} />
+        </div>
+      </div>
+
+      {/* Liquid Glass tab capsule — always floating at bottom */}
+      <TabCapsule tab={tab} setTab={setTab} />
+    </div>
+  );
+}
+
+// ── Root ─────────────────────────────────────────────────────────────────────
+function App() {
+  const th = t();
+  return (
+    <IOSDevice dark={false}>
+      <div style={{ height: '100%', background: th.page, display: 'flex',
+                    flexDirection: 'column', WebkitFontSmoothing: 'antialiased' }}>
+        <LStatusSpacer h={56} />
+        <CollectionShell />
+      </div>
+    </IOSDevice>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

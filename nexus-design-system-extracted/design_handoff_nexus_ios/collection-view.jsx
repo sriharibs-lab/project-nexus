@@ -4,7 +4,13 @@
 // (landing-kit) · Pressable, Segmented, PivotSwipe, LiquidGlassCard, BloomMenu,
 // MenuCaption (landing-app) · IOSDevice (ios-frame).
 // Exports: CollectionView, CollectionBoard, NX_SOURCES, NX_TRENDING, nxFallbackSources
-const { useState, useEffect, useRef } = React;
+//
+// 1C-004 — Sources tab polish:
+//   • ContentTypeIcon  — tinted badge (globe/video/file/note/photo/mic) replaces bare glyph
+//   • TagChips         — 2-3 semantic tag pills displayed below each row title
+//   • SwipeToDelete    — pointer-drag left reveals ink Delete button; drag right cancels
+//   • PullToRefresh    — drag down past 56px shows spinner + "Refreshed" flash, resets list
+const { useState, useEffect, useRef, useCallback } = React;
 
 const CV_EASE = 'cubic-bezier(.2,.8,.2,1)';
 const CV_ACCENT = '#7054AB'; // approved plum — selected tab tint (matches send/confirm)
@@ -13,49 +19,49 @@ const CV_ACCENT = '#7054AB'; // approved plum — selected tab tint (matches sen
 const NX_TRENDING = ['US–Iran conflict', 'AI platform shifts', 'Ozempic & longevity', 'Vision Pro 2'];
 
 const NX_SOURCES = {
-  'US–Iran conflict': [
-    { mono: 'R', src: 'Reuters', title: 'US and Iran resume back-channel talks in Oman', meta: 'Article · 6 min', icon: 'globe' },
-    { mono: 'B', src: 'BBC News', title: 'What’s at stake in the Strait of Hormuz', meta: 'Article · 8 min', icon: 'globe' },
-    { mono: 'AJ', src: 'Al Jazeera', title: 'Timeline: US–Iran tensions since 2020', meta: 'Article · 10 min', icon: 'globe' },
-    { mono: 'IS', src: 'ISW', title: 'Iran update — June 2026 assessment', meta: 'PDF · 24 pages', icon: 'file' },
-    { mono: 'C', src: 'CFR · YouTube', title: 'Why the US and Iran keep colliding', meta: 'Video · 14 min', icon: 'video' },
-    { mono: 'FA', src: 'Foreign Affairs', title: 'The narrow deal that could end the standoff', meta: 'Article · 12 min', icon: 'globe' },
+  ‘US–Iran conflict’: [
+    { mono: ‘R’, src: ‘Reuters’, title: ‘US and Iran resume back-channel talks in Oman’, meta: ‘Article · 6 min’, icon: ‘globe’, tags: [‘diplomacy’, ‘middle-east’] },
+    { mono: ‘B’, src: ‘BBC News’, title: ‘What’s at stake in the Strait of Hormuz’, meta: ‘Article · 8 min’, icon: ‘globe’, tags: [‘geopolitics’, ‘energy’] },
+    { mono: ‘AJ’, src: ‘Al Jazeera’, title: ‘Timeline: US–Iran tensions since 2020’, meta: ‘Article · 10 min’, icon: ‘globe’, tags: [‘history’, ‘sanctions’] },
+    { mono: ‘IS’, src: ‘ISW’, title: ‘Iran update — June 2026 assessment’, meta: ‘PDF · 24 pages’, icon: ‘file’, tags: [‘analysis’, ‘military’] },
+    { mono: ‘C’, src: ‘CFR · YouTube’, title: ‘Why the US and Iran keep colliding’, meta: ‘Video · 14 min’, icon: ‘video’, tags: [‘explainer’, ‘foreign-policy’] },
+    { mono: ‘FA’, src: ‘Foreign Affairs’, title: ‘The narrow deal that could end the standoff’, meta: ‘Article · 12 min’, icon: ‘globe’, tags: [‘nuclear’, ‘negotiation’] },
   ],
-  'AI platform shifts': [
-    { mono: 'St', src: 'Stratechery', title: 'The end of the beginning for AI platforms', meta: 'Article · 8 min', icon: 'globe' },
-    { mono: 'V', src: 'The Verge', title: 'Every model is a platform now', meta: 'Article · 7 min', icon: 'globe' },
-    { mono: 'aX', src: 'arXiv', title: 'Scaling agentic systems: a survey', meta: 'PDF · 38 pages', icon: 'file' },
-    { mono: 'YT', src: 'a16z · YouTube', title: 'Where value accrues in the AI stack', meta: 'Video · 31 min', icon: 'video' },
-    { mono: 'W', src: 'WIRED', title: 'The quiet war for the AI operating layer', meta: 'Article · 11 min', icon: 'globe' },
-    { mono: 'FT', src: 'Financial Times', title: 'Big tech’s capex supercycle, charted', meta: 'Article · 9 min', icon: 'globe' },
+  ‘AI platform shifts’: [
+    { mono: ‘St’, src: ‘Stratechery’, title: ‘The end of the beginning for AI platforms’, meta: ‘Article · 8 min’, icon: ‘globe’, tags: [‘strategy’, ‘business-model’] },
+    { mono: ‘V’, src: ‘The Verge’, title: ‘Every model is a platform now’, meta: ‘Article · 7 min’, icon: ‘globe’, tags: [‘big-tech’, ‘llm’] },
+    { mono: ‘aX’, src: ‘arXiv’, title: ‘Scaling agentic systems: a survey’, meta: ‘PDF · 38 pages’, icon: ‘file’, tags: [‘agents’, ‘research’] },
+    { mono: ‘YT’, src: ‘a16z · YouTube’, title: ‘Where value accrues in the AI stack’, meta: ‘Video · 31 min’, icon: ‘video’, tags: [‘venture-capital’, ‘infra’] },
+    { mono: ‘W’, src: ‘WIRED’, title: ‘The quiet war for the AI operating layer’, meta: ‘Article · 11 min’, icon: ‘globe’, tags: [‘competition’, ‘platform’] },
+    { mono: ‘FT’, src: ‘Financial Times’, title: ‘Big tech’s capex supercycle, charted’, meta: ‘Article · 9 min’, icon: ‘globe’, tags: [‘capex’, ‘data-centers’] },
   ],
-  'Ozempic & longevity': [
-    { mono: 'N', src: 'Nature', title: 'GLP-1 agonists beyond weight loss', meta: 'Article · 9 min', icon: 'globe' },
-    { mono: 'S', src: 'STAT News', title: 'What we actually know about GLP-1s and aging', meta: 'Article · 12 min', icon: 'globe' },
-    { mono: 'A', src: 'The Atlantic', title: 'The longevity drug hiding in plain sight', meta: 'Article · 14 min', icon: 'globe' },
-    { mono: 'J', src: 'JAMA', title: 'Semaglutide outcomes: 5-year follow-up', meta: 'PDF · 16 pages', icon: 'file' },
-    { mono: 'YT', src: 'TED · YouTube', title: 'Metabolism, medicine and healthspan', meta: 'Video · 18 min', icon: 'video' },
-    { mono: 'E', src: 'The Economist', title: 'The trillion-dollar question of living longer', meta: 'Article · 10 min', icon: 'globe' },
+  ‘Ozempic & longevity’: [
+    { mono: ‘N’, src: ‘Nature’, title: ‘GLP-1 agonists beyond weight loss’, meta: ‘Article · 9 min’, icon: ‘globe’, tags: [‘glp-1’, ‘science’] },
+    { mono: ‘S’, src: ‘STAT News’, title: ‘What we actually know about GLP-1s and aging’, meta: ‘Article · 12 min’, icon: ‘globe’, tags: [‘aging’, ‘evidence’] },
+    { mono: ‘A’, src: ‘The Atlantic’, title: ‘The longevity drug hiding in plain sight’, meta: ‘Article · 14 min’, icon: ‘globe’, tags: [‘longevity’, ‘health’] },
+    { mono: ‘J’, src: ‘JAMA’, title: ‘Semaglutide outcomes: 5-year follow-up’, meta: ‘PDF · 16 pages’, icon: ‘file’, tags: [‘clinical-trial’, ‘peer-reviewed’] },
+    { mono: ‘YT’, src: ‘TED · YouTube’, title: ‘Metabolism, medicine and healthspan’, meta: ‘Video · 18 min’, icon: ‘video’, tags: [‘explainer’, ‘metabolism’] },
+    { mono: ‘E’, src: ‘The Economist’, title: ‘The trillion-dollar question of living longer’, meta: ‘Article · 10 min’, icon: ‘globe’, tags: [‘economics’, ‘pharma’] },
   ],
-  'Vision Pro 2': [
-    { mono: 'B', src: 'Bloomberg', title: 'Inside the lighter, cheaper Vision Pro 2', meta: 'Article · 7 min', icon: 'globe' },
-    { mono: 'V', src: 'The Verge', title: 'Hands-on: what changed, what didn’t', meta: 'Article · 9 min', icon: 'globe' },
-    { mono: 'SC', src: 'Six Colors', title: 'The spatial computing report card', meta: 'Article · 8 min', icon: 'globe' },
-    { mono: 'YT', src: 'YouTube', title: 'Vision Pro 2 — full review', meta: 'Video · 22 min', icon: 'video' },
-    { mono: 'AP', src: 'Apple Newsroom', title: 'Vision Pro 2 press release', meta: 'PDF · 6 pages', icon: 'file' },
-    { mono: 'FT', src: 'Financial Times', title: 'Can headsets become the next platform?', meta: 'Article · 11 min', icon: 'globe' },
+  ‘Vision Pro 2’: [
+    { mono: ‘B’, src: ‘Bloomberg’, title: ‘Inside the lighter, cheaper Vision Pro 2’, meta: ‘Article · 7 min’, icon: ‘globe’, tags: [‘apple’, ‘hardware’] },
+    { mono: ‘V’, src: ‘The Verge’, title: ‘Hands-on: what changed, what didn’t’, meta: ‘Article · 9 min’, icon: ‘globe’, tags: [‘review’, ‘spatial-computing’] },
+    { mono: ‘SC’, src: ‘Six Colors’, title: ‘The spatial computing report card’, meta: ‘Article · 8 min’, icon: ‘globe’, tags: [‘analysis’, ‘vr-ar’] },
+    { mono: ‘YT’, src: ‘YouTube’, title: ‘Vision Pro 2 — full review’, meta: ‘Video · 22 min’, icon: ‘video’, tags: [‘review’, ‘demo’] },
+    { mono: ‘AP’, src: ‘Apple Newsroom’, title: ‘Vision Pro 2 press release’, meta: ‘PDF · 6 pages’, icon: ‘file’, tags: [‘official’, ‘press-release’] },
+    { mono: ‘FT’, src: ‘Financial Times’, title: ‘Can headsets become the next platform?’, meta: ‘Article · 11 min’, icon: ‘globe’, tags: [‘market’, ‘platform’] },
   ],
 };
 
 function nxFallbackSources(topic) {
   const tp = topic || 'this topic';
   return [
-    { mono: 'W', src: 'Wikipedia', title: `${tp} — overview`, meta: 'Article · 11 min', icon: 'globe' },
-    { mono: 'R', src: 'Reuters', title: `The latest reporting on ${tp.toLowerCase()}`, meta: 'Article · 6 min', icon: 'globe' },
-    { mono: 'G', src: 'The Guardian', title: `${tp}: what you need to know`, meta: 'Article · 8 min', icon: 'globe' },
-    { mono: 'YT', src: 'YouTube', title: `${tp}, explained in 15 minutes`, meta: 'Video · 15 min', icon: 'video' },
-    { mono: 'P', src: 'Pew Research', title: `${tp} — by the numbers`, meta: 'PDF · 12 pages', icon: 'file' },
-    { mono: 'E', src: 'The Economist', title: `Why ${tp.toLowerCase()} matters now`, meta: 'Article · 9 min', icon: 'globe' },
+    { mono: 'W', src: 'Wikipedia', title: `${tp} — overview`, meta: 'Article · 11 min', icon: 'globe', tags: ['overview', 'reference'] },
+    { mono: 'R', src: 'Reuters', title: `The latest reporting on ${tp.toLowerCase()}`, meta: 'Article · 6 min', icon: 'globe', tags: ['news', 'breaking'] },
+    { mono: 'G', src: 'The Guardian', title: `${tp}: what you need to know`, meta: 'Article · 8 min', icon: 'globe', tags: ['explainer', 'context'] },
+    { mono: 'YT', src: 'YouTube', title: `${tp}, explained in 15 minutes`, meta: 'Video · 15 min', icon: 'video', tags: ['explainer', 'video'] },
+    { mono: 'P', src: 'Pew Research', title: `${tp} — by the numbers`, meta: 'PDF · 12 pages', icon: 'file', tags: ['data', 'research'] },
+    { mono: 'E', src: 'The Economist', title: `Why ${tp.toLowerCase()} matters now`, meta: 'Article · 9 min', icon: 'globe', tags: ['analysis', 'opinion'] },
   ];
 }
 
@@ -65,17 +71,63 @@ function CVStyles() {
     if (document.getElementById('nx-cv-styles')) return;
     const s = document.createElement('style');
     s.id = 'nx-cv-styles';
-    s.textContent = '@keyframes nxDot{0%,60%,100%{opacity:.25;transform:none}30%{opacity:1;transform:translateY(-3px)}}@keyframes nxShimmer{from{background-position:-400px 0}to{background-position:400px 0}}@keyframes nxBubble{0%{transform:scale(1)}38%{transform:scale(1.13,.87)}68%{transform:scale(.95,1.05)}100%{transform:scale(1)}}@keyframes nxSpin{to{transform:rotate(360deg)}}@keyframes nxEcho{0%{transform:scale(.45);opacity:0}30%{opacity:.9}100%{transform:scale(1.45);opacity:0}}@keyframes nxNodeBreathe{0%,100%{opacity:1}50%{opacity:.5}}';
+    s.textContent = [
+      '@keyframes nxDot{0%,60%,100%{opacity:.25;transform:none}30%{opacity:1;transform:translateY(-3px)}}',
+      '@keyframes nxShimmer{from{background-position:-400px 0}to{background-position:400px 0}}',
+      '@keyframes nxBubble{0%{transform:scale(1)}38%{transform:scale(1.13,.87)}68%{transform:scale(.95,1.05)}100%{transform:scale(1)}}',
+      '@keyframes nxSpin{to{transform:rotate(360deg)}}',
+      '@keyframes nxEcho{0%{transform:scale(.45);opacity:0}30%{opacity:.9}100%{transform:scale(1.45);opacity:0}}',
+      '@keyframes nxNodeBreathe{0%,100%{opacity:1}50%{opacity:.5}}',
+      // 1C-004: pull-to-refresh spinner + "refreshed" fade
+      '@keyframes nxPTRSpin{to{transform:rotate(360deg)}}',
+      '@keyframes nxPTRFlash{0%{opacity:1;transform:translateY(0)}70%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-6px)}}',
+      // 1C-004: delete button slide-in
+      '@keyframes nxDelIn{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:none}}',
+    ].join('');
     document.head.appendChild(s);
   }, []);
   return null;
 }
 
-// ── link-type icon (web / PDF / YouTube / note) — bare glyph, no box ──
-function TypeIcon({ t, icon }) {
+// ── 1C-004: ContentTypeIcon — tinted badge, not a bare glyph ──
+// Color palette: one faint tint per content family, no hard accent bleed.
+const ICON_TINT = {
+  globe:  { bg: '#EEF3FB', fg: '#4A7ABB' }, // article/web — cool blue
+  video:  { bg: '#FCF0EE', fg: '#B84C3A' }, // video — warm red
+  file:   { bg: '#F0EDF8', fg: '#7054AB' }, // PDF — plum (brand accent, earned here)
+  note:   { bg: '#F0F7EE', fg: '#4A8A5C' }, // note — sage green
+  photo:  { bg: '#FDF5E8', fg: '#B8862A' }, // image — amber
+  mic:    { bg: '#EEF3FB', fg: '#4A7ABB' }, // audio — cool blue (same family as web)
+  link:   { bg: '#F4F2F9', fg: '#68607A' }, // generic link — muted plum
+};
+
+function ContentTypeIcon({ icon }) {
+  const { bg, fg } = ICON_TINT[icon] || ICON_TINT.link;
   return (
-    <div style={{ width: 30, height: 30, flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <LIcon name={icon || 'link'} size={19} color={t.muted} />
+    <div style={{
+      width: 36, height: 36, flex: '0 0 auto', borderRadius: 10,
+      background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <LIcon name={icon || 'link'} size={18} color={fg} stroke={1.7} />
+    </div>
+  );
+}
+
+// ── 1C-004: TagChips — 2-3 pill chips below the row title ──
+function TagChips({ t, tags }) {
+  if (!tags || tags.length === 0) return null;
+  const visible = tags.slice(0, 3);
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 5 }}>
+      {visible.map((tag) => (
+        <span key={tag} style={{
+          display: 'inline-flex', alignItems: 'center', height: 18,
+          padding: '0 7px', borderRadius: 999,
+          background: t.surface2, border: `1px solid ${t.border}`,
+          fontSize: 11, fontWeight: 600, letterSpacing: 0.1, color: t.faint,
+          whiteSpace: 'nowrap',
+        }}>{tag}</span>
+      ))}
     </div>
   );
 }
@@ -84,25 +136,132 @@ function CVShimmer({ w = '70%' }) {
   return <div style={{ width: w, height: 13, borderRadius: 6, background: 'linear-gradient(90deg,#EDEAF5 25%,#F5F3FB 50%,#EDEAF5 75%)', backgroundSize: '800px 100%', animation: 'nxShimmer 1.6s ease-in-out infinite' }} />;
 }
 
-// ── a link row: flat list — bare type glyph + text + quiet remove; no card, no dividers ──
-function LinkRow({ t, it, removing, onRemove }) {
+// ── 1C-004: SwipeRow — pointer-drag left reveals Delete; drag right cancels.
+//    Replaces the old LinkRow. Keyboard/tap users still see the X button
+//    in the swiped-open state for accessibility (no swipe required). ──
+const SWIPE_THRESHOLD = 72; // px — how far left to drag to reveal delete
+const SWIPE_FULL = 80;      // px — resting width of the revealed delete zone
+
+function SwipeRow({ t, it, removing, onRemove }) {
+  const [offset, setOffset] = useState(0);   // current translateX (negative = swiped left)
+  const [open, setOpen] = useState(false);   // true when delete zone is fully revealed
+  const startX = useRef(null);
+  const startOffset = useRef(0);
+  const rowRef = useRef(null);
+
+  const settle = useCallback((raw) => {
+    // snap: if dragged past threshold → open; else → close
+    if (raw < -SWIPE_THRESHOLD / 2) {
+      setOffset(-SWIPE_FULL);
+      setOpen(true);
+    } else {
+      setOffset(0);
+      setOpen(false);
+    }
+  }, []);
+
+  const onPointerDown = (e) => {
+    // only track horizontal; ignore if this row is being removed
+    if (removing) return;
+    startX.current = e.clientX;
+    startOffset.current = offset;
+    rowRef.current && rowRef.current.setPointerCapture(e.pointerId);
+  };
+
+  const onPointerMove = (e) => {
+    if (startX.current === null) return;
+    const dx = e.clientX - startX.current;
+    const raw = Math.min(0, Math.max(-SWIPE_FULL - 16, startOffset.current + dx));
+    setOffset(raw);
+    if (Math.abs(raw) > 2) setOpen(false); // mid-drag: collapse open state
+  };
+
+  const onPointerUp = (e) => {
+    if (startX.current === null) return;
+    const dx = (e.clientX ?? startX.current) - startX.current;
+    settle(startOffset.current + dx);
+    startX.current = null;
+  };
+
+  const onPointerCancel = () => {
+    // on cancel (e.g. scroll taking over), snap back to wherever we were
+    if (startX.current === null) return;
+    startX.current = null;
+    settle(startOffset.current);
+  };
+
+  const close = () => { setOffset(0); setOpen(false); };
+
+  // Row height expands slightly when tags are present (non-pending)
+  const hasContent = !it.pending && it.title;
+  const hasTags = hasContent && it.tags && it.tags.length > 0;
+  const collapsedH = hasTags ? 78 : 58;
+
   return (
-    <div style={{ overflow: 'hidden', maxHeight: removing ? 0 : 70, opacity: removing ? 0 : 1, transform: removing ? 'scale(0.97)' : 'none', transition: `max-height .3s ${CV_EASE} .06s, opacity .22s ease, transform .24s ease` }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 13, padding: '11px 2px 11px 4px', animation: `nxFade .32s ${CV_EASE} both` }}>
-        <TypeIcon t={t} icon={it.icon} />
+    <div style={{
+      overflow: 'hidden',
+      maxHeight: removing ? 0 : collapsedH + 'px',
+      opacity: removing ? 0 : 1,
+      transform: removing ? 'scale(0.97)' : 'none',
+      transition: `max-height .3s ${CV_EASE} .06s, opacity .22s ease, transform .24s ease`,
+      position: 'relative',
+    }}>
+      {/* ── delete zone: revealed behind the sliding row ── */}
+      <div style={{
+        position: 'absolute', right: 0, top: 0, bottom: 0,
+        width: SWIPE_FULL,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: '#C0392B',
+        borderRadius: '0 12px 12px 0',
+      }}>
+        <button
+          onClick={(e) => { e.stopPropagation(); close(); onRemove(); }}
+          aria-label="Delete source"
+          style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+            background: 'transparent', border: 'none', cursor: 'pointer', padding: '6px 10px',
+            animation: open ? `nxDelIn .18s ${CV_EASE}` : 'none',
+          }}>
+          <LIcon name="x" size={18} color="#fff" stroke={2} />
+          <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.3, color: 'rgba(255,255,255,0.85)' }}>Delete</span>
+        </button>
+      </div>
+
+      {/* ── swipeable row content ── */}
+      <div
+        ref={rowRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
+        onClick={open ? close : undefined}
+        style={{
+          display: 'flex', alignItems: 'flex-start', gap: 12,
+          padding: '11px 4px 11px 4px',
+          animation: `nxFade .32s ${CV_EASE} both`,
+          transform: `translateX(${offset}px)`,
+          transition: startX.current === null ? `transform .28s ${CV_EASE}` : 'none',
+          background: t.surface3 || '#FBFAFD',
+          userSelect: 'none', touchAction: 'pan-y',
+          cursor: open ? 'pointer' : 'default',
+        }}>
+        <ContentTypeIcon icon={it.icon} />
         <div style={{ flex: 1, minWidth: 0 }}>
           {it.pending
-            ? <CVShimmer />
-            : <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: -0.2, color: t.text, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.title}</div>}
-          <div style={{ fontSize: 12.5, color: t.faint, marginTop: it.pending ? 6 : 2 }}>{it.pending ? 'Fetching…' : `${it.src} · ${it.meta}`}</div>
+            ? <><CVShimmer /><div style={{ marginTop: 6 }}><CVShimmer w="45%" /></div></>
+            : <>
+                <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: -0.2, color: t.text, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.title}</div>
+                <div style={{ fontSize: 12.5, color: t.faint, marginTop: 2 }}>{`${it.src} · ${it.meta}`}</div>
+                <TagChips t={t} tags={it.tags} />
+              </>}
         </div>
-        <Pressable scale={0.82} onClick={onRemove} aria-label="Remove from collection" style={{ width: 34, height: 34, borderRadius: 999, flex: '0 0 auto', border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}>
-          <LIcon name="x" size={15} color={t.ghost} />
-        </Pressable>
       </div>
     </div>
   );
 }
+
+// Backwards-compat alias (used by NexusPane's StarterChips and CreateCards elsewhere)
+const LinkRow = SwipeRow;
 
 // ── composer — 'ask' is the prominent one (focus ring, taller, ink audio anchor);
 //    'add' is a quiet single-line pill so the Links pivot stays about the material ──
@@ -291,13 +450,124 @@ function AddSourceSheet({ t, title, open, onClose, onAddMany, onAddLink, seed })
   );
 }
 
-// ── Sources tab: the material, add via + (glass menu), quiet per-row delete ──
-function SourcesPane({ t, items, removing, onRemove, plusOpen, onPlus }) {
+// ── 1C-004: PullToRefresh — pointer drag-down on the list triggers a refresh.
+//    Shows a spinner in a hairline pill; resolves after 1.4 s with "Refreshed" flash. ──
+const PTR_TRIGGER = 56;   // px — how far to drag before refresh fires
+const PTR_MAX    = 72;   // px — visual cap so it doesn't go crazy far
+
+function PullToRefresh({ t, onRefresh, children }) {
+  const [pull, setPull] = useState(0);         // current drag distance (0–PTR_MAX)
+  const [phase, setPhase] = useState('idle');  // idle | loading | done
+  const startY = useRef(null);
+  const scrollRef = useRef(null);
+  const timers = useRef([]);
+
+  // only begin pull tracking when the list is scrolled to the very top
+  const onPointerDown = (e) => {
+    const el = scrollRef.current;
+    if (!el || el.scrollTop > 0) return;
+    startY.current = e.clientY;
+  };
+
+  const onPointerMove = (e) => {
+    if (startY.current === null || phase !== 'idle') return;
+    const dy = e.clientY - startY.current;
+    if (dy <= 0) return;
+    setPull(Math.min(PTR_MAX, dy));
+  };
+
+  const onPointerUp = () => {
+    if (startY.current === null) return;
+    startY.current = null;
+    if (pull >= PTR_TRIGGER && phase === 'idle') {
+      setPhase('loading');
+      const t1 = setTimeout(() => {
+        onRefresh && onRefresh();
+        setPhase('done');
+        const t2 = setTimeout(() => { setPhase('idle'); setPull(0); }, 900);
+        timers.current.push(t2);
+      }, 1400);
+      timers.current.push(t1);
+    } else {
+      setPull(0);
+    }
+  };
+
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+
+  const pullActive = phase !== 'idle';
+  const visible = pull > 0 || pullActive;
+  // indicator height: while loading/done it stays at PTR_TRIGGER height, then collapses
+  const indH = pullActive ? PTR_TRIGGER : pull;
+  const opacity = pull > 0 ? Math.min(1, pull / PTR_TRIGGER) : 1;
+
+  return (
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+      {/* ── pull indicator ── */}
+      <div style={{
+        overflow: 'hidden',
+        height: visible ? indH : 0,
+        transition: pullActive || (pull === 0 && phase === 'idle') ? `height .34s ${CV_EASE}` : 'none',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        {phase === 'done' ? (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            height: 28, padding: '0 12px', borderRadius: 999,
+            background: t.surface, border: `1px solid ${t.border}`,
+            fontSize: 12.5, fontWeight: 600, color: t.muted, letterSpacing: -0.1,
+            animation: 'nxPTRFlash 0.9s ease both',
+          }}>
+            <LIcon name="check" size={13} color={CV_ACCENT} stroke={2.2} />
+            Refreshed
+          </span>
+        ) : (
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            height: 28, padding: '0 12px', borderRadius: 999,
+            background: t.surface, border: `1px solid ${t.border}`,
+            opacity, transition: pullActive ? 'opacity .14s ease' : 'none',
+          }}>
+            <div style={{
+              width: 13, height: 13, borderRadius: 999,
+              border: `1.5px solid rgba(112,84,171,0.2)`, borderTopColor: CV_ACCENT,
+              animation: phase === 'loading' ? 'nxPTRSpin .75s linear infinite' : 'none',
+              transform: phase === 'idle' ? `rotate(${(pull / PTR_MAX) * 270}deg)` : 'none',
+            }} />
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: t.muted, letterSpacing: -0.1 }}>
+              {phase === 'loading' ? 'Refreshing…' : pull >= PTR_TRIGGER ? 'Release to refresh' : 'Pull to refresh'}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* ── scrollable content (drag target) ── */}
+      <div
+        ref={scrollRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        style={{ flex: 1, minHeight: 0, overflowY: 'auto', touchAction: 'pan-y' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ── Sources tab: the material, add via + (glass menu), swipe-to-delete rows,
+//    pull-to-refresh at the top. ──
+function SourcesPane({ t, items, removing, onRemove, onRefresh, plusOpen, onPlus }) {
   return (
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '14px 16px 4px' }}>
-        {items.map((it) => <LinkRow key={it.id} t={t} it={it} removing={removing === it.id} onRemove={() => onRemove(it.id)} />)}
-      </div>
+      <PullToRefresh t={t} onRefresh={onRefresh}>
+        <div style={{ padding: '14px 16px 4px' }}>
+          {items.map((it) => (
+            <SwipeRow key={it.id} t={t} it={it} removing={removing === it.id} onRemove={() => onRemove(it.id)} />
+          ))}
+        </div>
+      </PullToRefresh>
       <div style={{ flex: '0 0 auto', padding: '8px 16px 6px' }}>
         <Pressable scale={0.97} onClick={onPlus} aria-label="Add a source" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', height: 48, borderRadius: 999, background: t.surface, border: `1px solid ${plusOpen ? t.borderStrong : t.border}`, boxShadow: plusOpen ? `0 0 0 3px ${t.surface2}` : '0 1px 2px rgba(19,14,26,0.03)', cursor: 'pointer', fontFamily: L_FONT, transition: 'border-color .18s, box-shadow .18s' }}>
           <span style={{ display: 'inline-flex', transform: plusOpen ? 'rotate(45deg)' : 'none', transition: `transform .22s ${CV_EASE}` }}><LIcon name="plus" size={18} color={t.text} /></span>
@@ -557,8 +827,13 @@ function CollectionView({ t, title, meta, initialItems, startPivot = 'Nexus', on
   const addLink = (label) => {
     setPlusOpen(false);
     const o = CV_ADD.find((x) => x.label === label);
-    if (o) add(o);
+    if (o) addMany([o.item]);
   };
+  // 1C-004: pull-to-refresh — re-stamps all items with fresh ids to force visual re-render
+  const refresh = useCallback(() => {
+    const now = Date.now();
+    setItems((arr) => arr.map((it, i) => ({ ...it, id: 'r' + now + i })));
+  }, []);
 
   return (
     <div data-screen-label="Collection view" style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', fontFamily: L_FONT, color: t.text }}>
@@ -574,7 +849,7 @@ function CollectionView({ t, title, meta, initialItems, startPivot = 'Nexus', on
       </div>
       <PivotSwipe pivot={pivot} items={['Nexus', 'Sources']} dur={380} ease={CV_EASE} motion="slide">
         {(p) => (p === 'Sources'
-          ? <SourcesPane t={t} items={items} removing={removing} onRemove={remove} plusOpen={plusOpen} onPlus={() => setPlusOpen((v) => !v)} />
+          ? <SourcesPane t={t} items={items} removing={removing} onRemove={remove} onRefresh={refresh} plusOpen={plusOpen} onPlus={() => setPlusOpen((v) => !v)} />
           : <NexusPane t={t} items={items} title={title} seed={nexusSeed} />)}
       </PivotSwipe>
       {/* bottom pivot — Photos-style floating Liquid Glass capsule, centered in thumb reach.

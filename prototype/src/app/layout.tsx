@@ -1,29 +1,23 @@
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 
-/*
- * Geist — wordmark lockup only (maps to --nx-font-display).
- * The --font-geist CSS variable is set here so globals.css can reference it.
- */
-const geist = localFont({
+const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
-  variable: "--font-geist",
+  variable: "--font-geist-sans",
   weight: "100 900",
 });
 
 export const metadata: Metadata = {
-  title: "Nexus — Prototype",
-  description: "Nexus iOS prototype — core screens",
-};
-
-// viewport-fit=cover is required so env(safe-area-inset-*) values are non-zero
-// on iPhone models with a notch or Dynamic Island when opened in mobile Safari.
-// In Next.js 14+ this must be a separate named export, not part of metadata.
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  viewportFit: "cover",
+  title: "Nexus — Think, don't just save.",
+  description:
+    "Nexus is an AI-native content curation platform. Save anything, understand everything. Coming soon to iPhone.",
+  openGraph: {
+    title: "Nexus — Think, don't just save.",
+    description:
+      "An AI-native content curation platform. Save anything, understand everything.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
@@ -33,9 +27,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geist.variable} antialiased`}>
-        {children}
-      </body>
+      <body className={`${geistSans.variable} antialiased`}>{children}</body>
     </html>
   );
 }

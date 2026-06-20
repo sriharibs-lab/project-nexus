@@ -6,14 +6,30 @@ Every Item belongs to one or more Collections via the collection_items join tabl
 The AI Nexus tab and chat endpoint are always scoped to a single Collection.
 """
 
+import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+
+class CollectionCreatedBy(str, enum.Enum):
+    """
+    How the collection was created.
+
+    - user: created manually by the user (via "Start with a link" or blank collection)
+    - ai:   seeded by the AI research flow (via "Research a topic")
+
+    The DB column is VARCHAR(10) DEFAULT 'user' (migration 0003). Using str+enum
+    so Pydantic and SQLAlchemy both accept the string values without a DB enum type.
+    """
+
+    user = "user"
+    ai = "ai"
 
 
 class Collection(Base):
@@ -29,6 +45,12 @@ class Collection(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     framing_paragraph: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[CollectionCreatedBy] = mapped_column(
+        Enum(CollectionCreatedBy, values_callable=lambda e: [m.value for m in e], create_type=False),
+        nullable=False,
+        default=CollectionCreatedBy.user,
+        server_default=CollectionCreatedBy.user.value,
+    )
     source_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

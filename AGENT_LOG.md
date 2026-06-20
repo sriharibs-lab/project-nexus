@@ -97,3 +97,11 @@ Tasks completed: BLOCKER-collections-enum (CollectionCreatedBy enum + created_by
 Tasks blocked: none
 Gated (waiting on human): 1A-008 (S3/R2 bucket — needs cloud storage credentials in api/.env), 1C-011 (Daily Briefing iOS UI — needs APNs key from Apple Developer portal)
 Commit SHA: 96f7846
+
+---
+
+## Cycle 2026-06-20T12:00:00Z
+Tasks completed: 1C-007 (NexusTabView — approve_with_notes; 72/72 tests pass; SSE chat, EchoPulse, citation chips, Liquid Glass capsule, 6-turn history), 1C-004 (SourcesTabView — approve_with_notes; 94/94 tests pass; tag chips, content-type icons, swipe-to-delete, pull-to-refresh), 0-004 (waitlist landing page — approve_with_notes; 51/51 tests pass; single-box CTA, Echo mark, Liquid Glass nav)
+Tasks blocked: none
+Gated (waiting on human): 1A-008 (S3/R2 bucket — needs cloud storage credentials in api/.env), 1C-011 (Daily Briefing iOS UI — needs APNs key from Apple Developer portal)
+Commit SHA: 12d67e3

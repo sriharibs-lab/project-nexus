@@ -24,7 +24,7 @@ cycle_policy:
 - [x] Resolve open questions (personas, platform roadmap, content types, connections behavior) <!-- nbl:id=0-002 status=done -->
 - [x] **Design System** — v1 complete, handoff package in nexus-design-system-extracted/ <!-- nbl:id=0A-design status=done -->
 - [x] Set up GitHub repo (monorepo: `/prototype`, `/app-ios`, `/api`, `/design-system`) <!-- nbl:id=0-003 status=done -->
-- [ ] Domain + waitlist landing page <!-- nbl:id=0-004 agent=swe deps=[] est=3h -->
+- [x] Domain + waitlist landing page <!-- nbl:id=0-004 agent=swe deps=[] est=3h -->
 
 ### Phase 0A — Design System & Prototype (Before any native build)
 **Assets (Figma + source files):**
@@ -78,10 +78,10 @@ cycle_policy:
 - [x] `POST /collections/research` SSE endpoint — AI-seeded collection creation, streams source rows (Claude Sonnet); gates the "Research a topic" FRE hero flow <!-- nbl:id=1C-001 agent=swe deps=[1A-009,1A-013] est=4h -->
 - [x] Library view: collection home screen, item cards with title/tags/summary preview, ingest status indicator <!-- nbl:id=1C-002 agent=swe deps=[1B-001b,1B-004,1B-005] est=5h -->
 - [x] Item detail / Reader view: clean full-screen reading, title, summary, key insights, tags <!-- nbl:id=1C-003 agent=swe deps=[1C-002] est=4h -->
-- [x] Sources tab polish: tag chips, content-type icon, swipe-to-delete, pull-to-refresh <!-- nbl:id=1C-004 agent=swe deps=[1C-002] est=3h -->
+- [x] Sources tab polish: tag chips, content-type icon, swipe-to-delete, pull-to-refresh — **SwiftUI only, app-ios/Nexus/Nexus/Features/Collection/SourcesTabView.swift** <!-- nbl:id=1C-004 agent=swe deps=[1C-002] est=3h -->
 - [x] "Research a topic" FRE flow: iOS screen that calls `POST /collections/research`, streams and shows sources arriving <!-- nbl:id=1C-005 status=done -->
 - [x] Full-text + semantic search: `GET /v1/search?q=` backend + iOS search bar + results screen <!-- nbl:id=1C-006 status=done -->
-- [x] "Ask your library" — Nexus tab: streaming chat UI calling `POST /collections/{id}/chat` (SSE) <!-- nbl:id=1C-007 agent=swe deps=[1C-003] est=6h -->
+- [x] "Ask your library" — Nexus tab: streaming chat UI calling `POST /collections/{id}/chat` (SSE) — **SwiftUI only, app-ios/Nexus/Nexus/Features/Collection/NexusTabView.swift** <!-- nbl:id=1C-007 agent=swe deps=[1C-003] est=6h -->
 - [x] `POST /collections/{id}/chat` SSE endpoint — RAG over collection items (pgvector similarity + Claude Sonnet streaming) <!-- nbl:id=1C-008 agent=swe deps=[1A-003,1A-009,1A-013] est=5h -->
 - [x] Interest profile background computation — update `user_interest_profiles` after each ingest <!-- nbl:id=1C-009 agent=swe deps=[1A-010] est=2h -->
 - [x] Daily Briefing backend pipeline — digest generation from user's interest profile + recent items <!-- nbl:id=1C-010 status=done -->

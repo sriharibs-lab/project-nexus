@@ -14,6 +14,7 @@ enum Endpoint {
     case item(collectionId: UUID, itemId: UUID)
     case ingest
     case feedback
+    case research          // POST /v1/collections/research — SSE streaming
 
     var path: String {
         switch self {
@@ -29,6 +30,8 @@ enum Endpoint {
             return "/v1/ingest"
         case .feedback:
             return "/v1/feedback"
+        case .research:
+            return "/v1/collections/research"
         }
     }
 

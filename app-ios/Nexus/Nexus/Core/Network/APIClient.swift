@@ -52,6 +52,50 @@ final class APIClient {
         try await post(.feedback, body: request)
     }
 
+    // MARK: - SSE Streaming
+
+    /// Opens a POST SSE stream and calls `onEvent` for each parsed JSON payload.
+    /// Returns when the stream closes or an error event is received.
+    /// Throws on network/HTTP errors; SSE-level errors are surfaced via the callback.
+    func streamSSE<B: Encodable>(
+        _ endpoint: Endpoint,
+        body: B,
+        onEvent: @escaping (Result<[String: Any], Error>) -> Void
+    ) async throws {
+        var req = URLRequest(url: endpoint.url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        if let token = authToken {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        req.httpBody = try encoder.encode(AnyEncodable(body))
+
+        let (asyncBytes, response) = try await URLSession.shared.bytes(for: req)
+        guard let http = response as? HTTPURLResponse else { throw APIError.unknown }
+        guard (200...299).contains(http.statusCode) else {
+            switch http.statusCode {
+            case 401: throw APIError.unauthorized
+            case 404: throw APIError.notFound
+            default:  throw APIError.serverError(http.statusCode)
+            }
+        }
+
+        // Parse SSE: lines are "data: <json>\n\n"
+        for try await line in asyncBytes.lines {
+            guard line.hasPrefix("data: ") else { continue }
+            let jsonStr = String(line.dropFirst(6))
+            guard let data = jsonStr.data(using: .utf8),
+                  let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            else { continue }
+            onEvent(.success(dict))
+            // Stop consuming on terminal events
+            if let event = dict["event"] as? String, event == "done" || event == "error" {
+                break
+            }
+        }
+    }
+
     // MARK: - Core
 
     private func perform<T: Decodable>(
@@ -91,6 +135,11 @@ final class APIClient {
 }
 
 // MARK: - Request / Response types
+
+struct ResearchRequestBody: Encodable {
+    let topic: String
+    let name: String?
+}
 
 struct IngestRequest: Encodable {
     let url: String

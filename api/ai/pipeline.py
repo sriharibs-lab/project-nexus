@@ -114,6 +114,15 @@ class SourceRow:
 
 
 @dataclass
+class ResearchResult:
+    """Return value of research_topic_with_usage — sources + actual token usage."""
+    sources: list[SourceRow]
+    input_tokens: int
+    output_tokens: int
+    cache_read_tokens: int
+
+
+@dataclass
 class EmbeddingResult:
     """pgvector-ready: 1536-dim float32 vector stored as list[float]."""
     vector: list[float]
@@ -199,6 +208,19 @@ async def research_topic(
     include a 'total' field — the iOS client uses the source_count from the
     final 'done' event to display the count retroactively.
     """
+    result = await research_topic_with_usage(topic)
+    for row in result.sources:
+        yield row
+
+
+async def research_topic_with_usage(topic: str) -> ResearchResult:
+    """
+    Collect AI-suggested sources + actual token usage from the Anthropic response.
+
+    Returns ResearchResult with sources list and real token counts read from
+    stream.get_final_message().usage — not estimated. Used by the research router
+    to write accurate AiTelemetry records (SPEC §9b cost telemetry).
+    """
     async with _client.messages.stream(
         model="claude-sonnet-4-6",
         max_tokens=2048,
@@ -213,8 +235,13 @@ async def research_topic(
         full_text = ""
         async for text in stream.text_stream:
             full_text += text
+        final_message = await stream.get_final_message()
 
-    # Strip accidental markdown fences
+    usage = final_message.usage
+    input_tokens = usage.input_tokens
+    output_tokens = usage.output_tokens
+    cache_tokens = getattr(usage, "cache_read_input_tokens", 0) or 0
+
     raw = full_text.strip()
     if raw.startswith("```"):
         raw = raw.split("```")[1]
@@ -225,17 +252,19 @@ async def research_topic(
     try:
         rows = json.loads(raw)
     except json.JSONDecodeError:
-        # Graceful degradation: return empty rather than crashing the FRE
-        return
+        return ResearchResult(sources=[], input_tokens=input_tokens, output_tokens=output_tokens, cache_read_tokens=cache_tokens)
 
-    for row in rows:
-        yield SourceRow(
+    sources = [
+        SourceRow(
             title=row.get("title", ""),
             url=row.get("url", ""),
             domain=row.get("domain", ""),
             rationale=row.get("rationale", ""),
             content_type=row.get("content_type", "article"),
         )
+        for row in rows
+    ]
+    return ResearchResult(sources=sources, input_tokens=input_tokens, output_tokens=output_tokens, cache_read_tokens=cache_tokens)
 
 
 async def build_collection_framing(collection_name: str, first_summary: str) -> str:

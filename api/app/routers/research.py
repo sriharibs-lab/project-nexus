@@ -7,22 +7,19 @@ progressively.
 
 Flow:
   1. Client sends {"topic": "Ozempic and longevity"}
-  2. Server calls Claude Sonnet (research_topic — SPEC §9c)
-  3. Each SourceRow is immediately serialised and flushed as an SSE event
-  4. After all sources stream, server:
-     a. Creates the Collection record (created_by=ai)
-     b. Writes AiTelemetry (cost, tokens, model)
-     c. Sends a final SSE event: {"event": "done", "collection_id": "<uuid>"}
-  5. Client confirms selection → uses POST /ingest to enqueue chosen sources
+  2. Server calls Claude Sonnet (research_topic_with_usage — SPEC §9c)
+  3. A 'searching' heartbeat is yielded immediately (iOS loading screen)
+  4. After Claude returns, each SourceRow is yielded as an SSE 'source' event
+  5. Server persists the Collection record (with framing_paragraph)
+     and writes AiTelemetry with REAL token counts
+  6. Sends a final SSE event: {"event": "done", "collection_id": "<uuid>"}
+  7. Client confirms selection → uses POST /ingest to enqueue chosen sources
 
-SSE event format (one per source, then one "done"):
+SSE event format:
+  data: {"event": "searching", "topic": "..."}   ← immediate heartbeat
   data: {"event": "source", "index": 0, "source": {...}}
   data: {"event": "done", "collection_id": "uuid", "source_count": 8}
   data: {"event": "error", "message": "..."}  ← only on failure
-
-Note on 'total' count: sources are buffered until the stream closes (the model
-returns a complete JSON array). The 'total' field is not available per-event;
-the iOS client reads source_count from the 'done' event instead.
 """
 
 import json
@@ -43,7 +40,7 @@ from app.core.config import settings
 from app.core.database import AsyncSessionLocal, get_db
 from app.middleware.auth import get_current_user
 from app.models.ai_telemetry import AiTelemetry
-from app.models.collection import Collection, CollectionCreatedBy
+from app.models.collection import Collection
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
@@ -79,12 +76,19 @@ async def _stream_research(
     """
     Core SSE generator.
 
-    Streams source rows from Claude Sonnet, then writes the Collection and
-    AiTelemetry records in the same DB session after the stream finishes.
+    Uses research_topic_with_usage() to collect sources + real token counts
+    from the Anthropic response in one pass, then:
+      1. Yields a 'searching' heartbeat so the iOS progress screen appears fast.
+      2. After Claude returns, yields each source as an SSE 'source' event.
+      3. Generates framing_paragraph via build_collection_framing() before persisting.
+      4. Persists the Collection record with framing_paragraph.
+      5. Writes AiTelemetry with ACTUAL token counts from usage, not estimates.
+      6. Yields the terminal 'done' event with collection_id.
+
     All DB work is done after streaming completes — we never hold a DB
     connection open while waiting on Claude.
     """
-    from ai.pipeline import research_topic
+    from ai.pipeline import build_collection_framing, research_topic_with_usage
 
     # Gate: if no API key, yield error event immediately
     if not settings.anthropic_api_key:
@@ -95,42 +99,63 @@ async def _stream_research(
         return
 
     t0 = time.perf_counter()
-    sources_collected = []
+
+    # Yield a "searching" heartbeat immediately so the iOS loading screen renders
+    # before we spend 10-15s waiting on Claude Sonnet.
+    yield _sse({"event": "searching", "topic": topic})
 
     try:
-        # Stream sources from Claude Sonnet one by one
-        # research_topic is an async generator yielding SourceRow objects
-        async for idx, source in _enumerate_async(research_topic(topic)):
-            source_payload = {
-                "event": "source",
-                "index": idx,
-                "source": {
-                    "title": source.title,
-                    "url": source.url,
-                    "domain": source.domain,
-                    "rationale": source.rationale,
-                    "content_type": source.content_type,
-                },
-            }
-            sources_collected.append(source)
-            yield _sse(source_payload)
-
+        result = await research_topic_with_usage(topic)
     except Exception as exc:
         logger.exception("Research stream failed for topic=%r: %s", topic, exc)
         yield _sse({"event": "error", "message": "Research failed. Please try again."})
         return
 
+    sources_collected = result.sources
+
     if not sources_collected:
         yield _sse({"event": "error", "message": "No sources found. Try a more specific topic."})
         return
 
-    # ── Persist Collection + Telemetry ────────────────────────────────────────
-    # Token counts are estimated (the streaming API buffers internally but we
-    # don't plumb usage out of the generator to avoid coupling). Conservative
-    # estimate is sufficient for cost visibility at this stage. Upgrade to
-    # stream.get_final_message().usage before TestFlight for accurate tracking.
-    duration_ms = int((time.perf_counter() - t0) * 1000)
+    # Yield each source
+    for idx, source in enumerate(sources_collected):
+        yield _sse({
+            "event": "source",
+            "index": idx,
+            "source": {
+                "title": source.title,
+                "url": source.url,
+                "domain": source.domain,
+                "rationale": source.rationale,
+                "content_type": source.content_type,
+            },
+        })
 
+    # ── Compute cost from REAL usage ──────────────────────────────────────────
+    duration_ms = int((time.perf_counter() - t0) * 1000)
+    actual_input = result.input_tokens
+    actual_output = result.output_tokens
+    actual_cache = result.cache_read_tokens
+    # Sonnet pricing: $3.00/1M input, $15.00/1M output; cache reads at 10% input
+    actual_cost = (
+        Decimal(actual_input) * Decimal("0.000003")
+        + Decimal(actual_output) * Decimal("0.000015")
+        - Decimal(actual_cache) * Decimal("0.0000027")
+    )
+
+    # ── Generate framing_paragraph ────────────────────────────────────────────
+    framing: str | None = None
+    if sources_collected and settings.anthropic_api_key:
+        try:
+            first_summary = sources_collected[0].rationale or sources_collected[0].title
+            framing = await build_collection_framing(collection_name, first_summary)
+        except Exception:
+            logger.warning(
+                "framing_paragraph generation failed for collection=%r; proceeding without it",
+                collection_name,
+            )
+
+    # ── Persist Collection + Telemetry ────────────────────────────────────────
     try:
         collection_id = uuid.uuid4()
 
@@ -140,18 +165,10 @@ async def _stream_research(
                 user_id=user_id,
                 name=collection_name,
                 description=f"AI-curated sources on: {topic}",
-                created_by=CollectionCreatedBy.ai,
-                source_count=0,  # incremented by ingest pipeline as each source is saved
+                framing_paragraph=framing,
+                source_count=0,
             )
             db.add(collection)
-
-            # Telemetry: log estimated cost based on source count
-            estimated_input = 500 + len(topic) // 4  # system prompt + user message
-            estimated_output = len(sources_collected) * 80  # ~80 tokens per source row
-            estimated_cost = (
-                Decimal(estimated_input) * Decimal("0.000003")
-                + Decimal(estimated_output) * Decimal("0.000015")
-            )
 
             db.add(AiTelemetry(
                 id=uuid.uuid4(),
@@ -160,10 +177,10 @@ async def _stream_research(
                 correlation_id=correlation_id,
                 operation="collection_research",
                 model="claude-sonnet-4-6",
-                input_tokens=estimated_input,
-                output_tokens=estimated_output,
-                cache_read_tokens=0,
-                cost_usd=estimated_cost,
+                input_tokens=actual_input,
+                output_tokens=actual_output,
+                cache_read_tokens=actual_cache,
+                cost_usd=actual_cost,
                 duration_ms=duration_ms,
             ))
 
@@ -180,23 +197,15 @@ async def _stream_research(
         yield _sse({"event": "error", "message": "Sources found but collection save failed."})
 
 
-async def _enumerate_async(agen: AsyncGenerator) -> AsyncGenerator[tuple[int, object], None]:
-    """Async equivalent of enumerate() for async generators."""
-    idx = 0
-    async for item in agen:
-        yield idx, item
-        idx += 1
-
-
 @router.post(
     "/research",
     summary="AI-seeded collection creation via SSE",
     description=(
         "Streams Claude Sonnet source suggestions for a topic. "
-        "Returns SSE events: `source` (one per result), then `done` with the new collection_id."
+        "Returns SSE events: 'searching' heartbeat, 'source' (one per result), "
+        "then 'done' with the new collection_id."
     ),
     response_class=StreamingResponse,
-    # FastAPI can't auto-document StreamingResponse — add manual status_code
     status_code=status.HTTP_200_OK,
 )
 async def research_collection(
@@ -211,6 +220,7 @@ async def research_collection(
         {"topic": "Ozempic and longevity", "name": "My Collection"}
 
     SSE stream:
+        data: {"event": "searching", "topic": "..."}
         data: {"event": "source", "index": 0, "source": {...}}
         ...
         data: {"event": "done", "collection_id": "uuid", "source_count": 8}
@@ -236,7 +246,7 @@ async def research_collection(
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",  # disable Nginx buffering for SSE
+            "X-Accel-Buffering": "no",
             "Connection": "keep-alive",
         },
     )

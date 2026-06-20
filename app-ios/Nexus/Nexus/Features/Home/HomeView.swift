@@ -3,8 +3,15 @@ import SwiftUI
 struct HomeView: View {
     @StateObject private var vm = HomeViewModel()
 
+    // Research sheet
+    @State private var showingNewCollection = false
+    // After research completes, hold the new collection to navigate to
+    @State private var newCollection: NexusCollection?
+    // Programmatic navigation path for pushing new collection after research
+    @State private var navPath = NavigationPath()
+
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navPath) {
             ZStack {
                 Color.Nexus.pageBackground.ignoresSafeArea()
 
@@ -18,7 +25,34 @@ struct HomeView: View {
             }
             .navigationTitle("Nexus")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showingNewCollection = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundColor(.Nexus.accent)
+                            .frame(width: NexusSpacing.hitTarget, height: NexusSpacing.hitTarget)
+                    }
+                }
+            }
             .task { await vm.load() }
+            .sheet(isPresented: $showingNewCollection) {
+                ResearchFlowView { collectionId in
+                    // Research complete — reload collections and push to the new one
+                    Task {
+                        await vm.load()
+                        // Find the newly created collection and push to it
+                        if let found = vm.collections.first(where: { $0.id == collectionId }) {
+                            navPath.append(found)
+                        }
+                    }
+                }
+            }
+            .navigationDestination(for: NexusCollection.self) { collection in
+                CollectionView(collection: collection)
+            }
         }
     }
 
@@ -39,26 +73,41 @@ struct HomeView: View {
             .padding(.bottom, NexusSpacing.xl)
         }
         .refreshable { await vm.load() }
-        .navigationDestination(for: NexusCollection.self) { collection in
-            CollectionView(collection: collection)
-        }
     }
 
     // MARK: - Empty state
 
     private var emptyState: some View {
-        VStack(spacing: NexusSpacing.lg) {
+        VStack(spacing: NexusSpacing.xl) {
             VStack(spacing: NexusSpacing.sm) {
                 Text("What are you curious about?")
                     .font(.Nexus.headingSmall)
                     .foregroundColor(.Nexus.ink)
                     .kerning(NexusKerning.tighter)
                     .multilineTextAlignment(.center)
-                Text("Create your first collection to start saving and understanding content.")
+                Text("Tap + to research a topic and build your first collection.")
                     .font(.Nexus.bodySmall)
                     .foregroundColor(.Nexus.muted)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, NexusSpacing.xl)
+            }
+
+            // CTA matching the spec: "Create your first collection"
+            Button {
+                showingNewCollection = true
+            } label: {
+                HStack(spacing: NexusSpacing.sm) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 13, weight: .semibold))
+                    Text("Research a topic")
+                        .font(.Nexus.labelLarge)
+                        .kerning(NexusKerning.normal)
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, NexusSpacing.xl)
+                .frame(height: NexusSpacing.buttonHeight)
+                .background(Color.Nexus.accent)
+                .clipShape(RoundedRectangle(cornerRadius: NexusRadius.md))
             }
         }
     }

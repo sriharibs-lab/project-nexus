@@ -51,7 +51,10 @@ class ProcessedItem:
 
 @dataclass
 class EmbeddingResult:
-    """pgvector-ready: 1536-dim float32 vector stored as list[float]."""
+    """pgvector-ready float32 vector stored as list[float].
+    Runtime: Fireworks nomic-embed-text-v1.5 (768-dim).
+    Stub fallback: SHA-256 deterministic vector (dimensions=1536, model='stub-sha256-1536').
+    """
     vector: list[float]
     dimensions: int
     model: str
@@ -95,9 +98,9 @@ def summarize_item(content: str, content_type: ContentType) -> ProcessedItem:
 
 def compute_embedding(content: str) -> EmbeddingResult:
     """
-    Stub embedding — deterministic 1536-dim float32 vector.
-    Replace body with a real embedding call (e.g. text-embedding-3-small)
-    when the Anthropic embedding endpoint ships. Output is pgvector-compatible.
+    Stub embedding — deterministic 1536-dim float32 vector for local development.
+    Production: replace with Fireworks nomic-embed-text-v1.5 (768-dim, pgvector-compatible).
+    Ensure FIREWORKS_API_KEY is set and update DIMS to 768 when wiring the real call.
     """
     DIMS = 1536
 

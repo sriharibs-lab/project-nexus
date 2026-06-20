@@ -48,6 +48,13 @@ final class APIClient {
         try await get(.item(collectionId: collectionId, itemId: itemId))
     }
 
+    /// Delete a saved source from a collection.
+    /// Calls DELETE /v1/collections/{collectionId}/items/{itemId}.
+    /// The backend returns 204 No Content on success.
+    func deleteItem(id itemId: UUID, in collectionId: UUID) async throws {
+        try await delete(.item(collectionId: collectionId, itemId: itemId))
+    }
+
     func ingest(url: String, collectionId: UUID, contentType: String = "article") async throws -> IngestResponse {
         let body = IngestRequest(url: url, collectionId: collectionId, contentType: contentType)
         return try await post(.ingest, body: body)

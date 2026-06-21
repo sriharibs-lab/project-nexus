@@ -27,6 +27,9 @@ extension Color {
         static let textPrimary     = Color(hex: "#130E1A")
         static let textSecondary   = Color(hex: "#68607A")
         static let textTertiary    = Color(hex: "#9A93AC")
+
+        // Status
+        static let destructive     = Color(hex: "#C0392B")  // red — destructive actions only
     }
 }
 

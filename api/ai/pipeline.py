@@ -1,16 +1,29 @@
 """
 Nexus AI Processing Pipeline
 Summarization + semantic tagging via Claude Haiku 4.5, embedding stub (pgvector-ready).
+
+Performance notes (1D-005 save-to-summary SLO < 10s):
+  - summarize_item() and compute_embedding() are synchronous (blocking) functions.
+    Callers MUST run them via asyncio.to_thread() to avoid blocking the event loop.
+  - Both can run concurrently via asyncio.gather(to_thread(summarize), to_thread(embed)).
+  - summarize_item() clips content to 8 000 chars — a typical article is ~1 000 tokens
+    input, producing ~150 tokens output. Haiku latency: ~1-3s per call.
+  - compute_embedding() is a local stub: <1ms. Replace with Fireworks/OpenAI call
+    (adds ~200ms) when the embedding endpoint is wired in.
 """
 
 import json
+import logging
 import os
 import struct
 import hashlib
+import time
 from dataclasses import dataclass
 from typing import Literal
 
 import anthropic
+
+logger = logging.getLogger(__name__)
 
 client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
@@ -59,9 +72,16 @@ class EmbeddingResult:
 
 def summarize_item(content: str, content_type: ContentType) -> ProcessedItem:
     """
-    Summarize content and extract semantic tags.
-    Returns TL;DR, 3-5 key insights, and semantic tags.
+    Summarize content and extract semantic tags via Claude Haiku.
+
+    This is a **synchronous** blocking function. Callers inside async code
+    must run it via asyncio.to_thread(summarize_item, content, content_type).
+
+    Timing: logs ai.summarize latency_ms after each call. Typical range: 1-3s.
+    Content is capped at 8 000 chars (~2 000 tokens) to stay within the
+    SLO budget and keep inference cost predictable.
     """
+    t0 = time.perf_counter()
     response = client.messages.create(
         model="claude-haiku-4-5",
         max_tokens=512,
@@ -76,6 +96,7 @@ def summarize_item(content: str, content_type: ContentType) -> ProcessedItem:
             }
         ],
     )
+    latency_ms = int((time.perf_counter() - t0) * 1000)
 
     raw = next(b.text for b in response.content if b.type == "text")
 
@@ -86,19 +107,34 @@ def summarize_item(content: str, content_type: ContentType) -> ProcessedItem:
             raw = raw[4:]
 
     data = json.loads(raw.strip())
-    return ProcessedItem(
+    result = ProcessedItem(
         tldr=data["tldr"],
         insights=data["insights"],
         tags=data["tags"],
     )
 
+    logger.info(
+        "ai.summarize latency_ms=%d model=claude-haiku-4-5 "
+        "content_type=%s tags=%d",
+        latency_ms, content_type, len(result.tags),
+    )
+    return result
+
 
 def compute_embedding(content: str) -> EmbeddingResult:
     """
     Stub embedding — deterministic 1536-dim float32 vector.
-    Replace body with a real embedding call (e.g. text-embedding-3-small)
-    when the Anthropic embedding endpoint ships. Output is pgvector-compatible.
+
+    This is a **synchronous** function safe to run via asyncio.to_thread.
+    Running summarize_item() and compute_embedding() concurrently via
+    asyncio.gather(to_thread(summarize), to_thread(embed)) saves ~1-2s
+    compared to sequential execution.
+
+    Replace the stub body with a real embedding API call (Fireworks
+    nomic-embed-text-v1.5 or OpenAI text-embedding-3-small) when wired in.
+    The stub produces deterministic output so unit tests are reproducible.
     """
+    t0 = time.perf_counter()
     DIMS = 1536
 
     # deterministic hash-based stub so tests are reproducible
@@ -109,6 +145,12 @@ def compute_embedding(content: str) -> EmbeddingResult:
     # normalize to unit sphere (pgvector cosine distance expects this)
     magnitude = sum(v * v for v in raw_floats) ** 0.5
     vector = [v / magnitude for v in raw_floats]
+
+    latency_ms = int((time.perf_counter() - t0) * 1000)
+    logger.info(
+        "ai.embedding latency_ms=%d model=stub-sha256-1536 dims=%d",
+        latency_ms, DIMS,
+    )
 
     return EmbeddingResult(
         vector=vector,

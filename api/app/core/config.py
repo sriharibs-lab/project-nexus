@@ -16,6 +16,15 @@ class Settings(BaseSettings):
     environment: str = "development"
     log_level: str = "info"
 
+    # Ingest pipeline performance
+    # Jina timeout tuned to keep save-to-summary SLO < 10 000 ms.
+    # 8s leaves room for AI summarization (~2-3s) and DB write (~0.5s).
+    jina_timeout: int = 8
+    # When Jina times out or fails, fall back to local trafilatura extraction.
+    jina_fallback_to_readability: bool = True
+    # Target SLO (milliseconds). Logged as a warning when exceeded.
+    ingest_slo_ms: int = 10_000
+
     @property
     def is_production(self) -> bool:
         return self.environment == "production"

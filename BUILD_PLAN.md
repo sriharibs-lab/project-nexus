@@ -89,9 +89,9 @@ cycle_policy:
 
 ### 1D — Polish & QA (Weeks 8–9)
 - [x] Onboarding flow (beautiful, minimal — 3 screens: welcome, topic picker, first collection prompt) <!-- nbl:id=1D-001 agent=swe deps=[1C-007] est=4h -->
-- [!] Empty states, loading states, error states (all screens: home, collection, reader, chat, search) <!-- nbl:id=1D-002 agent=swe deps=[1C-002] est=4h -->
+- [x] Empty states, loading states, error states (all screens: home, collection, reader, chat, search) <!-- nbl:id=1D-002 agent=swe deps=[1C-002] est=4h -->
 - [x] Offline reading: cache article raw_content in UserDefaults/FileManager on reader open <!-- nbl:id=1D-003 agent=swe deps=[1C-003] est=3h -->
-- [ ] Highlight + annotation in reader (tap-to-highlight, stored locally, shown in reader) <!-- nbl:id=1D-004 agent=swe deps=[1C-003] est=5h -->
+- [x] Highlight + annotation in reader (tap-to-highlight, stored locally, shown in reader) <!-- nbl:id=1D-004 agent=swe deps=[1C-003] est=5h -->
 - [x] Performance: save-to-summary target < 10s — audit ingest pipeline, add timing logs, optimize Jina timeout <!-- nbl:id=1D-005 agent=swe deps=[1C-009] est=3h -->
 - [ ] App Store assets: icon, screenshots (6.7" + 6.1"), preview video script, description copy <!-- nbl:id=1D-006 agent=swe deps=[1D-001,1D-002] est=4h -->
 

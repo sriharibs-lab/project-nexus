@@ -113,3 +113,11 @@ Tasks completed: 1D-001 (onboarding flow — approve_with_notes; 81/81 tests pas
 Tasks blocked: 1D-002 (empty/loading/error states — request_changes; migration 0007 and Collection.status field absent from main; errorRed token not added to Colors.swift; 4 model test failures)
 Gated (waiting on human): 1A-008 (S3/R2 bucket — needs cloud storage credentials in api/.env), 1C-011 (Daily Briefing iOS UI — needs APNs key from Apple Developer portal)
 Commit SHA: 60c7877
+
+---
+
+## Cycle 2026-06-20T21:00:00Z
+Tasks completed: 1D-002 (empty/loading/error states — approve_with_notes; EmptyStateView, LoadingStateView, ErrorStateView reusable DesignSystem components wired into all in-scope screens; note: stale doc comment in LoadingStateView.swift line 7 to correct), 1D-004 (highlight + annotation in reader — approve_with_notes; HighlightableTextView UIViewRepresentable, AnnotationStore FileManager-backed JSON sidecars, RemoveHighlightSheet, tap-to-highlight with amber/sage colors; UIKit boundary clean, Color.Nexus.destructive added; minor: dead `font` param on HighlightableTextView, amber/sage tokens not yet in Colors.swift)
+Tasks blocked: none
+Gated (waiting on human): 1A-008 (S3/R2 bucket — needs cloud storage credentials in api/.env), 1C-011 (Daily Briefing iOS UI — needs APNs key from Apple Developer portal), 1D-006 (App Store assets — gated on 1D-002 now complete; was also gated on 1D-001 which completed prior cycle)
+Commit SHA: ebedd05

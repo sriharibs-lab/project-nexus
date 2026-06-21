@@ -118,7 +118,7 @@ struct ItemDetailView: View {
                     selectedInfo: info,
                     itemId: item.id,
                     onHighlight: { annotation in
-                        AnnotationStore.shared.add(annotation)
+                        annotationStore.add(annotation)
                         withAnimation(NexusAnimation.element) { selectedTextInfo = nil }
                     },
                     onDismiss: {
@@ -142,7 +142,7 @@ struct ItemDetailView: View {
         .sheet(isPresented: $showRemoveSheet) {
             if let annotation = tappedAnnotation {
                 RemoveHighlightSheet(annotation: annotation) {
-                    AnnotationStore.shared.remove(id: annotation.id, for: annotation.itemId)
+                    annotationStore.remove(id: annotation.id, for: annotation.itemId)
                     showRemoveSheet = false
                     tappedAnnotation = nil
                 }
@@ -328,12 +328,13 @@ struct ItemDetailView: View {
                 processingPlaceholder(label: "Loading full text…")
             } else if let rawContent = vm.fullContent {
                 // HighlightableTextView — UITextView wrapper for highlight support
+                // UIFont/UIColor construction is isolated inside HighlightableTextView;
+                // only SwiftUI-native types are passed here (preserves UIKit boundary).
                 HighlightableTextView(
                     text: rawContent,
                     annotations: annotationStore.annotations(for: item.id),
-                    font: UIFont(name: "Inter-Regular", size: 14)
-                        ?? UIFont.systemFont(ofSize: 14, weight: .regular),
-                    textColor: UIColor(Color.Nexus.muted),
+                    font: .body,
+                    textColor: Color.Nexus.muted,
                     onSelectText: { info in
                         withAnimation(NexusAnimation.element) {
                             selectedTextInfo = info
@@ -538,14 +539,14 @@ private struct RemoveHighlightSheet: View {
                         .font(.Nexus.labelMedium)
                         .kerning(NexusKerning.normal)
                 }
-                .foregroundColor(Color(hex: "#C0392B"))
+                .foregroundColor(Color.Nexus.destructive)
                 .frame(maxWidth: .infinity)
                 .frame(height: NexusSpacing.buttonHeight)
-                .background(Color(hex: "#C0392B").opacity(0.08))
+                .background(Color.Nexus.destructive.opacity(0.08))
                 .clipShape(RoundedRectangle(cornerRadius: NexusRadius.md))
                 .overlay(
                     RoundedRectangle(cornerRadius: NexusRadius.md)
-                        .stroke(Color(hex: "#C0392B").opacity(0.18), lineWidth: NexusBorder.hair)
+                        .stroke(Color.Nexus.destructive.opacity(0.18), lineWidth: NexusBorder.hair)
                 )
             }
             .buttonStyle(.plain)

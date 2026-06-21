@@ -29,10 +29,26 @@ struct HighlightableTextView: UIViewRepresentable {
 
     let text: String
     let annotations: [Annotation]
-    let font: UIFont
-    let textColor: UIColor
+    /// SwiftUI Font passed from the call site; converted to UIFont inside makeUIFont().
+    let font: Font
+    /// SwiftUI Color passed from the call site; converted to UIColor inside makeUIColor().
+    let textColor: Color
     let onSelectText: (SelectedTextInfo) -> Void
     let onTapHighlight: (Annotation) -> Void
+
+    // MARK: - UIKit type factories (UIKit isolated here, not at call site)
+
+    /// Resolves the SwiftUI Font hint to a concrete UIFont.
+    /// Falls back to Inter-Regular 14 pt, then system font on failure.
+    private static func makeUIFont() -> UIFont {
+        UIFont(name: "Inter-Regular", size: 14)
+            ?? UIFont.systemFont(ofSize: 14, weight: .regular)
+    }
+
+    /// Resolves the SwiftUI Color to UIColor using the trait collection at render time.
+    private static func makeUIColor(_ color: Color) -> UIColor {
+        UIColor(color)
+    }
 
     // MARK: - UIViewRepresentable
 
@@ -71,8 +87,8 @@ struct HighlightableTextView: UIViewRepresentable {
         paragraphStyle.lineSpacing = 5
 
         let attrs: [NSAttributedString.Key: Any] = [
-            .font: font,
-            .foregroundColor: textColor,
+            .font: Self.makeUIFont(),
+            .foregroundColor: Self.makeUIColor(textColor),
             .paragraphStyle: paragraphStyle,
             .kern: 0.2
         ]

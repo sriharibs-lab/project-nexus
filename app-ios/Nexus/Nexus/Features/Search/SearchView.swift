@@ -113,20 +113,13 @@ struct SearchView: View {
     // MARK: - Idle state
 
     private var idleState: some View {
-        VStack(spacing: NexusSpacing.sm) {
+        VStack {
             Spacer()
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 32, weight: .light))
-                .foregroundColor(.Nexus.ghost)
-            Text("Search your saves")
-                .font(.Nexus.headingSmall)
-                .foregroundColor(.Nexus.ink)
-                .kerning(NexusKerning.tighter)
-            Text("Full-text and semantic search across your collections.")
-                .font(.Nexus.bodySmall)
-                .foregroundColor(.Nexus.muted)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, NexusSpacing.xxxl)
+            EmptyStateView(
+                icon: "magnifyingglass",
+                title: "Search your saves",
+                subtitle: "Full-text and semantic search across all your collections."
+            )
             Spacer()
         }
     }
@@ -134,10 +127,14 @@ struct SearchView: View {
     // MARK: - Searching state
 
     private var searchingState: some View {
-        VStack {
+        VStack(spacing: NexusSpacing.md) {
             Spacer()
-            ProgressView()
-                .tint(Color.Nexus.accent)
+            EchoPulseView()
+                .frame(height: 44)
+            Text("Searching…")
+                .font(.Nexus.caption)
+                .foregroundColor(.Nexus.ghost)
+                .kerning(NexusKerning.normal)
             Spacer()
         }
     }
@@ -182,17 +179,13 @@ struct SearchView: View {
     // MARK: - Empty state
 
     private var emptyState: some View {
-        VStack(spacing: NexusSpacing.sm) {
+        VStack {
             Spacer()
-            Text("No results for \"\(vm.query)\"")
-                .font(.Nexus.labelLarge)
-                .foregroundColor(.Nexus.ink)
-                .multilineTextAlignment(.center)
-            Text("Try different keywords or save more content to this topic.")
-                .font(.Nexus.bodySmall)
-                .foregroundColor(.Nexus.muted)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, NexusSpacing.xl)
+            EmptyStateView(
+                icon: "doc.text.magnifyingglass",
+                title: "No results for \"\(vm.query)\"",
+                subtitle: "Try different keywords or save more content to your collections."
+            )
             Spacer()
         }
     }
@@ -200,16 +193,11 @@ struct SearchView: View {
     // MARK: - Failed state
 
     private func failedState(message: String) -> some View {
-        VStack(spacing: NexusSpacing.sm) {
+        VStack {
             Spacer()
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 28, weight: .light))
-                .foregroundColor(.Nexus.ghost)
-            Text(message)
-                .font(.Nexus.bodySmall)
-                .foregroundColor(.Nexus.muted)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, NexusSpacing.xl)
+            ErrorStateView(message: message) {
+                vm.onQueryChange(vm.query)
+            }
             Spacer()
         }
     }

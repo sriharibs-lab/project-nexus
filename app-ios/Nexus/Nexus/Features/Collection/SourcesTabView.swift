@@ -16,6 +16,8 @@ struct SourcesTabView: View {
     let items: [Item]
     let isLoading: Bool
     let collectionId: UUID
+    /// Optional load error forwarded from CollectionViewModel.
+    var error: APIError? = nil
     /// Called when the user commits a swipe-to-delete gesture.
     let onDelete: (Item) async -> Void
     /// Called when the user pulls to refresh.
@@ -24,7 +26,17 @@ struct SourcesTabView: View {
     var body: some View {
         Group {
             if isLoading && items.isEmpty {
-                loadingState
+                LoadingStateView()
+            } else if let apiError = error, items.isEmpty {
+                VStack {
+                    Spacer()
+                    ErrorStateView(
+                        message: apiError.errorDescription ?? "Couldn't load sources."
+                    ) {
+                        await onRefresh()
+                    }
+                    Spacer()
+                }
             } else if items.isEmpty {
                 emptyState
             } else {
@@ -36,32 +48,16 @@ struct SourcesTabView: View {
         }
     }
 
-    // MARK: - Loading skeleton
-
-    private var loadingState: some View {
-        VStack {
-            Spacer()
-            ProgressView()
-            Spacer()
-        }
-    }
-
     // MARK: - Empty state
 
     private var emptyState: some View {
-        VStack(spacing: NexusSpacing.sm) {
+        VStack {
             Spacer()
-            Image(systemName: "doc.text.magnifyingglass")
-                .font(.system(size: 32, weight: .light))
-                .foregroundColor(.Nexus.ghost)
-            Text("No sources yet")
-                .font(.Nexus.labelLarge)
-                .foregroundColor(.Nexus.muted)
-            Text("Add a source to start building this collection.")
-                .font(.Nexus.caption)
-                .foregroundColor(.Nexus.ghost)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, NexusSpacing.xl)
+            EmptyStateView(
+                icon: "doc.text.magnifyingglass",
+                title: "No sources yet",
+                subtitle: "Add a source to start building this collection."
+            )
             Spacer()
         }
     }

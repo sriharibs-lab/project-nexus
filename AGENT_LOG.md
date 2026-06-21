@@ -105,3 +105,11 @@ Tasks completed: 1C-007 (NexusTabView — approve_with_notes; 72/72 tests pass; 
 Tasks blocked: none
 Gated (waiting on human): 1A-008 (S3/R2 bucket — needs cloud storage credentials in api/.env), 1C-011 (Daily Briefing iOS UI — needs APNs key from Apple Developer portal)
 Commit SHA: 12d67e3
+
+---
+
+## Cycle 2026-06-20T18:00:00Z
+Tasks completed: 1D-001 (onboarding flow — approve_with_notes; 81/81 tests pass; 3-screen welcome/topic-picker/collection-prompt, UserDefaults persistence, EchoMark shapes, RootView routing), 1D-003 (offline reading cache — approve; 21/21 tests pass; OfflineContentCache actor, FileManager-backed, 50-entry LRU, 100-file disk cap, offline badge), 1D-005 (pipeline performance audit — approve_with_notes; 17/17 tests pass; async Jina split timeouts 5s connect/8s read, asyncio.gather concurrency, per-stage timing logs, ingest SLO < 10s)
+Tasks blocked: 1D-002 (empty/loading/error states — request_changes; migration 0007 and Collection.status field absent from main; errorRed token not added to Colors.swift; 4 model test failures)
+Gated (waiting on human): 1A-008 (S3/R2 bucket — needs cloud storage credentials in api/.env), 1C-011 (Daily Briefing iOS UI — needs APNs key from Apple Developer portal)
+Commit SHA: 60c7877

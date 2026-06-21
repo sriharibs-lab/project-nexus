@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexus — App Icon Preview</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0F0D14;
+    font-family: -apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    padding: 48px 40px 64px;
+    min-height: 100vh;
+  }
+
+  .page-header {
+    margin-bottom: 48px;
+  }
+
+  .page-header h1 {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6B6580;
+    margin-bottom: 8px;
+  }
+
+  .page-header h2 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    color: #F0EDF8;
+  }
+
+  .section {
+    margin-bottom: 56px;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #4A4560;
+    margin-bottom: 28px;
+  }
+
+  .icon-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+
+  .icon-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .icon-item span {
+    font-size: 11px;
+    font-weight: 500;
+    color: #4A4560;
+    letter-spacing: 0.02em;
+  }
+
+  /* The actual icon SVG container */
+  .app-icon {
+    border-radius: var(--radius);
+    overflow: hidden;
+    position: relative;
+    flex-shrink: 0;
+    box-shadow:
+      0 0 0 0.5px rgba(255,255,255,0.08),
+      0 4px 16px rgba(0,0,0,0.5),
+      0 1px 3px rgba(0,0,0,0.3);
+  }
+
+  /* Sizes */
+  .icon-1024 { --radius: 224px; width: 1024px; height: 1024px; }
+  .icon-180  { --radius: 40px;  width: 180px;  height: 180px;  }
+  .icon-120  { --radius: 27px;  width: 120px;  height: 120px;  }
+  .icon-60   { --radius: 13px;  width: 60px;   height: 60px;   }
+
+  /* Scaled-down for display */
+  .display-1024 { transform: scale(0.22); transform-origin: bottom left; width: 225px; height: 225px; }
+  .display-180  { transform: scale(1);    }
+  .display-120  { transform: scale(1);    }
+  .display-60   { transform: scale(1);    }
+
+  .display-wrapper-1024 {
+    width: 225px;
+    height: 225px;
+    overflow: hidden;
+    border-radius: 50px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    flex-shrink: 0;
+  }
+
+  /* The gradient background of the icon */
+  .icon-bg {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 38% 30%, #9B7ED4 0%, #7054AB 45%, #4A3580 100%);
+  }
+
+  /* Subtle bloom / ambient light */
+  .icon-bloom {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 30% 25%, rgba(255,255,255,0.18) 0%, transparent 55%),
+      radial-gradient(circle at 72% 75%, rgba(74,53,128,0.4) 0%, transparent 50%);
+  }
+
+  /* The Echo mark — rendered inline as SVG */
+  .icon-mark {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Divider between dark and light preview */
+  .preview-panels {
+    display: flex;
+    gap: 0;
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid #1E1B28;
+  }
+
+  .panel {
+    flex: 1;
+    padding: 40px 36px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    align-items: flex-start;
+  }
+
+  .panel-dark {
+    background: #0F0D14;
+  }
+
+  .panel-light {
+    background: #F8F5FF;
+    border-left: 1px solid #E0D9F0;
+  }
+
+  .panel-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .panel-dark .panel-label  { color: #4A4560; }
+  .panel-light .panel-label { color: #9A93AC; }
+
+  .sizes-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .size-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .size-label-dark  { font-size: 10px; font-weight: 500; color: #4A4560; }
+  .size-label-light { font-size: 10px; font-weight: 500; color: #B7B1C4; }
+
+  /* Wordmark lockup area */
+  .wordmark-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 16px;
+  }
+
+  .wordmark-text {
+    font-size: 32px;
+    font-weight: 600;
+    letter-spacing: -0.035em;
+    color: #F0EDF8;
+  }
+
+  .wordmark-text-light {
+    color: #130E1A;
+  }
+
+  .spec-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: 8px;
+  }
+
+  .spec-card {
+    background: #1A1724;
+    border: 1px solid #2A2538;
+    border-radius: 12px;
+    padding: 16px;
+  }
+
+  .spec-card-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #4A4560;
+    margin-bottom: 6px;
+  }
+
+  .spec-card-value {
+    font-size: 13px;
+    font-weight: 500;
+    color: #9B7ED4;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>App Store Assets · Nexus</h1>
+  <h2>App Icon — Echo Mark</h2>
+</div>
+
+<!-- INLINE SVG ICON DEFINITION -->
+<!-- The Echo mark: two facing arcs holding a filled center node, outer arc pair at 32% opacity -->
+<!-- Sizes: all icons are CSS-scaled versions of the same SVG mark -->
+
+<div class="preview-panels">
+
+  <!-- DARK BACKGROUND PANEL -->
+  <div class="panel panel-dark">
+    <div class="panel-label">Dark Background</div>
+
+    <div class="sizes-row">
+
+      <!-- 1024 × 1024 (displayed at 225×225) -->
+      <div class="size-group">
+        <div style="width:225px; height:225px; border-radius:50px; overflow:hidden; box-shadow: 0 8px 40px rgba(112,84,171,0.35), 0 2px 8px rgba(0,0,0,0.6); flex-shrink:0; position:relative;">
+          <!-- Background gradient -->
+          <div style="position:absolute; inset:0; background: radial-gradient(circle at 35% 28%, #A88ADF 0%, #7054AB 42%, #4A3580 100%);"></div>
+          <!-- Ambient bloom -->
+          <div style="position:absolute; inset:0; background: radial-gradient(circle at 30% 22%, rgba(255,255,255,0.20) 0%, transparent 50%), radial-gradient(circle at 70% 80%, rgba(40,24,90,0.35) 0%, transparent 45%);"></div>
+          <!-- Echo mark SVG scaled to fit 225px display -->
+          <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+            <svg width="128" height="128" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- Outer arcs (32% opacity) -->
+              <path d="M 8.5 24 A 15.5 15.5 0 0 1 24 8.5" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M 24 39.5 A 15.5 15.5 0 0 1 8.5 24" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M 39.5 24 A 15.5 15.5 0 0 1 24 39.5" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M 24 8.5 A 15.5 15.5 0 0 1 39.5 24" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <!-- Inner arcs (solid white) -->
+              <path d="M 13 24 A 11 11 0 0 1 24 13" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M 24 35 A 11 11 0 0 1 13 24" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M 35 24 A 11 11 0 0 1 24 35" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M 24 13 A 11 11 0 0 1 35 24" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <!-- Center node -->
+              <circle cx="24" cy="24" r="4.4" fill="white"/>
+            </svg>
+          </div>
+          <!-- Specular sheen -->
+          <div style="position:absolute; inset:0; background: linear-gradient(145deg, rgba(255,255,255,0.12) 0%, transparent 40%, rgba(0,0,0,0.08) 100%);"></div>
+        </div>
+        <span class="size-label-dark">1024 × 1024 · App Store</span>
+      </div>
+
+      <!-- 180 × 180 -->
+      <div class="size-group">
+        <div style="width:180px; height:180px; border-radius:40px; overflow:hidden; box-shadow: 0 4px 20px rgba(112,84,171,0.3), 0 1px 4px rgba(0,0,0,0.5); flex-shrink:0; position:relative;">
+          <div style="position:absolute; inset:0; background: radial-gradient(circle at 35% 28%, #A88ADF 0%, #7054AB 42%, #4A3580 100%);"></div>
+          <div style="position:absolute; inset:0; background: radial-gradient(circle at 30% 22%, rgba(255,255,255,0.20) 0%, transparent 50%);"></div>
+          <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+            <svg width="100" height="100" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M 8.5 24 A 15.5 15.5 0 0 1 24 8.5" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M 24 39.5 A 15.5 15.5 0 0 1 8.5 24" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M 39.5 24 A 15.5 15.5 0 0 1 24 39.5" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M 24 8.5 A 15.5 15.5 0 0 1 39.5 24" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M 13 24 A 11 11 0 0 1 24 13" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M 24 35 A 11 11 0 0 1 13 24" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M 35 24 A 11 11 0 0 1 24 35" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M 24 13 A 11 11 0 0 1 35 24" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <circle cx="24" cy="24" r="4.4" fill="white"/>
+            </svg>
+          </div>
+          <div style="position:absolute; inset:0; background: linear-gradient(145deg, rgba(255,255,255,0.12) 0%, transparent 40%);"></div>
+        </div>
+        <span class="size-label-dark">180 × 180 · @3x Home</span>
+      </div>
+
+      <!-- 120 × 120 -->
+      <div class="size-group">
+        <div style="width:120px; height:120px; border-radius:27px; overflow:hidden; box-shadow: 0 3px 12px rgba(112,84,171,0.3); flex-shrink:0; position:relative;">
+          <div style="position:absolute; inset:0; background: radial-gradient(circle at 35% 28%, #A88ADF 0%, #7054AB 42%, #4A3580 100%);"></div>
+          <div style="position:absolute; inset:0; background: radial-gradient(circle at 30% 22%, rgba(255,255,255,0.18) 0%, transparent 50%);"></div>
+          <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+            <svg width="68" height="68" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M 8.5 24 A 15.5 15.5 0 0 1 24 8.5" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M 24 39.5 A 15.5 15.5 0 0 1 8.5 24" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M 39.5 24 A 15.5 15.5 0 0 1 24 39.5" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M 24 8.5 A 15.5 15.5 0 0 1 39.5 24" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M 13 24 A 11 11 0 0 1 24 13" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M 24 35 A 11 11 0 0 1 13 24" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M 35 24 A 11 11 0 0 1 24 35" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M 24 13 A 11 11 0 0 1 35 24" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <circle cx="24" cy="24" r="4.4" fill="white"/>
+            </svg>
+          </div>
+          <div style="position:absolute; inset:0; background: linear-gradient(145deg, rgba(255,255,255,0.12) 0%, transparent 40%);"></div>
+        </div>
+        <span class="size-label-dark">120 × 120 · @2x Home</span>
+      </div>
+
+      <!-- 60 × 60 -->
+      <div class="size-group">
+        <div style="width:60px; height:60px; border-radius:13px; overflow:hidden; box-shadow: 0 2px 8px rgba(112,84,171,0.3); flex-shrink:0; position:relative;">
+          <div style="position:absolute; inset:0; background: radial-gradient(circle at 35% 28%, #A88ADF 0%, #7054AB 42%, #4A3580 100%);"></div>
+          <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+            <svg width="34" height="34" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M 8.5 24 A 15.5 15.5 0 0 1 24 8.5" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M 24 39.5 A 15.5 15.5 0 0 1 8.5 24" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M 39.5 24 A 15.5 15.5 0 0 1 24 39.5" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M 24 8.5 A 15.5 15.5 0 0 1 39.5 24" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M 13 24 A 11 11 0 0 1 24 13" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M 24 35 A 11 11 0 0 1 13 24" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M 35 24 A 11 11 0 0 1 24 35" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M 24 13 A 11 11 0 0 1 35 24" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <circle cx="24" cy="24" r="4.4" fill="white"/>
+            </svg>
+          </div>
+        </div>
+        <span class="size-label-dark">60 × 60 · @1x Spotlight</span>
+      </div>
+
+    </div>
+
+    <!-- Wordmark lockup dark -->
+    <div class="wordmark-row">
+      <div style="width:44px; height:44px; border-radius:10px; overflow:hidden; position:relative; flex-shrink:0;">
+        <div style="position:absolute; inset:0; background: radial-gradient(circle at 35% 28%, #A88ADF 0%, #7054AB 42%, #4A3580 100%);"></div>
+        <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+          <svg width="26" height="26" viewBox="0 0 48 48" fill="none">
+            <path d="M 8.5 24 A 15.5 15.5 0 0 1 24 8.5" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+            <path d="M 24 39.5 A 15.5 15.5 0 0 1 8.5 24" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+            <path d="M 39.5 24 A 15.5 15.5 0 0 1 24 39.5" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+            <path d="M 24 8.5 A 15.5 15.5 0 0 1 39.5 24" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+            <path d="M 13 24 A 11 11 0 0 1 24 13" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+            <path d="M 24 35 A 11 11 0 0 1 13 24" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+            <path d="M 35 24 A 11 11 0 0 1 24 35" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+            <path d="M 24 13 A 11 11 0 0 1 35 24" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+            <circle cx="24" cy="24" r="4.4" fill="white"/>
+          </svg>
+        </div>
+      </div>
+      <span class="wordmark-text">Nexus</span>
+    </div>
+
+  </div><!-- end panel-dark -->
+
+  <!-- LIGHT BACKGROUND PANEL -->
+  <div class="panel panel-light">
+    <div class="panel-label">Light Background</div>
+
+    <div class="sizes-row">
+
+      <!-- 180 on light -->
+      <div class="size-group">
+        <div style="width:180px; height:180px; border-radius:40px; overflow:hidden; box-shadow: 0 4px 20px rgba(112,84,171,0.25), 0 1px 4px rgba(19,14,26,0.12); flex-shrink:0; position:relative;">
+          <div style="position:absolute; inset:0; background: radial-gradient(circle at 35% 28%, #A88ADF 0%, #7054AB 42%, #4A3580 100%);"></div>
+          <div style="position:absolute; inset:0; background: radial-gradient(circle at 30% 22%, rgba(255,255,255,0.20) 0%, transparent 50%);"></div>
+          <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+            <svg width="100" height="100" viewBox="0 0 48 48" fill="none">
+              <path d="M 8.5 24 A 15.5 15.5 0 0 1 24 8.5" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M 24 39.5 A 15.5 15.5 0 0 1 8.5 24" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M 39.5 24 A 15.5 15.5 0 0 1 24 39.5" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M 24 8.5 A 15.5 15.5 0 0 1 39.5 24" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M 13 24 A 11 11 0 0 1 24 13" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M 24 35 A 11 11 0 0 1 13 24" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M 35 24 A 11 11 0 0 1 24 35" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M 24 13 A 11 11 0 0 1 35 24" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <circle cx="24" cy="24" r="4.4" fill="white"/>
+            </svg>
+          </div>
+          <div style="position:absolute; inset:0; background: linear-gradient(145deg, rgba(255,255,255,0.12) 0%, transparent 40%);"></div>
+        </div>
+        <span class="size-label-light">180 × 180</span>
+      </div>
+
+      <!-- 120 on light -->
+      <div class="size-group">
+        <div style="width:120px; height:120px; border-radius:27px; overflow:hidden; box-shadow: 0 3px 12px rgba(112,84,171,0.22), 0 1px 3px rgba(19,14,26,0.08); flex-shrink:0; position:relative;">
+          <div style="position:absolute; inset:0; background: radial-gradient(circle at 35% 28%, #A88ADF 0%, #7054AB 42%, #4A3580 100%);"></div>
+          <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+            <svg width="68" height="68" viewBox="0 0 48 48" fill="none">
+              <path d="M 8.5 24 A 15.5 15.5 0 0 1 24 8.5" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M 24 39.5 A 15.5 15.5 0 0 1 8.5 24" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M 39.5 24 A 15.5 15.5 0 0 1 24 39.5" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M 24 8.5 A 15.5 15.5 0 0 1 39.5 24" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M 13 24 A 11 11 0 0 1 24 13" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M 24 35 A 11 11 0 0 1 13 24" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M 35 24 A 11 11 0 0 1 24 35" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M 24 13 A 11 11 0 0 1 35 24" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <circle cx="24" cy="24" r="4.4" fill="white"/>
+            </svg>
+          </div>
+          <div style="position:absolute; inset:0; background: linear-gradient(145deg, rgba(255,255,255,0.12) 0%, transparent 40%);"></div>
+        </div>
+        <span class="size-label-light">120 × 120</span>
+      </div>
+
+      <!-- 60 on light -->
+      <div class="size-group">
+        <div style="width:60px; height:60px; border-radius:13px; overflow:hidden; box-shadow: 0 2px 8px rgba(112,84,171,0.2); flex-shrink:0; position:relative;">
+          <div style="position:absolute; inset:0; background: radial-gradient(circle at 35% 28%, #A88ADF 0%, #7054AB 42%, #4A3580 100%);"></div>
+          <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+            <svg width="34" height="34" viewBox="0 0 48 48" fill="none">
+              <path d="M 8.5 24 A 15.5 15.5 0 0 1 24 8.5" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M 24 39.5 A 15.5 15.5 0 0 1 8.5 24" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M 39.5 24 A 15.5 15.5 0 0 1 24 39.5" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M 24 8.5 A 15.5 15.5 0 0 1 39.5 24" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M 13 24 A 11 11 0 0 1 24 13" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M 24 35 A 11 11 0 0 1 13 24" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M 35 24 A 11 11 0 0 1 24 35" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M 24 13 A 11 11 0 0 1 35 24" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <circle cx="24" cy="24" r="4.4" fill="white"/>
+            </svg>
+          </div>
+        </div>
+        <span class="size-label-light">60 × 60</span>
+      </div>
+
+    </div>
+
+    <!-- Wordmark lockup light -->
+    <div class="wordmark-row">
+      <div style="width:44px; height:44px; border-radius:10px; overflow:hidden; position:relative; flex-shrink:0; box-shadow: 0 2px 8px rgba(112,84,171,0.2);">
+        <div style="position:absolute; inset:0; background: radial-gradient(circle at 35% 28%, #A88ADF 0%, #7054AB 42%, #4A3580 100%);"></div>
+        <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+          <svg width="26" height="26" viewBox="0 0 48 48" fill="none">
+            <path d="M 8.5 24 A 15.5 15.5 0 0 1 24 8.5" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+            <path d="M 24 39.5 A 15.5 15.5 0 0 1 8.5 24" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+            <path d="M 39.5 24 A 15.5 15.5 0 0 1 24 39.5" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+            <path d="M 24 8.5 A 15.5 15.5 0 0 1 39.5 24" stroke="rgba(255,255,255,0.32)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+            <path d="M 13 24 A 11 11 0 0 1 24 13" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+            <path d="M 24 35 A 11 11 0 0 1 13 24" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+            <path d="M 35 24 A 11 11 0 0 1 24 35" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+            <path d="M 24 13 A 11 11 0 0 1 35 24" stroke="white" stroke-width="3" stroke-linecap="round" fill="none"/>
+            <circle cx="24" cy="24" r="4.4" fill="white"/>
+          </svg>
+        </div>
+      </div>
+      <span class="wordmark-text wordmark-text-light">Nexus</span>
+    </div>
+
+  </div><!-- end panel-light -->
+
+</div><!-- end preview-panels -->
+
+<!-- Icon Spec Notes -->
+<div style="margin-top: 40px;">
+  <div class="spec-grid">
+    <div class="spec-card">
+      <div class="spec-card-label">Background</div>
+      <div class="spec-card-value">radial-gradient<br>#A88ADF → #7054AB → #4A3580</div>
+    </div>
+    <div class="spec-card">
+      <div class="spec-card-label">Inner Arc Stroke</div>
+      <div class="spec-card-value">white · 3px<br>round-cap · r11</div>
+    </div>
+    <div class="spec-card">
+      <div class="spec-card-label">Outer Arc Stroke</div>
+      <div class="spec-card-value">white · 32% opacity<br>2.2px · r15.5</div>
+    </div>
+    <div class="spec-card">
+      <div class="spec-card-label">Center Node</div>
+      <div class="spec-card-value">white fill<br>r4.4</div>
+    </div>
+    <div class="spec-card">
+      <div class="spec-card-label">Corner Radius</div>
+      <div class="spec-card-value">iOS formula:<br>size × 0.22</div>
+    </div>
+    <div class="spec-card">
+      <div class="spec-card-label">Grid System</div>
+      <div class="spec-card-value">48-unit grid<br>centered at 24,24</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

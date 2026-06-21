@@ -1,0 +1,1454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexus — App Store Screenshots (6.7")</title>
+<style>
+  /* ─── Reset & Base ─── */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    /* Design tokens */
+    --bg: #F9F8FC;
+    --page-bloom: radial-gradient(135% 60% at 50% -8%, #E7DCF4 0%, #F9F8FC 50%);
+    --surface: #FFFFFF;
+    --surface2: #F4F2F9;
+    --surface3: #FBFAFD;
+    --ink: #130E1A;
+    --muted: #68607A;
+    --faint: #9A93AC;
+    --ghost: #B7B1C4;
+    --border: #E9E5F2;
+    --border-strong: #DCD7EA;
+    --accent: #7054AB;
+    --accent-light: #9B7ED4;
+    --card-radius: 14px;
+    --composer-radius: 22px;
+  }
+
+  body {
+    background: #1A1724;
+    font-family: -apple-system, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', sans-serif;
+    padding: 48px 40px 80px;
+    min-height: 100vh;
+  }
+
+  .page-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #4A4560;
+    margin-bottom: 12px;
+  }
+
+  .page-heading {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    color: #E8E2F4;
+    margin-bottom: 48px;
+  }
+
+  /* ─── Screenshot strip layout ─── */
+  .screenshots-row {
+    display: flex;
+    gap: 32px;
+    overflow-x: auto;
+    padding-bottom: 24px;
+    align-items: flex-start;
+  }
+
+  .screenshot-unit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+
+  .screenshot-headline {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #E8E2F4;
+    text-align: center;
+    max-width: 240px;
+    line-height: 1.3;
+  }
+
+  /* ─── iPhone 15 Pro frame ─── */
+  /* Real 6.7" iPhone is 430×932 logical points → aspect 430:932 = 0.461
+     For display, we render at 290 × 629px (scale ≈ 0.675) */
+  .iphone-frame {
+    width: 290px;
+    height: 629px;
+    border-radius: 44px;
+    background: #1C1C1E;
+    position: relative;
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,0.14),
+      inset 0 0 0 2px rgba(0,0,0,0.6),
+      0 32px 80px rgba(0,0,0,0.6),
+      0 8px 24px rgba(0,0,0,0.4);
+    overflow: hidden;
+  }
+
+  /* Side buttons */
+  .iphone-frame::before {
+    content: '';
+    position: absolute;
+    left: -2.5px;
+    top: 108px;
+    width: 3px;
+    height: 36px;
+    background: #2A2A2C;
+    border-radius: 2px 0 0 2px;
+    box-shadow: 0 50px 0 #2A2A2C, 0 100px 0 #2A2A2C;
+  }
+
+  .iphone-frame::after {
+    content: '';
+    position: absolute;
+    right: -2.5px;
+    top: 156px;
+    width: 3px;
+    height: 72px;
+    background: #2A2A2C;
+    border-radius: 0 2px 2px 0;
+  }
+
+  /* Screen area */
+  .iphone-screen {
+    position: absolute;
+    inset: 3px;
+    border-radius: 41px;
+    overflow: hidden;
+    background: var(--page-bloom);
+  }
+
+  /* Dynamic Island */
+  .dynamic-island {
+    position: absolute;
+    top: 13px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 86px;
+    height: 28px;
+    background: #000;
+    border-radius: 20px;
+    z-index: 100;
+  }
+
+  /* Status bar text */
+  .status-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 52px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 0 24px 8px;
+    z-index: 50;
+  }
+
+  .status-time {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+  }
+
+  .status-icons {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .status-icons svg { color: var(--ink); }
+
+  /* ─── SCREEN 1: Home — Collections ─── */
+  .screen-home {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding-top: 52px;
+  }
+
+  .home-header {
+    padding: 10px 18px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .home-pivot {
+    display: flex;
+    background: var(--surface2);
+    border-radius: 999px;
+    padding: 3px;
+    position: relative;
+  }
+
+  .pivot-tab {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 14px;
+    border-radius: 999px;
+    color: var(--muted);
+    position: relative;
+    z-index: 1;
+  }
+
+  .pivot-tab.active {
+    color: var(--ink);
+  }
+
+  .pivot-thumb {
+    position: absolute;
+    background: white;
+    border-radius: 999px;
+    box-shadow: 0 1px 3px rgba(19,14,26,0.10);
+    top: 3px;
+    left: 3px;
+    height: calc(100% - 6px);
+    width: 60px;
+    transition: none;
+  }
+
+  .avatar-btn {
+    width: 30px;
+    height: 30px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: white;
+    letter-spacing: -0.01em;
+  }
+
+  .collections-list {
+    flex: 1;
+    overflow: hidden;
+    padding: 4px 14px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .collection-card {
+    background: var(--surface);
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    padding: 14px 15px;
+    box-shadow: 0 1px 2px rgba(19,14,26,0.03);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .card-icon {
+    width: 24px;
+    height: 24px;
+    background: var(--surface2);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .card-meta {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--faint);
+  }
+
+  .card-title {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+  }
+
+  .card-summary {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.45;
+    font-weight: 400;
+  }
+
+  .card-chips {
+    display: flex;
+    gap: 5px;
+    margin-top: 3px;
+    flex-wrap: wrap;
+  }
+
+  .chip {
+    background: var(--surface2);
+    border-radius: 999px;
+    padding: 2.5px 8px;
+    font-size: 9.5px;
+    font-weight: 600;
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+
+  .chip.accent {
+    background: rgba(112,84,171,0.08);
+    border-color: rgba(112,84,171,0.15);
+    color: var(--accent);
+  }
+
+  /* Composer bar at bottom */
+  .composer {
+    margin: 10px 14px 20px;
+    background: var(--surface);
+    border-radius: 22px;
+    border: 1.5px solid var(--border-strong);
+    box-shadow: 0 0 0 3px var(--surface2);
+    padding: 11px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .composer-plus {
+    width: 26px;
+    height: 26px;
+    background: var(--surface2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .composer-placeholder {
+    flex: 1;
+    font-size: 12px;
+    color: var(--ghost);
+    font-weight: 400;
+  }
+
+  .composer-mic {
+    width: 28px;
+    height: 28px;
+    background: var(--ink);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* ─── SCREEN 2: Research flow ─── */
+  .screen-research {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding-top: 52px;
+  }
+
+  .research-header {
+    padding: 8px 14px 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .back-btn {
+    width: 30px;
+    height: 30px;
+    background: white;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 2px rgba(19,14,26,0.05);
+    flex-shrink: 0;
+  }
+
+  .research-title-block {
+    flex: 1;
+  }
+
+  .research-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.03em;
+  }
+
+  .research-subtitle {
+    font-size: 10.5px;
+    color: var(--muted);
+    font-weight: 400;
+    margin-top: 1px;
+  }
+
+  .source-stream {
+    flex: 1;
+    padding: 8px 14px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    overflow: hidden;
+  }
+
+  .source-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .source-row:last-child {
+    border-bottom: none;
+  }
+
+  .source-type-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--surface2);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: 1px solid var(--border);
+    font-size: 10px;
+  }
+
+  .source-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .source-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+  }
+
+  .source-meta {
+    font-size: 10px;
+    color: var(--faint);
+    margin-top: 3px;
+  }
+
+  .source-check {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1.5px solid var(--accent);
+    background: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .status-pill {
+    margin: 12px 14px 8px;
+    background: rgba(112,84,171,0.07);
+    border: 1px solid rgba(112,84,171,0.15);
+    border-radius: 999px;
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .status-spinner {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1.5px solid var(--accent);
+    border-top-color: transparent;
+    flex-shrink: 0;
+  }
+
+  .status-text {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: -0.01em;
+  }
+
+  .create-footer {
+    margin: 10px 14px 20px;
+    background: var(--accent);
+    border-radius: 999px;
+    padding: 14px 0;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: white;
+    letter-spacing: -0.02em;
+  }
+
+  /* ─── SCREEN 3: Nexus chat tab ─── */
+  .screen-chat {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding-top: 52px;
+  }
+
+  .chat-header {
+    padding: 8px 14px 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .chat-title-block { flex: 1; }
+
+  .chat-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.03em;
+  }
+
+  .chat-sources-line {
+    font-size: 10.5px;
+    color: var(--muted);
+    margin-top: 1px;
+  }
+
+  .chat-area {
+    flex: 1;
+    padding: 8px 14px 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Echo mark framing paragraph */
+  .framing-block {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .echo-mark-sm {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .framing-text {
+    font-size: 11.5px;
+    color: var(--ink);
+    line-height: 1.55;
+    font-weight: 400;
+  }
+
+  .framing-text strong {
+    font-weight: 600;
+  }
+
+  /* User message bubble */
+  .user-bubble {
+    align-self: flex-end;
+    background: var(--surface2);
+    border-radius: 18px 18px 4px 18px;
+    padding: 9px 13px;
+    max-width: 85%;
+    font-size: 11.5px;
+    color: var(--ink);
+    line-height: 1.4;
+    font-weight: 400;
+    border: 1px solid var(--border);
+  }
+
+  /* Nexus answer */
+  .nexus-answer {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .nexus-answer-text {
+    font-size: 11.5px;
+    color: var(--ink);
+    line-height: 1.6;
+    font-weight: 400;
+  }
+
+  .inline-source-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--surface2);
+    border-radius: 999px;
+    padding: 1.5px 7px 1.5px 4px;
+    font-size: 9.5px;
+    font-weight: 600;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    vertical-align: middle;
+    margin: 0 1px;
+  }
+
+  .bullet-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 2px;
+  }
+
+  .bullet-item {
+    display: flex;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--ink);
+    line-height: 1.4;
+  }
+
+  .bullet-dot {
+    color: var(--accent);
+    font-weight: 700;
+    margin-top: 1px;
+    flex-shrink: 0;
+  }
+
+  /* Bottom tab capsule — Liquid Glass style */
+  .tab-capsule {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(248,245,255,0.78);
+    backdrop-filter: blur(8px) saturate(195%) brightness(1.05);
+    border-radius: 999px;
+    padding: 8px 22px;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    border: 0.5px solid rgba(233,229,242,0.6);
+    box-shadow:
+      inset 0 0.5px 0 rgba(255,255,255,0.7),
+      inset 0 -0.5px 0 rgba(150,170,255,0.2),
+      0 8px 24px rgba(19,14,26,0.12);
+  }
+
+  .tab-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    position: relative;
+  }
+
+  .tab-icon {
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .tab-label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  .tab-item.active .tab-label { color: var(--accent); }
+  .tab-item.inactive .tab-label { color: var(--muted); }
+
+  /* ─── SCREEN 4: Reader view ─── */
+  .screen-reader {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding-top: 52px;
+    background: #FFFEF9;
+  }
+
+  .reader-header {
+    padding: 8px 14px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid #F0EDE5;
+  }
+
+  .reader-title-block { flex: 1; }
+
+  .reader-publication {
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin-bottom: 2px;
+  }
+
+  .reader-headline {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1A1410;
+    letter-spacing: -0.03em;
+    line-height: 1.25;
+  }
+
+  .reader-meta {
+    font-size: 10px;
+    color: var(--faint);
+    margin-top: 3px;
+  }
+
+  .reader-body {
+    flex: 1;
+    padding: 14px 18px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .reader-para {
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: #1A1410;
+    font-weight: 400;
+  }
+
+  /* Highlight in amber */
+  .highlight {
+    background: rgba(255,196,50,0.28);
+    border-bottom: 1.5px solid rgba(255,180,0,0.5);
+    border-radius: 2px;
+    padding: 0 1px;
+  }
+
+  .annotation-bubble {
+    background: rgba(255,196,50,0.12);
+    border: 1px solid rgba(255,180,0,0.3);
+    border-radius: 10px;
+    padding: 9px 11px;
+    font-size: 10.5px;
+    color: #5C4A1A;
+    line-height: 1.4;
+  }
+
+  .annotation-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(255,168,0,0.8);
+    margin-bottom: 4px;
+  }
+
+  .reader-toolbar {
+    padding: 10px 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    border-top: 1px solid #F0EDE5;
+  }
+
+  .reader-tool {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .reader-tool-icon {
+    width: 30px;
+    height: 30px;
+    background: #F5F3EC;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #E8E5DA;
+  }
+
+  .reader-tool-label {
+    font-size: 8.5px;
+    color: #8A856A;
+    font-weight: 500;
+  }
+
+  /* ─── SCREEN 5: Daily briefing ─── */
+  .screen-briefing {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding-top: 52px;
+  }
+
+  .briefing-header {
+    padding: 10px 18px 14px;
+  }
+
+  .briefing-kicker {
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+
+  .briefing-date {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.04em;
+    line-height: 1.1;
+  }
+
+  .briefing-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .briefing-cards {
+    flex: 1;
+    padding: 4px 14px 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .briefing-card {
+    background: var(--surface);
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    padding: 14px 15px;
+    box-shadow: 0 1px 2px rgba(19,14,26,0.03);
+  }
+
+  .briefing-card-kicker {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin-bottom: 6px;
+  }
+
+  .briefing-card-headline {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+    margin-bottom: 5px;
+  }
+
+  .briefing-card-insight {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.45;
+    font-weight: 400;
+  }
+
+  .briefing-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .action-btn {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 0;
+    text-align: center;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .action-btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+
+  .briefing-progress {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    margin: 10px 14px 20px;
+  }
+
+  .progress-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--border);
+  }
+
+  .progress-dot.active {
+    background: var(--accent);
+    width: 16px;
+    border-radius: 999px;
+  }
+
+  /* ─── Screenshot number badge ─── */
+  .screenshot-num {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: #4A4560;
+    text-transform: uppercase;
+  }
+
+</style>
+</head>
+<body>
+
+<div class="page-title">App Store Screenshots · iPhone 6.7" · 1290×2796</div>
+<div class="page-heading">5 Screens — Nexus v1.0</div>
+
+<div class="screenshots-row">
+
+  <!-- ═══════════════════════════════════════════
+       SCREENSHOT 1 — Home Collections
+  ═══════════════════════════════════════════ -->
+  <div class="screenshot-unit">
+    <div class="screenshot-headline">Your library,<br>organized by AI</div>
+    <div class="iphone-frame">
+      <div class="iphone-screen">
+        <div class="dynamic-island"></div>
+
+        <!-- Status bar -->
+        <div class="status-bar">
+          <span class="status-time">9:41</span>
+          <div class="status-icons">
+            <svg width="14" height="10" viewBox="0 0 14 10" fill="var(--ink)"><rect x="0" y="3" width="3" height="7" rx="0.5"/><rect x="4" y="2" width="3" height="8" rx="0.5"/><rect x="8" y="0.5" width="3" height="9.5" rx="0.5"/><rect x="12" y="1" width="2" height="9" rx="0.5" opacity="0.3"/></svg>
+            <svg width="12" height="9" viewBox="0 0 12 9" fill="var(--ink)"><path d="M6 2C7.9 2 9.6 2.7 10.9 3.9L12 2.8C10.4 1.1 8.3 0 6 0C3.7 0 1.6 1.1 0 2.8L1.1 3.9C2.4 2.7 4.1 2 6 2Z"/><path d="M6 5C7 5 7.9 5.4 8.6 6.1L9.7 5C8.7 4 7.4 3.4 6 3.4C4.6 3.4 3.3 4 2.3 5L3.4 6.1C4.1 5.4 5 5 6 5Z"/><circle cx="6" cy="8" r="1.2"/></svg>
+            <svg width="22" height="10" viewBox="0 0 22 10" fill="none"><rect x="0.5" y="0.5" width="18" height="9" rx="2.5" stroke="var(--ink)" stroke-opacity="0.35"/><rect x="1.5" y="1.5" width="14" height="7" rx="1.5" fill="var(--ink)"/><path d="M20 3.5V6.5C20.8 6.2 21.5 5.5 21.5 5C21.5 4.5 20.8 3.8 20 3.5Z" fill="var(--ink)" opacity="0.4"/></svg>
+          </div>
+        </div>
+
+        <div class="screen-home">
+          <div class="home-header">
+            <div class="home-pivot">
+              <div class="pivot-thumb"></div>
+              <div class="pivot-tab active">Recent</div>
+              <div class="pivot-tab">All</div>
+            </div>
+            <div class="avatar-btn">S</div>
+          </div>
+
+          <div class="collections-list">
+
+            <div class="collection-card">
+              <div class="card-top">
+                <div class="card-icon">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7054AB" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>
+                </div>
+                <span class="card-meta">8 sources · 2h ago</span>
+              </div>
+              <div class="card-title">AI &amp; the Future of Work</div>
+              <div class="card-summary">How LLMs are reshaping knowledge work, from junior roles to executive decision-making.</div>
+              <div class="card-chips">
+                <span class="chip accent">3 new insights</span>
+                <span class="chip">Research</span>
+              </div>
+            </div>
+
+            <div class="collection-card">
+              <div class="card-top">
+                <div class="card-icon">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#68607A" stroke-width="2" stroke-linecap="round"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                </div>
+                <span class="card-meta">5 sources · Yesterday</span>
+              </div>
+              <div class="card-title">Morning Reads</div>
+              <div class="card-summary">Curated pieces on product design, startups, and the attention economy.</div>
+              <div class="card-chips">
+                <span class="chip">Reading</span>
+                <span class="chip">Design</span>
+              </div>
+            </div>
+
+            <div class="collection-card">
+              <div class="card-top">
+                <div class="card-icon">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#68607A" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                </div>
+                <span class="card-meta">12 sources · 3 days ago</span>
+              </div>
+              <div class="card-title">Longevity Research</div>
+              <div class="card-summary">Current science on healthspan extension — from rapamycin to caloric restriction.</div>
+              <div class="card-chips">
+                <span class="chip">Health</span>
+                <span class="chip">Science</span>
+              </div>
+            </div>
+
+            <div class="collection-card">
+              <div class="card-top">
+                <div class="card-icon">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#68607A" stroke-width="2" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                </div>
+                <span class="card-meta">6 sources · 1 week ago</span>
+              </div>
+              <div class="card-title">Go-to-Market Playbooks</div>
+              <div class="card-summary">Early-stage distribution strategies, from founder-led sales to product-led growth.</div>
+              <div class="card-chips">
+                <span class="chip">Startups</span>
+                <span class="chip">GTM</span>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="composer">
+            <div class="composer-plus">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#68607A" stroke-width="1.5" stroke-linecap="round"><path d="M6 1v10M1 6h10"/></svg>
+            </div>
+            <span class="composer-placeholder">New collection…</span>
+            <div class="composer-mic">
+              <svg width="11" height="11" viewBox="0 0 48 48" fill="none">
+                <path d="M 8.5 24 A 15.5 15.5 0 0 1 24 8.5" stroke="rgba(255,255,255,0.35)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+                <path d="M 24 39.5 A 15.5 15.5 0 0 1 8.5 24" stroke="rgba(255,255,255,0.35)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+                <path d="M 39.5 24 A 15.5 15.5 0 0 1 24 39.5" stroke="rgba(255,255,255,0.35)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+                <path d="M 24 8.5 A 15.5 15.5 0 0 1 39.5 24" stroke="rgba(255,255,255,0.35)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+                <path d="M 13 24 A 11 11 0 0 1 24 13" stroke="white" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+                <path d="M 24 35 A 11 11 0 0 1 13 24" stroke="white" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+                <path d="M 35 24 A 11 11 0 0 1 24 35" stroke="white" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+                <path d="M 24 13 A 11 11 0 0 1 35 24" stroke="white" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+                <circle cx="24" cy="24" r="4.4" fill="white"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <span class="screenshot-num">1 of 5</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SCREENSHOT 2 — Research flow
+  ═══════════════════════════════════════════ -->
+  <div class="screenshot-unit">
+    <div class="screenshot-headline">Research any topic<br>in seconds</div>
+    <div class="iphone-frame">
+      <div class="iphone-screen">
+        <div class="dynamic-island"></div>
+        <div class="status-bar">
+          <span class="status-time">9:41</span>
+          <div class="status-icons">
+            <svg width="14" height="10" viewBox="0 0 14 10" fill="var(--ink)"><rect x="0" y="3" width="3" height="7" rx="0.5"/><rect x="4" y="2" width="3" height="8" rx="0.5"/><rect x="8" y="0.5" width="3" height="9.5" rx="0.5"/><rect x="12" y="1" width="2" height="9" rx="0.5" opacity="0.3"/></svg>
+            <svg width="22" height="10" viewBox="0 0 22 10" fill="none"><rect x="0.5" y="0.5" width="18" height="9" rx="2.5" stroke="var(--ink)" stroke-opacity="0.35"/><rect x="1.5" y="1.5" width="14" height="7" rx="1.5" fill="var(--ink)"/></svg>
+          </div>
+        </div>
+
+        <div class="screen-research">
+          <div class="research-header">
+            <div class="back-btn">
+              <svg width="8" height="13" viewBox="0 0 8 13" fill="none" stroke="var(--ink)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 1L1 6.5L7 12"/></svg>
+            </div>
+            <div class="research-title-block">
+              <div class="research-title">AI &amp; Future of Work</div>
+              <div class="research-subtitle">New collection</div>
+            </div>
+          </div>
+
+          <div class="status-pill">
+            <div class="status-spinner"></div>
+            <span class="status-text">Found 8 sources — tap to deselect</span>
+          </div>
+
+          <div class="source-stream">
+
+            <div class="source-row">
+              <div class="source-type-icon">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+              </div>
+              <div class="source-content">
+                <div class="source-title">The Cognitive Labor Divide: Why Some Jobs Thrive Under AI</div>
+                <div class="source-meta">Harvard Business Review · 12 min read</div>
+              </div>
+              <div class="source-check">
+                <svg width="10" height="8" viewBox="0 0 10 8" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4L3.5 6.5L9 1"/></svg>
+              </div>
+            </div>
+
+            <div class="source-row">
+              <div class="source-type-icon" style="font-size:11px; color:var(--muted);">▶</div>
+              <div class="source-content">
+                <div class="source-title">Inside OpenAI's Plan to Make GPT-5 Replace Junior Analysts</div>
+                <div class="source-meta">The Verge · 8 min read</div>
+              </div>
+              <div class="source-check">
+                <svg width="10" height="8" viewBox="0 0 10 8" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4L3.5 6.5L9 1"/></svg>
+              </div>
+            </div>
+
+            <div class="source-row">
+              <div class="source-type-icon">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+              </div>
+              <div class="source-content">
+                <div class="source-title">McKinsey Global Institute: Generative AI and the Future of Work</div>
+                <div class="source-meta">McKinsey &amp; Co · Report</div>
+              </div>
+              <div class="source-check">
+                <svg width="10" height="8" viewBox="0 0 10 8" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4L3.5 6.5L9 1"/></svg>
+              </div>
+            </div>
+
+            <div class="source-row">
+              <div class="source-type-icon">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-linecap="round"><path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/><polyline points="14,2 14,8 20,8"/></svg>
+              </div>
+              <div class="source-content">
+                <div class="source-title">Prompt Engineering Won't Save You: The New Skill Stack</div>
+                <div class="source-meta">Every · Newsletter</div>
+              </div>
+              <div class="source-check">
+                <svg width="10" height="8" viewBox="0 0 10 8" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4L3.5 6.5L9 1"/></svg>
+              </div>
+            </div>
+
+            <div class="source-row">
+              <div class="source-type-icon">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+              </div>
+              <div class="source-content">
+                <div class="source-title">From Automation to Augmentation: A 10-Year Forecast</div>
+                <div class="source-meta">MIT Technology Review</div>
+              </div>
+              <div class="source-check">
+                <svg width="10" height="8" viewBox="0 0 10 8" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4L3.5 6.5L9 1"/></svg>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="create-footer">Create collection · 8 sources</div>
+        </div>
+
+      </div>
+    </div>
+    <span class="screenshot-num">2 of 5</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SCREENSHOT 3 — Nexus AI chat
+  ═══════════════════════════════════════════ -->
+  <div class="screenshot-unit">
+    <div class="screenshot-headline">Ask your library<br>anything</div>
+    <div class="iphone-frame">
+      <div class="iphone-screen">
+        <div class="dynamic-island"></div>
+        <div class="status-bar">
+          <span class="status-time">9:41</span>
+          <div class="status-icons">
+            <svg width="14" height="10" viewBox="0 0 14 10" fill="var(--ink)"><rect x="0" y="3" width="3" height="7" rx="0.5"/><rect x="4" y="2" width="3" height="8" rx="0.5"/><rect x="8" y="0.5" width="3" height="9.5" rx="0.5"/></svg>
+            <svg width="22" height="10" viewBox="0 0 22 10" fill="none"><rect x="0.5" y="0.5" width="18" height="9" rx="2.5" stroke="var(--ink)" stroke-opacity="0.35"/><rect x="1.5" y="1.5" width="14" height="7" rx="1.5" fill="var(--ink)"/></svg>
+          </div>
+        </div>
+
+        <div class="screen-chat">
+          <div class="chat-header">
+            <div class="back-btn">
+              <svg width="8" height="13" viewBox="0 0 8 13" fill="none" stroke="var(--ink)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 1L1 6.5L7 12"/></svg>
+            </div>
+            <div class="chat-title-block">
+              <div class="chat-title">AI &amp; Future of Work</div>
+              <div class="chat-sources-line">8 sources · Nexus</div>
+            </div>
+          </div>
+
+          <div class="chat-area">
+
+            <div class="framing-block">
+              <svg class="echo-mark-sm" viewBox="0 0 48 48" fill="none">
+                <path d="M 8.5 24 A 15.5 15.5 0 0 1 24 8.5" stroke="rgba(19,14,26,0.25)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+                <path d="M 24 39.5 A 15.5 15.5 0 0 1 8.5 24" stroke="rgba(19,14,26,0.25)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+                <path d="M 39.5 24 A 15.5 15.5 0 0 1 24 39.5" stroke="rgba(19,14,26,0.25)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+                <path d="M 24 8.5 A 15.5 15.5 0 0 1 39.5 24" stroke="rgba(19,14,26,0.25)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+                <path d="M 13 24 A 11 11 0 0 1 24 13" stroke="var(--ink)" stroke-width="3" stroke-linecap="round" fill="none"/>
+                <path d="M 24 35 A 11 11 0 0 1 13 24" stroke="var(--ink)" stroke-width="3" stroke-linecap="round" fill="none"/>
+                <path d="M 35 24 A 11 11 0 0 1 24 35" stroke="var(--ink)" stroke-width="3" stroke-linecap="round" fill="none"/>
+                <path d="M 24 13 A 11 11 0 0 1 35 24" stroke="var(--ink)" stroke-width="3" stroke-linecap="round" fill="none"/>
+                <circle cx="24" cy="24" r="4.4" fill="var(--ink)"/>
+              </svg>
+              <div class="framing-text">This collection has <strong>8 sources</strong> covering AI's impact on knowledge work — from labor economics to practical skill adaptation. I've read everything — ask me anything.</div>
+            </div>
+
+            <!-- User question -->
+            <div style="display:flex; justify-content:flex-end;">
+              <div class="user-bubble">What's the single biggest thing knowledge workers should do right now to stay ahead of AI?</div>
+            </div>
+
+            <!-- Nexus answer -->
+            <div class="nexus-answer">
+              <div class="nexus-answer-text">
+                Every source points to the same shift: stop competing with AI on <em>execution</em>, start owning <em>judgment</em>.
+              </div>
+              <div class="bullet-list">
+                <div class="bullet-item">
+                  <span class="bullet-dot">—</span>
+                  <span>The HBR piece <span class="inline-source-chip"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg> HBR</span> calls this the "cognitive labor divide" — roles that frame problems outperform those that just solve them.</span>
+                </div>
+                <div class="bullet-item">
+                  <span class="bullet-dot">—</span>
+                  <span>McKinsey's data <span class="inline-source-chip"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/></svg> McKinsey</span> shows augmentation roles growing 4× faster than automation-susceptible ones.</span>
+                </div>
+                <div class="bullet-item">
+                  <span class="bullet-dot">—</span>
+                  <span>The practical move: use AI as a first draft on everything, spend your time on the review and the decision.</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Composer -->
+          <div style="margin: 8px 14px 0;">
+            <div class="composer" style="margin: 0;">
+              <div class="composer-plus">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#68607A" stroke-width="1.5" stroke-linecap="round"><path d="M6 1v10M1 6h10"/></svg>
+              </div>
+              <span class="composer-placeholder">Ask Nexus anything…</span>
+              <div class="composer-mic">
+                <svg width="11" height="11" viewBox="0 0 48 48" fill="none">
+                  <path d="M 13 24 A 11 11 0 0 1 24 13" stroke="white" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+                  <path d="M 24 35 A 11 11 0 0 1 13 24" stroke="white" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+                  <path d="M 35 24 A 11 11 0 0 1 24 35" stroke="white" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+                  <path d="M 24 13 A 11 11 0 0 1 35 24" stroke="white" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+                  <circle cx="24" cy="24" r="4.4" fill="white"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab capsule -->
+          <div class="tab-capsule">
+            <div class="tab-item active">
+              <div class="tab-icon">
+                <svg width="18" height="18" viewBox="0 0 48 48" fill="none">
+                  <path d="M 13 24 A 11 11 0 0 1 24 13" stroke="#7054AB" stroke-width="3" stroke-linecap="round" fill="none"/>
+                  <path d="M 24 35 A 11 11 0 0 1 13 24" stroke="#7054AB" stroke-width="3" stroke-linecap="round" fill="none"/>
+                  <path d="M 35 24 A 11 11 0 0 1 24 35" stroke="#7054AB" stroke-width="3" stroke-linecap="round" fill="none"/>
+                  <path d="M 24 13 A 11 11 0 0 1 35 24" stroke="#7054AB" stroke-width="3" stroke-linecap="round" fill="none"/>
+                  <circle cx="24" cy="24" r="4.4" fill="#7054AB"/>
+                </svg>
+              </div>
+              <span class="tab-label" style="color:#7054AB;">Nexus</span>
+            </div>
+            <div class="tab-item inactive">
+              <div class="tab-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+              </div>
+              <span class="tab-label" style="color:var(--muted);">Sources</span>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+    <span class="screenshot-num">3 of 5</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SCREENSHOT 4 — Reader + Highlights
+  ═══════════════════════════════════════════ -->
+  <div class="screenshot-unit">
+    <div class="screenshot-headline">Read offline,<br>annotate freely</div>
+    <div class="iphone-frame">
+      <div class="iphone-screen">
+        <div class="dynamic-island"></div>
+        <div class="status-bar" style="background:rgba(255,254,249,0);">
+          <span class="status-time" style="color:#1A1410;">9:41</span>
+          <div class="status-icons">
+            <svg width="14" height="10" viewBox="0 0 14 10" fill="#1A1410"><rect x="0" y="3" width="3" height="7" rx="0.5"/><rect x="4" y="2" width="3" height="8" rx="0.5"/><rect x="8" y="0.5" width="3" height="9.5" rx="0.5"/></svg>
+            <svg width="22" height="10" viewBox="0 0 22 10" fill="none"><rect x="0.5" y="0.5" width="18" height="9" rx="2.5" stroke="#1A1410" stroke-opacity="0.35"/><rect x="1.5" y="1.5" width="14" height="7" rx="1.5" fill="#1A1410"/></svg>
+          </div>
+        </div>
+
+        <div class="screen-reader">
+          <div class="reader-header">
+            <div class="back-btn">
+              <svg width="8" height="13" viewBox="0 0 8 13" fill="none" stroke="#1A1410" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 1L1 6.5L7 12"/></svg>
+            </div>
+            <div class="reader-title-block">
+              <div class="reader-publication">Harvard Business Review</div>
+              <div class="reader-headline">The Cognitive Labor Divide: Why Some Jobs Thrive Under AI</div>
+              <div class="reader-meta">Anna Chen · 12 min read · Saved Jun 18</div>
+            </div>
+          </div>
+
+          <div class="reader-body">
+
+            <div class="reader-para">
+              The arrival of capable AI hasn't created a uniform shift in the labor market. Instead, it has sharpened a divide that was already forming: between workers who use their minds to <span class="highlight">frame and evaluate problems</span> and those who primarily execute against defined tasks.
+            </div>
+
+            <div class="reader-para">
+              This distinction matters more than job title, industry, or even education level. A junior consultant who excels at structuring ambiguous situations may be safer than a senior analyst whose value is rooted in <span class="highlight">pattern-matching at high speed across structured data</span> — precisely the thing large language models do well.
+            </div>
+
+            <!-- Annotation card -->
+            <div class="annotation-bubble">
+              <div class="annotation-label">Your Note</div>
+              This maps to the "taste vs. execution" framework — AI does execution well. The question is whether I'm building taste.
+            </div>
+
+            <div class="reader-para" style="opacity: 0.7;">
+              The implication for professionals isn't to abandon technical skills. It's to understand which parts of your work involve genuine judgment — where the output depends on your mental model of what good looks like…
+            </div>
+
+          </div>
+
+          <div class="reader-toolbar">
+            <div class="reader-tool">
+              <div class="reader-tool-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5C4A2A" stroke-width="1.8" stroke-linecap="round"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+              </div>
+              <span class="reader-tool-label">Highlight</span>
+            </div>
+            <div class="reader-tool">
+              <div class="reader-tool-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5C4A2A" stroke-width="1.8" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+              </div>
+              <span class="reader-tool-label">Ask Nexus</span>
+            </div>
+            <div class="reader-tool">
+              <div class="reader-tool-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5C4A2A" stroke-width="1.8" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              </div>
+              <span class="reader-tool-label">Share</span>
+            </div>
+            <div class="reader-tool">
+              <div class="reader-tool-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5C4A2A" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+              </div>
+              <span class="reader-tool-label">More</span>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+    <span class="screenshot-num">4 of 5</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SCREENSHOT 5 — Daily Briefing
+  ═══════════════════════════════════════════ -->
+  <div class="screenshot-unit">
+    <div class="screenshot-headline">Your morning briefing,<br>curated by AI</div>
+    <div class="iphone-frame">
+      <div class="iphone-screen">
+        <div class="dynamic-island"></div>
+        <div class="status-bar">
+          <span class="status-time">9:41</span>
+          <div class="status-icons">
+            <svg width="14" height="10" viewBox="0 0 14 10" fill="var(--ink)"><rect x="0" y="3" width="3" height="7" rx="0.5"/><rect x="4" y="2" width="3" height="8" rx="0.5"/><rect x="8" y="0.5" width="3" height="9.5" rx="0.5"/></svg>
+            <svg width="22" height="10" viewBox="0 0 22 10" fill="none"><rect x="0.5" y="0.5" width="18" height="9" rx="2.5" stroke="var(--ink)" stroke-opacity="0.35"/><rect x="1.5" y="1.5" width="14" height="7" rx="1.5" fill="var(--ink)"/></svg>
+          </div>
+        </div>
+
+        <div class="screen-briefing">
+          <div class="briefing-header">
+            <div class="briefing-kicker">Daily Briefing</div>
+            <div class="briefing-date">Friday,<br>June 20</div>
+            <div class="briefing-sub">5 things from your library worth knowing today</div>
+          </div>
+
+          <div class="briefing-cards">
+
+            <div class="briefing-card">
+              <div class="briefing-card-kicker">AI &amp; Work · HBR</div>
+              <div class="briefing-card-headline">The workers AI won't replace are the ones who define the problem — not just solve it</div>
+              <div class="briefing-card-insight">New research shows "framing" roles grow 4× faster than execution roles under AI augmentation. The skill ceiling is rising, not collapsing.</div>
+              <div class="briefing-actions">
+                <div class="action-btn">Skip</div>
+                <div class="action-btn primary">Read</div>
+              </div>
+            </div>
+
+            <div class="briefing-card" style="opacity:0.85;">
+              <div class="briefing-card-kicker">Longevity · Nature</div>
+              <div class="briefing-card-headline">Rapamycin trials show 10–15% lifespan extension in late-treatment cohorts</div>
+              <div class="briefing-card-insight">First large-scale human data published. Side effect profile better than expected. Authors caution against extrapolation but headline findings hold.</div>
+              <div class="briefing-actions">
+                <div class="action-btn">Skip</div>
+                <div class="action-btn primary">Read</div>
+              </div>
+            </div>
+
+            <div class="briefing-card" style="opacity:0.6;">
+              <div class="briefing-card-kicker">Startups · Every</div>
+              <div class="briefing-card-headline">Why the best GTM strategies look more like editorial desks than sales funnels</div>
+              <div class="briefing-card-insight" style="display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">The companies winning on distribution aren't running more campaigns — they're becoming the most trusted voice in a niche. Point of view as a moat.</div>
+            </div>
+
+          </div>
+
+          <div class="briefing-progress">
+            <div class="progress-dot active"></div>
+            <div class="progress-dot"></div>
+            <div class="progress-dot"></div>
+            <div class="progress-dot"></div>
+            <div class="progress-dot"></div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+    <span class="screenshot-num">5 of 5</span>
+  </div>
+
+</div><!-- end screenshots-row -->
+
+<!-- Spec note -->
+<div style="margin-top:40px; padding:20px 24px; background:#141120; border-radius:14px; border:1px solid #1E1B28;">
+  <div style="font-size:10px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:#4A4560; margin-bottom:8px;">Production spec</div>
+  <div style="font-size:11px; color:#4A4560; line-height:1.6;">
+    Export at: <span style="color:#9B7ED4; font-family:monospace;">1290 × 2796px @3x</span> (iPhone 15 Pro Max native resolution) — Apple requires PNG or JPEG under 500MB per screenshot.
+    These frames are rendered at <span style="color:#9B7ED4; font-family:monospace;">290 × 629px</span> (0.225× scale) for browser preview.
+    All design tokens match <span style="color:#9B7ED4; font-family:monospace;">landing-kit.jsx → lTheme()</span> from the design system.
+  </div>
+</div>
+
+</body>
+</html>

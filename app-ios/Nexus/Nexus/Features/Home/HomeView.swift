@@ -20,7 +20,18 @@ struct HomeView: View {
                 Color.Nexus.pageBackground.ignoresSafeArea()
 
                 if vm.isLoading && vm.collections.isEmpty {
-                    ProgressView()
+                    LoadingStateView()
+                } else if let apiError = vm.error, vm.collections.isEmpty {
+                    VStack {
+                        Spacer()
+                        ErrorStateView(
+                            message: apiError.errorDescription ?? "Couldn't load your collections."
+                        ) {
+                            vm.error = nil
+                            await vm.load()
+                        }
+                        Spacer()
+                    }
                 } else if vm.collections.isEmpty {
                     emptyState
                 } else {
@@ -91,37 +102,17 @@ struct HomeView: View {
     // MARK: - Empty state
 
     private var emptyState: some View {
-        VStack(spacing: NexusSpacing.xl) {
-            VStack(spacing: NexusSpacing.sm) {
-                Text("What are you curious about?")
-                    .font(.Nexus.headingSmall)
-                    .foregroundColor(.Nexus.ink)
-                    .kerning(NexusKerning.tighter)
-                    .multilineTextAlignment(.center)
-                Text("Tap + to research a topic and build your first collection.")
-                    .font(.Nexus.bodySmall)
-                    .foregroundColor(.Nexus.muted)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, NexusSpacing.xl)
-            }
-
-            // CTA matching the spec: "Create your first collection"
-            Button {
-                showingNewCollection = true
-            } label: {
-                HStack(spacing: NexusSpacing.sm) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 13, weight: .semibold))
-                    Text("Research a topic")
-                        .font(.Nexus.labelLarge)
-                        .kerning(NexusKerning.normal)
+        VStack {
+            Spacer()
+            EmptyStateView(
+                icon: "sparkles",
+                title: "What are you curious about?",
+                subtitle: "Research a topic and Nexus will build a collection of the best sources for you.",
+                action: .init(label: "Research a topic") {
+                    showingNewCollection = true
                 }
-                .foregroundColor(.white)
-                .padding(.horizontal, NexusSpacing.xl)
-                .frame(height: NexusSpacing.buttonHeight)
-                .background(Color.Nexus.accent)
-                .clipShape(RoundedRectangle(cornerRadius: NexusRadius.md))
-            }
+            )
+            Spacer()
         }
     }
 }

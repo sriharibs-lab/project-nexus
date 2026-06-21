@@ -66,6 +66,7 @@ struct CollectionView: View {
                 items: vm.items,
                 isLoading: vm.isLoading,
                 collectionId: vm.collection.id,
+                error: vm.error,
                 onDelete: { item in await vm.delete(item: item) },
                 onRefresh: { await vm.load() }
             )

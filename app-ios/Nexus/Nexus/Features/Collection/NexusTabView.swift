@@ -27,6 +27,34 @@ struct NexusTabView: View {
     }
 
     var body: some View {
+        // When the collection has no sources yet, show a focused empty state.
+        // The chat composer is hidden — there is nothing for the AI to reason over.
+        // ARCH_BRIEF 1D-002: "Do not show the chat composer in this state."
+        if collection.sourceCount == 0 {
+            noSourcesEmptyState
+        } else {
+            chatUI
+        }
+    }
+
+    // MARK: - No-sources empty state
+
+    private var noSourcesEmptyState: some View {
+        VStack {
+            Spacer()
+            EmptyStateView(
+                icon: "text.magnifyingglass",
+                title: "Add a source to get started",
+                subtitle: "Nexus needs at least one source to answer questions. Switch to Sources and add a link."
+            )
+            Spacer()
+        }
+        .background(Color.Nexus.pageBackground)
+    }
+
+    // MARK: - Chat UI (shown when collection has sources)
+
+    private var chatUI: some View {
         VStack(spacing: 0) {
             // Chat thread fills available space
             chatThread

@@ -1,0 +1,71 @@
+{
+  "app_name": "Nexus",
+  "subtitle": "AI library for curious minds",
+  "description": "You save links you never read. That stops today.\n\nNexus is your AI-powered library — it reads everything you save, organizes it automatically, and helps you actually use what you collect. Not a bookmarking app. Not a read-later queue. An AI that thinks alongside you.\n\nTHE PROBLEM WE SOLVED\n\nMost apps help you save content. None help you make sense of it. The average knowledge worker saves 30+ links a week and reads a fraction of them. The rest disappear into a bookmark graveyard.\n\nNexus was built to fix this. Every time you save something — an article, a YouTube video, a podcast, a thread — Nexus reads it, summarizes it, extracts the key ideas, and adds it to a collection your AI already understands. Your library grows smarter with every addition.\n\nHOW IT WORKS\n\nEverything in Nexus lives in Collections — focused research spaces, each with its own AI agent. Create a collection by describing a topic and let Nexus find authoritative sources for you. Or start with a single link and build it yourself. Either way, your AI reads everything so you don't have to.\n\nWHAT YOU CAN DO\n\n• Save anything, instantly — Articles, YouTube videos, podcasts, threads, PDFs. Share from any app into Nexus in under a second. AI processes in the background.\n\n• Research a topic — Type a subject, and Nexus finds and reads authoritative sources for you. Review them, remove any you don't want, and start your collection with an AI that already knows the material.\n\n• Ask your library — Every collection has a Nexus AI tab where you can ask questions grounded in your actual saved sources. Not a chatbot guessing from training data — your AI, citing your content.\n\n• Read without distractions — A clean, beautiful reader built for focus. Highlight what matters. Leave notes. Ask Nexus to explain or connect any passage to your broader library.\n\n• Stay informed — A personalized daily briefing, curated from what you've saved. Not an algorithm. An AI editor that knows what you care about.\n\nBUILT FOR PEOPLE WHO THINK FOR A LIVING\n\nNexus is for product managers drowning in tabs, founders building conviction from scattered research, analysts who need to synthesize sources and find patterns, and anyone who saves content with the intention of actually using it.\n\nYour data is yours. Nexus never sells it, never uses it to train AI models, and gives you full export and deletion at any time. AI processing is done under a zero data retention agreement with Anthropic — your content is processed to serve you and deleted immediately after.\n\nNexus is free to try. Nexus Pro unlocks unlimited saves, full AI features, Conversation Mode, and the daily briefing.",
+  "keywords": "read later,AI research,content curation,save articles,AI summary,research tool,knowledge base",
+  "whats_new": "Welcome to Nexus.\n\nCreate a collection, add your first source, and ask your AI anything about it. That's the whole idea — and it's more powerful than it sounds.\n\nIf you run into anything unexpected, tap Settings → Send Feedback. We read every submission.",
+  "support_url": "https://nexus.app/support",
+  "privacy_url": "https://nexus.app/privacy",
+  "marketing_url": "https://nexus.app",
+  "primary_category": "Productivity",
+  "secondary_category": "Reference",
+  "age_rating": "4+",
+  "price": "Free",
+  "subtitle_alternatives": [
+    {
+      "option": "A",
+      "text": "AI library for curious minds",
+      "chars": 28,
+      "notes": "Recommended. Conveys AI + curation + target user archetype."
+    },
+    {
+      "option": "B",
+      "text": "Save, research, and understand",
+      "chars": 30,
+      "notes": "Action-oriented. Good for users searching around the JTBDs."
+    },
+    {
+      "option": "C",
+      "text": "Research, read, and remember",
+      "chars": 28,
+      "notes": "Rhythmic. Good for search matching on 'read' and 'research' keywords."
+    }
+  ],
+  "localization": {
+    "v1": ["en-US"],
+    "phase_2": ["en-GB", "de-DE", "ja-JP"]
+  },
+  "privacy_nutrition_labels": {
+    "data_used_to_track_you": false,
+    "data_linked_to_you": ["User ID", "Usage Data"],
+    "data_not_linked_to_you": [],
+    "notes": "No advertising identifiers. No third-party analytics SDKs. Content you save is processed for AI features and encrypted at rest. See nexus.app/privacy for full disclosure."
+  },
+  "version": "1.0.0",
+  "minimum_ios_version": "17.0",
+  "devices": ["iPhone"],
+  "screenshot_sizes_required": [
+    {
+      "device": "iPhone 6.7\"",
+      "resolution": "1290x2796",
+      "format": "PNG or JPEG",
+      "count": 5
+    },
+    {
+      "device": "iPhone 6.1\"",
+      "resolution": "1179x2556",
+      "format": "PNG or JPEG",
+      "count": 5
+    }
+  ],
+  "preview_video": {
+    "max_duration_seconds": 30,
+    "min_duration_seconds": 15,
+    "format": "H.264 or HEVC",
+    "min_resolution": "1080x1920",
+    "preferred_resolution": "1290x2796",
+    "fps": 30,
+    "audio": "optional (previews play muted by default)",
+    "opening_requirement": "Must open with app content (not title card or logo)"
+  }
+}

@@ -11,7 +11,7 @@ import SwiftUI
 //   ─ Key insights block (numbered bullets, only when completed + insights exist)
 //   ─ Tags row (horizontal scroll)
 //   ─ Divider
-//   ─ Full-text body (raw extracted content, scrolls with page)
+//   ─ Full-text body (HighlightableTextView — UITextView UIViewRepresentable)
 //   ─ "Open original" footer link
 //
 // Data strategy:
@@ -19,6 +19,13 @@ import SwiftUI
 //   • On appear, `ItemDetailViewModel` fetches the full item (GET /items/{id}) which
 //     includes `raw_content`. Until that completes, the view shows the hero+insights from
 //     the list-level item; the full-text section shows a loading placeholder.
+//
+// Highlight strategy (1D-004):
+//   • Full-text area uses HighlightableTextView (UIViewRepresentable / UITextView).
+//   • User selects text → floating HighlightToolbar appears with 3 color swatches.
+//   • Tapping a color swatch → saves Annotation to AnnotationStore → UITextView re-renders.
+//   • Tapping an existing highlight → HighlightDetailSheet appears with "Remove" option.
+//   • All storage is local-only (AnnotationStore / FileManager JSON).
 //
 // Design rules (DESIGN_LANGUAGE.md):
 //   • Inline cards use solid fill + hairline border. No glass.
@@ -30,7 +37,18 @@ struct ItemDetailView: View {
     let collectionId: UUID
 
     @StateObject private var vm: ItemDetailViewModel
+    /// ObservedObject so the view re-renders when annotations are mutated.
+    @ObservedObject private var annotationStore = AnnotationStore.shared
     @Environment(\.dismiss) private var dismiss
+
+    // MARK: Highlight state
+
+    /// Text the user has just selected — drives the floating toolbar.
+    @State private var selectedTextInfo: SelectedTextInfo?
+    /// Annotation the user tapped — drives the "Remove" sheet.
+    @State private var tappedAnnotation: Annotation?
+    /// Controls presentation of the remove-highlight confirmation sheet.
+    @State private var showRemoveSheet = false
 
     init(item: Item, collectionId: UUID) {
         self.item = item
@@ -39,7 +57,7 @@ struct ItemDetailView: View {
     }
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .bottom) {
             Color.Nexus.pageBackground.ignoresSafeArea()
 
             ScrollView {
@@ -87,6 +105,31 @@ struct ItemDetailView: View {
                         .padding(.bottom, NexusSpacing.xxxl + NexusSpacing.safeBottom)
                 }
             }
+            // Dismiss the toolbar when user taps outside the text area
+            .onTapGesture {
+                if selectedTextInfo != nil {
+                    withAnimation(NexusAnimation.element) { selectedTextInfo = nil }
+                }
+            }
+
+            // ── Floating highlight toolbar ───────────────────────────────
+            if let info = selectedTextInfo {
+                HighlightToolbar(
+                    selectedInfo: info,
+                    itemId: item.id,
+                    onHighlight: { annotation in
+                        AnnotationStore.shared.add(annotation)
+                        withAnimation(NexusAnimation.element) { selectedTextInfo = nil }
+                    },
+                    onDismiss: {
+                        withAnimation(NexusAnimation.element) { selectedTextInfo = nil }
+                    }
+                )
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .padding(.horizontal, NexusSpacing.sideGutter)
+                .padding(.bottom, NexusSpacing.safeBottom + NexusSpacing.sm)
+                .zIndex(10)
+            }
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -95,6 +138,19 @@ struct ItemDetailView: View {
             }
         }
         .task { await vm.fetchFullContent() }
+        // ── Remove highlight sheet ─────────────────────────────────────
+        .sheet(isPresented: $showRemoveSheet) {
+            if let annotation = tappedAnnotation {
+                RemoveHighlightSheet(annotation: annotation) {
+                    AnnotationStore.shared.remove(id: annotation.id, for: annotation.itemId)
+                    showRemoveSheet = false
+                    tappedAnnotation = nil
+                }
+                .presentationDetents([.height(180)])
+                .presentationDragIndicator(.visible)
+            }
+        }
+        .animation(NexusAnimation.element, value: selectedTextInfo != nil)
     }
 
     // MARK: - Metadata header (icon + domain + read time)
@@ -234,18 +290,34 @@ struct ItemDetailView: View {
         }
     }
 
-    // MARK: - Full text section
+    // MARK: - Full text section (with highlight support)
 
     @ViewBuilder
     private var fullTextSection: some View {
         VStack(alignment: .leading, spacing: NexusSpacing.md) {
-            // Header row: "Full Text" label + optional offline badge
+            // Header row: "Full Text" label + highlight count badge + optional offline badge
             HStack(spacing: NexusSpacing.sm) {
                 Text("Full Text")
                     .font(.Nexus.labelSmall)
                     .foregroundColor(.Nexus.faint)
                     .kerning(NexusKerning.wide)
                     .textCase(.uppercase)
+
+                // Highlight count badge — shown when there are active highlights
+                let annotations = annotationStore.annotations(for: item.id)
+                if !annotations.isEmpty {
+                    Text("\(annotations.count)")
+                        .font(.Nexus.overline)
+                        .foregroundColor(.Nexus.accent)
+                        .padding(.horizontal, NexusSpacing.sm)
+                        .padding(.vertical, 2)
+                        .background(Color.Nexus.bloom.opacity(0.5))
+                        .clipShape(Capsule())
+                        .overlay(
+                            Capsule()
+                                .stroke(Color.Nexus.accent.opacity(0.2), lineWidth: NexusBorder.hair)
+                        )
+                }
 
                 if vm.isFromCache {
                     offlineBadge
@@ -255,12 +327,27 @@ struct ItemDetailView: View {
             if vm.isLoadingFullContent {
                 processingPlaceholder(label: "Loading full text…")
             } else if let rawContent = vm.fullContent {
-                Text(rawContent)
-                    .font(.Nexus.bodySmall)
-                    .foregroundColor(.Nexus.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .lineSpacing(5)
-                    .kerning(NexusKerning.wide)
+                // HighlightableTextView — UITextView wrapper for highlight support
+                HighlightableTextView(
+                    text: rawContent,
+                    annotations: annotationStore.annotations(for: item.id),
+                    font: UIFont(name: "Inter-Regular", size: 14)
+                        ?? UIFont.systemFont(ofSize: 14, weight: .regular),
+                    textColor: UIColor(Color.Nexus.muted),
+                    onSelectText: { info in
+                        withAnimation(NexusAnimation.element) {
+                            selectedTextInfo = info
+                        }
+                    },
+                    onTapHighlight: { annotation in
+                        tappedAnnotation = annotation
+                        showRemoveSheet = true
+                    }
+                )
+                // intrinsicContentSize drives the frame — UITextView needs an explicit
+                // width to compute its intrinsic height. GeometryReader provides it.
+                .frame(maxWidth: .infinity)
+                .fixedSize(horizontal: false, vertical: true)
             } else {
                 // Full text not available — show inline notice
                 HStack(spacing: NexusSpacing.sm) {
@@ -320,6 +407,159 @@ struct ItemDetailView: View {
     private func extractDomain(from urlString: String) -> String? {
         guard let host = URL(string: urlString)?.host else { return nil }
         return host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
+    }
+}
+
+// MARK: - Highlight Toolbar
+//
+// Floating card shown at the bottom of the screen when the user has selected text.
+// Three color swatches (plum, amber, sage) + dismiss.
+// Matches DESIGN_LANGUAGE §1 (inline surface: solid fill + hairline border).
+
+private struct HighlightToolbar: View {
+    let selectedInfo: SelectedTextInfo
+    let itemId: UUID
+    let onHighlight: (Annotation) -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: NexusSpacing.md) {
+            // Preview snippet (up to 40 chars)
+            Text(previewText)
+                .font(.Nexus.caption)
+                .foregroundColor(.Nexus.muted)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            // Color swatches
+            HStack(spacing: NexusSpacing.sm) {
+                ForEach(HighlightColor.allCases, id: \.self) { color in
+                    ColorSwatch(color: color) {
+                        let annotation = Annotation(
+                            itemId: itemId,
+                            highlightedText: selectedInfo.text,
+                            startOffset: selectedInfo.startOffset,
+                            endOffset: selectedInfo.endOffset,
+                            color: color
+                        )
+                        onHighlight(annotation)
+                    }
+                }
+            }
+
+            // Dismiss
+            Button(action: onDismiss) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.Nexus.ghost)
+                    .frame(width: 28, height: 28)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, NexusSpacing.standard)
+        .padding(.vertical, NexusSpacing.md)
+        .background(Color.Nexus.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: NexusRadius.base))
+        .overlay(
+            RoundedRectangle(cornerRadius: NexusRadius.base)
+                .stroke(Color.Nexus.border, lineWidth: NexusBorder.hair)
+        )
+        .shadow(color: .black.opacity(0.06), radius: 12, y: 4)
+    }
+
+    private var previewText: String {
+        let truncated = selectedInfo.text
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .prefix(40)
+        return truncated.count < selectedInfo.text.count ? "\(truncated)…" : String(truncated)
+    }
+}
+
+// MARK: - Color Swatch
+
+private struct ColorSwatch: View {
+    let color: HighlightColor
+    let action: () -> Void
+
+    @State private var isPressed = false
+
+    var body: some View {
+        Button(action: action) {
+            Circle()
+                .fill(color.swiftUIColor)
+                .frame(width: 28, height: 28)
+                .overlay(
+                    Circle()
+                        .stroke(color.swiftUISolidColor.opacity(0.4), lineWidth: NexusBorder.base)
+                )
+        }
+        .buttonStyle(.plain)
+        .scaleEffect(isPressed ? NexusScale.pressLight : 1)
+        .animation(NexusAnimation.press, value: isPressed)
+        .onLongPressGesture(minimumDuration: 0, pressing: { p in isPressed = p }, perform: {})
+        .accessibilityLabel("\(color.displayName) highlight")
+    }
+}
+
+// MARK: - Remove Highlight Sheet
+//
+// Presented when the user taps an existing highlighted range.
+// Shows a text snippet, the color swatch, and a destructive Remove button.
+
+private struct RemoveHighlightSheet: View {
+    let annotation: Annotation
+    let onRemove: () -> Void
+
+    var body: some View {
+        VStack(spacing: NexusSpacing.lg) {
+            // Handle
+            RoundedRectangle(cornerRadius: 2)
+                .fill(Color.Nexus.ghost.opacity(0.5))
+                .frame(width: 36, height: 4)
+                .padding(.top, NexusSpacing.sm)
+
+            // Highlighted text snippet
+            Text("\"\(snippet)\"")
+                .font(.Nexus.bodySmall)
+                .foregroundColor(.Nexus.muted)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .padding(.horizontal, NexusSpacing.xl)
+                .padding(.vertical, NexusSpacing.sm)
+                .background(annotation.color.swiftUIColor)
+                .clipShape(RoundedRectangle(cornerRadius: NexusRadius.sm))
+
+            // Remove button
+            Button(role: .destructive, action: onRemove) {
+                HStack(spacing: NexusSpacing.sm) {
+                    Image(systemName: "highlighter")
+                        .font(.system(size: 14, weight: .medium))
+                    Text("Remove highlight")
+                        .font(.Nexus.labelMedium)
+                        .kerning(NexusKerning.normal)
+                }
+                .foregroundColor(Color(hex: "#C0392B"))
+                .frame(maxWidth: .infinity)
+                .frame(height: NexusSpacing.buttonHeight)
+                .background(Color(hex: "#C0392B").opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: NexusRadius.md))
+                .overlay(
+                    RoundedRectangle(cornerRadius: NexusRadius.md)
+                        .stroke(Color(hex: "#C0392B").opacity(0.18), lineWidth: NexusBorder.hair)
+                )
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, NexusSpacing.sideGutter)
+
+            Spacer()
+        }
+        .background(Color.Nexus.pageBackground)
+    }
+
+    private var snippet: String {
+        let trimmed = annotation.highlightedText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let prefix = trimmed.prefix(60)
+        return prefix.count < trimmed.count ? "\(prefix)…" : String(prefix)
     }
 }
 

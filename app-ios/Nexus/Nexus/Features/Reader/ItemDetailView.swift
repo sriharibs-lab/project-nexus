@@ -239,11 +239,18 @@ struct ItemDetailView: View {
     @ViewBuilder
     private var fullTextSection: some View {
         VStack(alignment: .leading, spacing: NexusSpacing.md) {
-            Text("Full Text")
-                .font(.Nexus.labelSmall)
-                .foregroundColor(.Nexus.faint)
-                .kerning(NexusKerning.wide)
-                .textCase(.uppercase)
+            // Header row: "Full Text" label + optional offline badge
+            HStack(spacing: NexusSpacing.sm) {
+                Text("Full Text")
+                    .font(.Nexus.labelSmall)
+                    .foregroundColor(.Nexus.faint)
+                    .kerning(NexusKerning.wide)
+                    .textCase(.uppercase)
+
+                if vm.isFromCache {
+                    offlineBadge
+                }
+            }
 
             if vm.isLoadingFullContent {
                 processingPlaceholder(label: "Loading full text…")
@@ -271,6 +278,15 @@ struct ItemDetailView: View {
                 .clipShape(RoundedRectangle(cornerRadius: NexusRadius.base))
             }
         }
+    }
+
+    // MARK: - Offline badge (shown when content served from local cache)
+
+    private var offlineBadge: some View {
+        Label("Offline", systemImage: "wifi.slash")
+            .font(.Nexus.caption)
+            .foregroundColor(.Nexus.ghost)
+            .labelStyle(IconLeadingLabelStyle())
     }
 
     // MARK: - Open original footer
@@ -383,6 +399,8 @@ final class ItemDetailViewModel: ObservableObject {
     @Published private(set) var isLoadingFullContent = false
     @Published private(set) var fullContent: String?
     @Published private(set) var error: APIError?
+    /// True when content is being served from the on-disk offline cache (no live network hit).
+    @Published private(set) var isFromCache = false
 
     var wordCount: Int? {
         guard let text = fullContent else { return nil }
@@ -400,17 +418,39 @@ final class ItemDetailViewModel: ObservableObject {
     }
 
     func fetchFullContent() async {
-        // Only fetch if we don't already have raw content and ingest is done
-        guard fullContent == nil, displayItem.ingestStatus == .completed else { return }
+        // If the item object already carries raw_content (e.g. passed from a richer list
+        // endpoint in the future), cache it and return immediately.
+        if let existing = displayItem.rawContent {
+            fullContent = existing
+            await OfflineContentCache.shared.store(rawContent: existing, for: displayItem.id)
+            return
+        }
+
+        // 1. Check offline cache before hitting the network.
+        if let cached = await OfflineContentCache.shared.rawContent(for: displayItem.id) {
+            fullContent = cached
+            isFromCache = true
+            return
+        }
+
+        // 2. Cache miss — fetch from API (only makes sense when ingest is done).
+        guard displayItem.ingestStatus == .completed else { return }
         isLoadingFullContent = true
         defer { isLoadingFullContent = false }
         do {
             let fullItem = try await APIClient.shared.fetchItem(id: displayItem.id, in: collectionId)
             displayItem = fullItem
-            fullContent = fullItem.rawContent
+            if let text = fullItem.rawContent {
+                fullContent = text
+                isFromCache = false
+                // Persist so subsequent opens work offline.
+                await OfflineContentCache.shared.store(rawContent: text, for: displayItem.id)
+            }
         } catch let e as APIError {
             error = e
-            // Non-fatal: reader still shows summary + insights from the initial item
+            // Non-fatal: reader still shows summary + insights from the initial item.
+            // If there is cached content from a previous visit, it was already surfaced
+            // in step 1, so the user is not left with a blank screen.
         } catch {
             // Non-fatal: same as above
         }

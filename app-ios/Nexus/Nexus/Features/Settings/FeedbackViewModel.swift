@@ -12,7 +12,7 @@ final class FeedbackViewModel: ObservableObject {
 
     // MARK: - Screenshot
 
-    @Published private(set) var screenshot: UIImage?
+    @Published var screenshot: UIImage?
 
     // MARK: - Submission state
 

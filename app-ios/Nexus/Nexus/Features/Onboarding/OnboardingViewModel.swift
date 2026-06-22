@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import SwiftUI
 
 // MARK: - Constants
 
@@ -36,7 +37,7 @@ final class OnboardingViewModel: ObservableObject {
 
     // MARK: - Published state
 
-    @Published private(set) var step: Int = 0  // 0=welcome, 1=topics, 2=collection prompt
+    @Published var step: Int = 0  // 0=welcome, 1=topics, 2=collection prompt
 
     /// Topics the user toggled on in Screen 2.
     @Published var selectedTopics: Set<String> = []

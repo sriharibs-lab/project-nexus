@@ -3,8 +3,8 @@
 ```yaml
 nbl_version: "1"
 cycle_policy:
-  max_tasks_per_run: 3
-  allow_phases: ["0A", "1A", "1B", "1C"]
+  max_tasks_per_run: 6
+  allow_phases: ["0A", "1A", "1B", "1C", "1D"]
 
 # Human gates — tasks with these gate values are never auto-selected
 # The loop skips them and reports them in DAILY_REPORT.md as "waiting on you"

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>FRE Debug 2</title>
+<style>
+  body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #eee; }
+  .ok  { color: #4ade80; }
+  .err { color: #f87171; }
+  pre  { background: #2a2a2a; padding: 12px; border-radius: 6px; white-space: pre-wrap; font-size: 12px; margin: 4px 0; }
+</style>
+</head>
+<body>
+<h2>collection-view.jsx direct transform test</h2>
+<div id="log"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<!-- Load prereqs normally -->
+<script type="text/babel" src="ios-frame.jsx"></script>
+<script type="text/babel" src="landing-kit.jsx"></script>
+<script type="text/babel" src="landing-pieces.jsx"></script>
+<script type="text/babel" src="landing-app.jsx"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+
+<script>
+const log = document.getElementById('log');
+function msg(text, ok) {
+  const p = document.createElement('pre');
+  p.className = ok ? 'ok' : 'err';
+  p.textContent = text;
+  log.appendChild(p);
+}
+
+// Fetch and manually transform collection-view.jsx
+fetch('collection-view.jsx')
+  .then(r => r.text())
+  .then(src => {
+    msg('Fetched collection-view.jsx (' + src.length + ' bytes)', true);
+
+    let transformed;
+    try {
+      transformed = Babel.transform(src, {
+        presets: ['react'],
+        filename: 'collection-view.jsx',
+      });
+      msg('Babel.transform() succeeded (' + transformed.code.length + ' bytes)', true);
+    } catch (e) {
+      msg('Babel.transform() FAILED:\n' + e.message, false);
+      return;
+    }
+
+    // Try to eval the transformed code
+    try {
+      // We need all globals to be in scope — use Function constructor with window access
+      const fn = new Function(transformed.code);
+      fn();
+      msg('eval() succeeded', true);
+    } catch (e) {
+      msg('eval() FAILED:\n' + e.message + '\n\nStack:\n' + (e.stack || '').split('\n').slice(0,5).join('\n'), false);
+    }
+
+    msg('CollectionView in window: ' + (typeof window.CollectionView !== 'undefined'), typeof window.CollectionView !== 'undefined');
+    msg('CollectionBoard in window: ' + (typeof window.CollectionBoard !== 'undefined'), typeof window.CollectionBoard !== 'undefined');
+  })
+  .catch(e => msg('fetch failed: ' + e.message, false));
+</script>
+</body>
+</html>

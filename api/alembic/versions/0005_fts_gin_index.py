@@ -24,10 +24,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # GIN FTS index on items — same expression used in search.py _FTS_QUERY.
-    # CONCURRENTLY avoids table lock; IF NOT EXISTS makes it safe to re-run.
+    # CONCURRENTLY removed — can't run inside Alembic's transaction block.
+    # Fine for dev; production can create CONCURRENTLY manually if needed.
     op.execute("""
-        CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_items_fts
+        CREATE INDEX IF NOT EXISTS ix_items_fts
         ON items
         USING gin(to_tsvector('english', COALESCE(title, '') || ' ' || COALESCE(summary, '')))
     """)

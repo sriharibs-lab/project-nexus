@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 
 struct HomeView: View {
@@ -62,7 +63,7 @@ struct HomeView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showingNewCollection) {
+            .fullScreenCover(isPresented: $showingNewCollection) {
                 ResearchFlowView { collectionId in
                     // Research complete — reload collections and push to the new one
                     Task {

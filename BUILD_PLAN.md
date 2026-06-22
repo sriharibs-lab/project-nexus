@@ -7,7 +7,7 @@ cycle_policy:
 
 # Project Nexus — Build Plan
 **Last Updated:** 2026-06-11 (cleanup: design tokens filled, stale Design Prompt v2 removed)  
-**Current Phase:** Phase 1A — Backend Foundation
+**Current Phase:** Phase 1D — Polish & QA → DONE → 1E Launch Prep
 
 ---
 
@@ -93,7 +93,7 @@ cycle_policy:
 - [x] Offline reading: cache article raw_content in UserDefaults/FileManager on reader open <!-- nbl:id=1D-003 agent=swe deps=[1C-003] est=3h -->
 - [x] Highlight + annotation in reader (tap-to-highlight, stored locally, shown in reader) <!-- nbl:id=1D-004 agent=swe deps=[1C-003] est=5h -->
 - [x] Performance: save-to-summary target < 10s — audit ingest pipeline, add timing logs, optimize Jina timeout <!-- nbl:id=1D-005 agent=swe deps=[1C-009] est=3h -->
-- [ ] App Store assets: icon, screenshots (6.7" + 6.1"), preview video script, description copy <!-- nbl:id=1D-006 agent=swe deps=[1D-001,1D-002] est=4h -->
+- [x] App Store assets: icon, screenshots (6.7" + 6.1"), preview video script, description copy <!-- nbl:id=1D-006 agent=swe deps=[1D-001,1D-002] est=4h -->
 
 ### 1E — Launch Prep (Week 10)
 - [ ] TestFlight beta (500 users)

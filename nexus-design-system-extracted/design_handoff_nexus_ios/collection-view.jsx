@@ -19,37 +19,37 @@ const CV_ACCENT = '#7054AB'; // approved plum — selected tab tint (matches sen
 const NX_TRENDING = ['US–Iran conflict', 'AI platform shifts', 'Ozempic & longevity', 'Vision Pro 2'];
 
 const NX_SOURCES = {
-  ‘US–Iran conflict’: [
-    { mono: ‘R’, src: ‘Reuters’, title: ‘US and Iran resume back-channel talks in Oman’, meta: ‘Article · 6 min’, icon: ‘globe’, tags: [‘diplomacy’, ‘middle-east’] },
-    { mono: ‘B’, src: ‘BBC News’, title: ‘What’s at stake in the Strait of Hormuz’, meta: ‘Article · 8 min’, icon: ‘globe’, tags: [‘geopolitics’, ‘energy’] },
-    { mono: ‘AJ’, src: ‘Al Jazeera’, title: ‘Timeline: US–Iran tensions since 2020’, meta: ‘Article · 10 min’, icon: ‘globe’, tags: [‘history’, ‘sanctions’] },
-    { mono: ‘IS’, src: ‘ISW’, title: ‘Iran update — June 2026 assessment’, meta: ‘PDF · 24 pages’, icon: ‘file’, tags: [‘analysis’, ‘military’] },
-    { mono: ‘C’, src: ‘CFR · YouTube’, title: ‘Why the US and Iran keep colliding’, meta: ‘Video · 14 min’, icon: ‘video’, tags: [‘explainer’, ‘foreign-policy’] },
-    { mono: ‘FA’, src: ‘Foreign Affairs’, title: ‘The narrow deal that could end the standoff’, meta: ‘Article · 12 min’, icon: ‘globe’, tags: [‘nuclear’, ‘negotiation’] },
+  "US–Iran conflict": [
+    { mono: "R", src: "Reuters", title: "US and Iran resume back-channel talks in Oman", meta: "Article · 6 min", icon: "globe", tags: ["diplomacy", "middle-east"] },
+    { mono: "B", src: "BBC News", title: "What’s at stake in the Strait of Hormuz", meta: "Article · 8 min", icon: "globe", tags: ["geopolitics", "energy"] },
+    { mono: "AJ", src: "Al Jazeera", title: "Timeline: US–Iran tensions since 2020", meta: "Article · 10 min", icon: "globe", tags: ["history", "sanctions"] },
+    { mono: "IS", src: "ISW", title: "Iran update — June 2026 assessment", meta: "PDF · 24 pages", icon: "file", tags: ["analysis", "military"] },
+    { mono: "C", src: "CFR · YouTube", title: "Why the US and Iran keep colliding", meta: "Video · 14 min", icon: "video", tags: ["explainer", "foreign-policy"] },
+    { mono: "FA", src: "Foreign Affairs", title: "The narrow deal that could end the standoff", meta: "Article · 12 min", icon: "globe", tags: ["nuclear", "negotiation"] },
   ],
-  ‘AI platform shifts’: [
-    { mono: ‘St’, src: ‘Stratechery’, title: ‘The end of the beginning for AI platforms’, meta: ‘Article · 8 min’, icon: ‘globe’, tags: [‘strategy’, ‘business-model’] },
-    { mono: ‘V’, src: ‘The Verge’, title: ‘Every model is a platform now’, meta: ‘Article · 7 min’, icon: ‘globe’, tags: [‘big-tech’, ‘llm’] },
-    { mono: ‘aX’, src: ‘arXiv’, title: ‘Scaling agentic systems: a survey’, meta: ‘PDF · 38 pages’, icon: ‘file’, tags: [‘agents’, ‘research’] },
-    { mono: ‘YT’, src: ‘a16z · YouTube’, title: ‘Where value accrues in the AI stack’, meta: ‘Video · 31 min’, icon: ‘video’, tags: [‘venture-capital’, ‘infra’] },
-    { mono: ‘W’, src: ‘WIRED’, title: ‘The quiet war for the AI operating layer’, meta: ‘Article · 11 min’, icon: ‘globe’, tags: [‘competition’, ‘platform’] },
-    { mono: ‘FT’, src: ‘Financial Times’, title: ‘Big tech’s capex supercycle, charted’, meta: ‘Article · 9 min’, icon: ‘globe’, tags: [‘capex’, ‘data-centers’] },
+  "AI platform shifts": [
+    { mono: "St", src: "Stratechery", title: "The end of the beginning for AI platforms", meta: "Article · 8 min", icon: "globe", tags: ["strategy", "business-model"] },
+    { mono: "V", src: "The Verge", title: "Every model is a platform now", meta: "Article · 7 min", icon: "globe", tags: ["big-tech", "llm"] },
+    { mono: "aX", src: "arXiv", title: "Scaling agentic systems: a survey", meta: "PDF · 38 pages", icon: "file", tags: ["agents", "research"] },
+    { mono: "YT", src: "a16z · YouTube", title: "Where value accrues in the AI stack", meta: "Video · 31 min", icon: "video", tags: ["venture-capital", "infra"] },
+    { mono: "W", src: "WIRED", title: "The quiet war for the AI operating layer", meta: "Article · 11 min", icon: "globe", tags: ["competition", "platform"] },
+    { mono: "FT", src: "Financial Times", title: "Big tech’s capex supercycle, charted", meta: "Article · 9 min", icon: "globe", tags: ["capex", "data-centers"] },
   ],
-  ‘Ozempic & longevity’: [
-    { mono: ‘N’, src: ‘Nature’, title: ‘GLP-1 agonists beyond weight loss’, meta: ‘Article · 9 min’, icon: ‘globe’, tags: [‘glp-1’, ‘science’] },
-    { mono: ‘S’, src: ‘STAT News’, title: ‘What we actually know about GLP-1s and aging’, meta: ‘Article · 12 min’, icon: ‘globe’, tags: [‘aging’, ‘evidence’] },
-    { mono: ‘A’, src: ‘The Atlantic’, title: ‘The longevity drug hiding in plain sight’, meta: ‘Article · 14 min’, icon: ‘globe’, tags: [‘longevity’, ‘health’] },
-    { mono: ‘J’, src: ‘JAMA’, title: ‘Semaglutide outcomes: 5-year follow-up’, meta: ‘PDF · 16 pages’, icon: ‘file’, tags: [‘clinical-trial’, ‘peer-reviewed’] },
-    { mono: ‘YT’, src: ‘TED · YouTube’, title: ‘Metabolism, medicine and healthspan’, meta: ‘Video · 18 min’, icon: ‘video’, tags: [‘explainer’, ‘metabolism’] },
-    { mono: ‘E’, src: ‘The Economist’, title: ‘The trillion-dollar question of living longer’, meta: ‘Article · 10 min’, icon: ‘globe’, tags: [‘economics’, ‘pharma’] },
+  "Ozempic & longevity": [
+    { mono: "N", src: "Nature", title: "GLP-1 agonists beyond weight loss", meta: "Article · 9 min", icon: "globe", tags: ["glp-1", "science"] },
+    { mono: "S", src: "STAT News", title: "What we actually know about GLP-1s and aging", meta: "Article · 12 min", icon: "globe", tags: ["aging", "evidence"] },
+    { mono: "A", src: "The Atlantic", title: "The longevity drug hiding in plain sight", meta: "Article · 14 min", icon: "globe", tags: ["longevity", "health"] },
+    { mono: "J", src: "JAMA", title: "Semaglutide outcomes: 5-year follow-up", meta: "PDF · 16 pages", icon: "file", tags: ["clinical-trial", "peer-reviewed"] },
+    { mono: "YT", src: "TED · YouTube", title: "Metabolism, medicine and healthspan", meta: "Video · 18 min", icon: "video", tags: ["explainer", "metabolism"] },
+    { mono: "E", src: "The Economist", title: "The trillion-dollar question of living longer", meta: "Article · 10 min", icon: "globe", tags: ["economics", "pharma"] },
   ],
-  ‘Vision Pro 2’: [
-    { mono: ‘B’, src: ‘Bloomberg’, title: ‘Inside the lighter, cheaper Vision Pro 2’, meta: ‘Article · 7 min’, icon: ‘globe’, tags: [‘apple’, ‘hardware’] },
-    { mono: ‘V’, src: ‘The Verge’, title: ‘Hands-on: what changed, what didn’t’, meta: ‘Article · 9 min’, icon: ‘globe’, tags: [‘review’, ‘spatial-computing’] },
-    { mono: ‘SC’, src: ‘Six Colors’, title: ‘The spatial computing report card’, meta: ‘Article · 8 min’, icon: ‘globe’, tags: [‘analysis’, ‘vr-ar’] },
-    { mono: ‘YT’, src: ‘YouTube’, title: ‘Vision Pro 2 — full review’, meta: ‘Video · 22 min’, icon: ‘video’, tags: [‘review’, ‘demo’] },
-    { mono: ‘AP’, src: ‘Apple Newsroom’, title: ‘Vision Pro 2 press release’, meta: ‘PDF · 6 pages’, icon: ‘file’, tags: [‘official’, ‘press-release’] },
-    { mono: ‘FT’, src: ‘Financial Times’, title: ‘Can headsets become the next platform?’, meta: ‘Article · 11 min’, icon: ‘globe’, tags: [‘market’, ‘platform’] },
+  "Vision Pro 2": [
+    { mono: "B", src: "Bloomberg", title: "Inside the lighter, cheaper Vision Pro 2", meta: "Article · 7 min", icon: "globe", tags: ["apple", "hardware"] },
+    { mono: "V", src: "The Verge", title: "Hands-on: what changed, what didn’t", meta: "Article · 9 min", icon: "globe", tags: ["review", "spatial-computing"] },
+    { mono: "SC", src: "Six Colors", title: "The spatial computing report card", meta: "Article · 8 min", icon: "globe", tags: ["analysis", "vr-ar"] },
+    { mono: "YT", src: "YouTube", title: "Vision Pro 2 — full review", meta: "Video · 22 min", icon: "video", tags: ["review", "demo"] },
+    { mono: "AP", src: "Apple Newsroom", title: "Vision Pro 2 press release", meta: "PDF · 6 pages", icon: "file", tags: ["official", "press-release"] },
+    { mono: "FT", src: "Financial Times", title: "Can headsets become the next platform?", meta: "Article · 11 min", icon: "globe", tags: ["market", "platform"] },
   ],
 };
 

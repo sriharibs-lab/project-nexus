@@ -121,3 +121,12 @@ Tasks completed: 1D-002 (empty/loading/error states — approve_with_notes; Empt
 Tasks blocked: none
 Gated (waiting on human): 1A-008 (S3/R2 bucket — needs cloud storage credentials in api/.env), 1C-011 (Daily Briefing iOS UI — needs APNs key from Apple Developer portal), 1D-006 (App Store assets — gated on 1D-002 now complete; was also gated on 1D-001 which completed prior cycle)
 Commit SHA: ebedd05
+
+---
+
+## Cycle 2026-06-20T23:00:00Z
+Tasks completed: 1D-006 (App Store assets — approve_with_notes; Echo mark icon preview, 5 screenshots with brand CSS tokens, store listing copy validated, 6-scene video script, ASO metadata JSON with privacy labels; minor: store-listing.md primary subtitle is 32 chars — JSON uses compliant version, submitter should pick an alternative from the file)
+Tasks blocked: none
+Gated (waiting on human): 1A-008 (S3/R2 bucket — needs cloud storage credentials in api/.env), 1C-011 (Daily Briefing push UI — needs APNs key from Apple Developer portal), store listing subtitle selection (pick compliant ≤ 30-char variant from app-store/store-listing.md before submission)
+Commit SHA: ccbd8c0e95f8e7e8eef434b471c31c1ebb9eabd8
+Phase 1D complete. Next: Phase 1E — Launch Prep (TestFlight, bug bash, App Store submission).

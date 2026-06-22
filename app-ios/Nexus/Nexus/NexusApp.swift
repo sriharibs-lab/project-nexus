@@ -21,42 +21,17 @@ struct NexusApp: App {
     }
 }
 
-/// Root routing: auth state + onboarding state drive the view stack.
-///
-/// Priority order:
-///   1. Not authenticated → AuthPlaceholderView (replaced by Sign in with Apple in 1B-002)
-///   2. Authenticated + onboarding not done → OnboardingView
-///   3. Authenticated + onboarding done → HomeView
+/// Root routing: auth state drives the view stack.
+/// Not authenticated → AuthPlaceholderView (Sign in with Apple in 1B-002)
+/// Authenticated → HomeView (HomeView handles empty state by showing FRE inline)
 private struct RootView: View {
     @EnvironmentObject var authManager: AuthManager
-
-    /// Tracks whether onboarding is complete within this session.
-    /// Initialized from UserDefaults; set to true when OnboardingView calls onComplete.
-    @State private var onboardingDone: Bool = OnboardingViewModel.hasCompletedOnboarding
-
-    /// When true, HomeView will immediately show the ResearchFlowView sheet.
-    @State private var launchResearchOnHome: Bool = false
 
     var body: some View {
         if !authManager.isAuthenticated {
             AuthPlaceholderView()
-        } else if !onboardingDone {
-            OnboardingView { launchResearch in
-                launchResearchOnHome = launchResearch
-                withAnimation(NexusAnimation.pageForward) {
-                    onboardingDone = true
-                }
-            }
-            .transition(.asymmetric(
-                insertion: .opacity,
-                removal: .move(edge: .leading).combined(with: .opacity)
-            ))
         } else {
-            HomeView(openResearchOnAppear: launchResearchOnHome)
-                .transition(.asymmetric(
-                    insertion: .move(edge: .trailing).combined(with: .opacity),
-                    removal: .opacity
-                ))
+            HomeView()
         }
     }
 }
@@ -67,7 +42,7 @@ private struct AuthPlaceholderView: View {
 
     var body: some View {
         ZStack {
-            Color.Nexus.pageBackground.ignoresSafeArea()
+            NexusBackground()
             VStack(spacing: NexusSpacing.xl) {
                 Text("Nexus")
                     .font(.Nexus.displayMedium)

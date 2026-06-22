@@ -59,7 +59,7 @@ struct ItemDetailView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            Color.Nexus.pageBackground.ignoresSafeArea()
+            NexusBackground()
 
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {

@@ -12,7 +12,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color.Nexus.pageBackground.ignoresSafeArea()
+                NexusBackground()
 
                 List {
                     Section {
@@ -74,7 +74,7 @@ struct FeedbackView: View {
 
     var body: some View {
         ZStack {
-            Color.Nexus.pageBackground.ignoresSafeArea()
+            NexusBackground()
 
             if vm.didSubmit {
                 thanksView

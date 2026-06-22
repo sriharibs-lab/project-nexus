@@ -33,6 +33,24 @@ extension Color {
     }
 }
 
+// MARK: - Global background
+
+/// The canonical Nexus screen background: pageEnd base + plum bloom radial gradient from top.
+/// Use instead of Color.Nexus.pageBackground.ignoresSafeArea() on every screen.
+struct NexusBackground: View {
+    var body: some View {
+        ZStack {
+            Color.Nexus.pageEnd.ignoresSafeArea()
+            LinearGradient(
+                colors: [Color.Nexus.bloom.opacity(0.5), .clear],
+                startPoint: .top,
+                endPoint: UnitPoint(x: 0.5, y: 0.48)
+            )
+            .ignoresSafeArea()
+        }
+    }
+}
+
 extension Color {
     init(hex: String) {
         let h = hex.hasPrefix("#") ? String(hex.dropFirst()) : hex

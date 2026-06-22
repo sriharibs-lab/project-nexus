@@ -27,7 +27,7 @@ struct SearchView: View {
 
     var body: some View {
         ZStack {
-            Color.Nexus.pageBackground.ignoresSafeArea()
+            NexusBackground()
 
             VStack(spacing: 0) {
                 searchBar

@@ -23,7 +23,7 @@ struct CollectionView: View {
 
     var body: some View {
         ZStack {
-            Color.Nexus.pageBackground.ignoresSafeArea()
+            NexusBackground()
 
             VStack(spacing: 0) {
                 // Liquid Glass floating tab capsule (DESIGN_LANGUAGE §3 + §8)

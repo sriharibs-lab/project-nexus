@@ -44,7 +44,7 @@ struct ResearchFlowView: View {
         GeometryReader { geo in
             ZStack(alignment: .bottom) {
                 // ── Input screen — scales back when the sheet rises ──
-                FREInputScreen(vm: vm, onCancel: { dismiss() })
+                FREInputScreen(vm: vm)
                     .scaleEffect(sheetVisible ? 0.945 : 1.0)
                     .clipShape(RoundedRectangle(cornerRadius: sheetVisible ? 22 : 0, style: .continuous))
                     .animation(.spring(response: 0.52, dampingFraction: 0.86), value: sheetVisible)
@@ -59,7 +59,7 @@ struct ResearchFlowView: View {
                 // ── Sources sheet ──
                 FRESourcesSheet(vm: vm)
                     .frame(height: geo.size.height * 0.905)
-                    .background(Color.Nexus.pageBackground)
+                    .background(NexusBackground())
                     .clipShape(.rect(topLeadingRadius: 24, topTrailingRadius: 24, style: .continuous))
                     .shadow(color: .black.opacity(0.20), radius: 40, x: 0, y: -12)
                     .offset(y: sheetVisible ? 0 : geo.size.height + 40)
@@ -80,20 +80,10 @@ struct ResearchFlowView: View {
 
 private struct FREInputScreen: View {
     @ObservedObject var vm: ResearchViewModel
-    var onCancel: () -> Void
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            Color.Nexus.pageBackground.ignoresSafeArea()
-
-            // Cancel button
-            Button(action: onCancel) {
-                Text("Cancel")
-                    .font(.Nexus.bodyMedium)
-                    .foregroundColor(.Nexus.muted)
-            }
-            .padding(.leading, NexusSpacing.sideGutter + 2)
-            .padding(.top, NexusSpacing.safeTop + 6)
+            NexusBackground()
 
             // Main content — vertically centered with safe area clearance
             VStack(spacing: 0) {
@@ -622,7 +612,7 @@ private struct FREConfirmBar: View {
         VStack(spacing: 0) {
             // Gradient fade
             LinearGradient(
-                colors: [Color.Nexus.pageBackground.opacity(0), Color.Nexus.pageBackground],
+                colors: [Color.Nexus.pageEnd.opacity(0), Color.Nexus.pageEnd],
                 startPoint: .top,
                 endPoint: .bottom
             )
@@ -651,7 +641,7 @@ private struct FREConfirmBar: View {
             .disabled(!vm.canConfirm || isConfirming)
             .padding(.horizontal, NexusSpacing.standard)
             .padding(.bottom, NexusSpacing.xxl)
-            .background(Color.Nexus.pageBackground)
+            .background(Color.Nexus.pageEnd)
         }
     }
 }

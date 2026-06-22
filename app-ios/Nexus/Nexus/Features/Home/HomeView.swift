@@ -4,25 +4,19 @@ import SwiftUI
 struct HomeView: View {
     @StateObject private var vm = HomeViewModel()
 
-    /// When true (passed from onboarding completion), open the ResearchFlowView sheet
-    /// automatically on first appear. Defaults to false for all non-onboarding entry points.
-    var openResearchOnAppear: Bool = false
-
-    // Research sheet
     @State private var showingNewCollection = false
-    // After research completes, hold the new collection to navigate to
-    @State private var newCollection: NexusCollection?
-    // Programmatic navigation path for pushing new collection after research
     @State private var navPath = NavigationPath()
 
     var body: some View {
-        NavigationStack(path: $navPath) {
-            ZStack {
-                Color.Nexus.pageBackground.ignoresSafeArea()
-
-                if vm.isLoading && vm.collections.isEmpty {
+        Group {
+            if vm.isLoading && vm.collections.isEmpty {
+                ZStack {
+                    NexusBackground()
                     LoadingStateView()
-                } else if let apiError = vm.error, vm.collections.isEmpty {
+                }
+            } else if let apiError = vm.error, vm.collections.isEmpty {
+                ZStack {
+                    NexusBackground()
                     VStack {
                         Spacer()
                         ErrorStateView(
@@ -33,52 +27,54 @@ struct HomeView: View {
                         }
                         Spacer()
                     }
-                } else if vm.collections.isEmpty {
-                    emptyState
-                } else {
-                    collectionList
                 }
-            }
-            .navigationTitle("Nexus")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        showingNewCollection = true
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 17, weight: .medium))
-                            .foregroundColor(.Nexus.accent)
-                            .frame(width: NexusSpacing.hitTarget, height: NexusSpacing.hitTarget)
-                    }
-                }
-            }
-            .task { await vm.load() }
-            .onAppear {
-                // If arriving from onboarding with "Research a topic" selected,
-                // open the research sheet after a brief settle delay.
-                if openResearchOnAppear {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                        showingNewCollection = true
-                    }
-                }
-            }
-            .fullScreenCover(isPresented: $showingNewCollection) {
+            } else if vm.collections.isEmpty {
+                // No collections — FRE is the primary screen, not a modal
                 ResearchFlowView { collectionId in
-                    // Research complete — reload collections and push to the new one
                     Task {
                         await vm.load()
-                        // Find the newly created collection and push to it
                         if let found = vm.collections.first(where: { $0.id == collectionId }) {
                             navPath.append(found)
                         }
                     }
                 }
-            }
-            .navigationDestination(for: NexusCollection.self) { collection in
-                CollectionView(collection: collection)
+            } else {
+                NavigationStack(path: $navPath) {
+                    ZStack {
+                        NexusBackground()
+                        collectionList
+                    }
+                    .navigationTitle("Nexus")
+                    .navigationBarTitleDisplayMode(.large)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button {
+                                showingNewCollection = true
+                            } label: {
+                                Image(systemName: "plus")
+                                    .font(.system(size: 17, weight: .medium))
+                                    .foregroundColor(.Nexus.accent)
+                                    .frame(width: NexusSpacing.hitTarget, height: NexusSpacing.hitTarget)
+                            }
+                        }
+                    }
+                    .fullScreenCover(isPresented: $showingNewCollection) {
+                        ResearchFlowView { collectionId in
+                            Task {
+                                await vm.load()
+                                if let found = vm.collections.first(where: { $0.id == collectionId }) {
+                                    navPath.append(found)
+                                }
+                            }
+                        }
+                    }
+                    .navigationDestination(for: NexusCollection.self) { collection in
+                        CollectionView(collection: collection)
+                    }
+                }
             }
         }
+        .task { await vm.load() }
     }
 
     // MARK: - Collection list
@@ -100,22 +96,6 @@ struct HomeView: View {
         .refreshable { await vm.load() }
     }
 
-    // MARK: - Empty state
-
-    private var emptyState: some View {
-        VStack {
-            Spacer()
-            EmptyStateView(
-                icon: "sparkles",
-                title: "What are you curious about?",
-                subtitle: "Research a topic and Nexus will build a collection of the best sources for you.",
-                action: .init(label: "Research a topic") {
-                    showingNewCollection = true
-                }
-            )
-            Spacer()
-        }
-    }
 }
 
 // MARK: - Collection card

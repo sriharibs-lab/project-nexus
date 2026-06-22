@@ -23,7 +23,7 @@ struct OnboardingView: View {
 
     var body: some View {
         ZStack {
-            Color.Nexus.pageBackground.ignoresSafeArea()
+            NexusBackground()
 
             // Step container — slides horizontally
             TabView(selection: $vm.step) {

@@ -95,6 +95,22 @@ cycle_policy:
 - [x] Performance: save-to-summary target < 10s — audit ingest pipeline, add timing logs, optimize Jina timeout <!-- nbl:id=1D-005 agent=swe deps=[1C-009] est=3h -->
 - [x] App Store assets: icon, screenshots (6.7" + 6.1"), preview video script, description copy <!-- nbl:id=1D-006 agent=swe deps=[1D-001,1D-002] est=4h -->
 
+### 1F — FRE & UX Polish (bugs + enhancements from first device test)
+
+**Critical fixes:**
+- [ ] Auth screen: replace `AuthPlaceholderView` stub with proper sign-in UI (Sign in with Apple button + "Continue as dev" secondary CTA) matching Nexus design system <!-- nbl:id=1F-001 agent=swe deps=[] est=2h -->
+- [ ] Wire chat submit: NexusTabView composer send button + return key currently do nothing — connect to `vm.send()` <!-- nbl:id=1F-002 agent=swe deps=[1C-007] est=1h -->
+
+**Bugs:**
+- [ ] FRE trending icon: `arrow.up.right` looks like "open in new tab" — replace with `chart.line.uptrend.xyaxis` SF Symbol <!-- nbl:id=1F-003 agent=swe deps=[] est=0.5h -->
+- [ ] Keyboard dismiss: tapping outside chat composer in NexusTabView does not dismiss keyboard <!-- nbl:id=1F-004 agent=swe deps=[1C-007] est=0.5h -->
+
+**Enhancements:**
+- [ ] Avatar button: add circular avatar button top-right of FRE input screen (shows initials, taps to open settings) <!-- nbl:id=1F-005 agent=swe deps=[1F-001] est=1h -->
+- [ ] FRE rotating topics from user profile: pull `freTopics` from stored user interest profile instead of hardcoded array <!-- nbl:id=1F-006 agent=swe deps=[1C-009] est=1.5h -->
+- [ ] Live trending chips: fetch top 4 trending topics from public source (NewsAPI headlines or Google Trends RSS) at FRE load time; fall back to static list if unavailable <!-- nbl:id=1F-007 agent=swe deps=[] est=2h -->
+- [ ] FRE composer `+` button: tapping opens a link/URL paste sheet so user can start a collection from a URL directly from the composer <!-- nbl:id=1F-008 agent=swe deps=[] est=1.5h -->
+
 ### 1E — Launch Prep (Week 10)
 - [ ] TestFlight beta (500 users)
 - [ ] Bug bash

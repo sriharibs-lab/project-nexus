@@ -1,5 +1,6 @@
 import Combine
 import SwiftUI
+import UIKit
 
 // MARK: - NexusTabView
 
@@ -68,7 +69,8 @@ struct NexusTabView: View {
                 .padding(.horizontal, NexusSpacing.sideGutter)
                 .padding(.bottom, NexusSpacing.standard)
         }
-        .background(Color.Nexus.pageBackground)
+        .background(NexusBackground())
+        .onTapGesture { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
         // Error banner overlay
         .overlay(alignment: .top) {
             if case .error(let msg) = vm.phase {

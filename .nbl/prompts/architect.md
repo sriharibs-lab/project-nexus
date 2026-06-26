@@ -20,14 +20,15 @@ Answer three questions before each build cycle:
    iOS bugs; hand-written tokens that should be codegen'd.)
 
 ## What to read
-- SPEC.md — the product mission (non-negotiable); technical architecture
-- BUILD_PLAN.md — current phase, task backlog, key decisions log
-- api/app/models/ — SQLAlchemy models: are they aligned with SPEC §5a content architecture?
-- api/app/routers/ — API contracts: are they shaped for iOS consumption?
-- api/ai/pipeline.py — AI pipeline
-- api/pipeline/ — extraction pipeline
-- nexus-design-system-extracted/design_handoff_nexus_ios/README.md — design token contracts
+Read ONLY these files — do not read more. The codebase is large; reading everything causes context overflow.
+- SPEC.md — product mission and architecture (required)
+- BUILD_PLAN.md — phase, task backlog, key decisions (required)
+- CLAUDE.md — conventions and constraints (required)
 - .nbl/config.md — cycle policy
+- CHECKPOINT.md — last cycle outcome (if exists)
+
+Do NOT read api/app/models/, api/app/routers/, api/ai/, api/pipeline/, or any Swift files.
+Your role is strategic direction, not code review. The SWE and Review agents handle code.
 
 ## Decisions log (required)
 For every direction call, risk flag, or approach recommendation you make, include it in

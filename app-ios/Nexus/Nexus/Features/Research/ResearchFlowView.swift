@@ -80,10 +80,19 @@ struct ResearchFlowView: View {
 
 private struct FREInputScreen: View {
     @ObservedObject var vm: ResearchViewModel
+    @EnvironmentObject private var authManager: AuthManager
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
+        ZStack(alignment: .top) {
             NexusBackground()
+
+            // Avatar button — top right
+            HStack {
+                Spacer()
+                FREAvatarButton(authManager: authManager)
+                    .padding(.trailing, NexusSpacing.standard)
+                    .padding(.top, NexusSpacing.safeTop + 6)
+            }
 
             // Main content — vertically centered with safe area clearance
             VStack(spacing: 0) {
@@ -262,7 +271,7 @@ private struct FRETrendingChips: View {
                     ForEach(row, id: \.self) { topic in
                         Button(action: { onSelect(topic) }) {
                             HStack(spacing: 6) {
-                                Image(systemName: "arrow.up.right")
+                                Image(systemName: "chart.line.uptrend.xyaxis")
                                     .font(.system(size: 11, weight: .semibold))
                                     .foregroundColor(.Nexus.faint)
                                 Text(topic)
@@ -318,6 +327,36 @@ private struct FRELinkButtons: View {
                     .overlay(Capsule().stroke(Color.Nexus.border, lineWidth: NexusBorder.base))
                 }
             }
+        }
+    }
+}
+
+// MARK: - Avatar button
+
+private struct FREAvatarButton: View {
+    let authManager: AuthManager
+    @State private var showSettings = false
+
+    private var initials: String {
+        // Use "S" as fallback until real name is stored in user profile
+        "S"
+    }
+
+    var body: some View {
+        Button(action: { showSettings = true }) {
+            ZStack {
+                Circle()
+                    .fill(Color.Nexus.surface2)
+                    .frame(width: 32, height: 32)
+                    .overlay(Circle().stroke(Color.Nexus.border, lineWidth: NexusBorder.hair))
+                Text(initials)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.Nexus.muted)
+            }
+        }
+        .buttonStyle(.plain)
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
         }
     }
 }

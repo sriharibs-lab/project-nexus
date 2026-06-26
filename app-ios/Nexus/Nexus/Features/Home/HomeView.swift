@@ -14,20 +14,6 @@ struct HomeView: View {
                     NexusBackground()
                     LoadingStateView()
                 }
-            } else if let apiError = vm.error, vm.collections.isEmpty {
-                ZStack {
-                    NexusBackground()
-                    VStack {
-                        Spacer()
-                        ErrorStateView(
-                            message: apiError.errorDescription ?? "Couldn't load your collections."
-                        ) {
-                            vm.error = nil
-                            await vm.load()
-                        }
-                        Spacer()
-                    }
-                }
             } else if vm.collections.isEmpty {
                 // No collections — FRE is the primary screen, not a modal
                 ResearchFlowView { collectionId in

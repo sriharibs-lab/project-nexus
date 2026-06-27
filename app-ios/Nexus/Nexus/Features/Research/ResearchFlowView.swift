@@ -138,7 +138,7 @@ private struct FREInputScreen: View {
             HStack {
                 Spacer()
                 FREAvatarButton(active: showAvatarMenu) {
-                    withAnimation(.spring(response: 0.46, dampingFraction: 0.78)) {
+                    withAnimation(.spring(response: 0.22, dampingFraction: 0.86)) {
                         showAvatarMenu = true
                     }
                 }
@@ -158,12 +158,12 @@ private struct FREInputScreen: View {
                     }
             }
 
-            // Avatar bloom menu — springs from the top-right corner
+            // Avatar bloom menu — snaps from the top-right corner, Notion-style
             VStack {
                 HStack {
                     Spacer()
                     FREAvatarMenuCard {
-                        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                        withAnimation(.spring(response: 0.2, dampingFraction: 0.85)) {
                             showAvatarMenu = false
                         }
                     }
@@ -172,11 +172,19 @@ private struct FREInputScreen: View {
                 Spacer()
             }
             .padding(.top, NexusSpacing.safeTop + 6 + 32 + 8)
-            .scaleEffect(showAvatarMenu ? 1 : 0.12, anchor: .topTrailing)
+            .scaleEffect(showAvatarMenu ? 1 : 0.88, anchor: .topTrailing)
             .opacity(showAvatarMenu ? 1 : 0)
-            .animation(.spring(response: 0.46, dampingFraction: 0.78), value: showAvatarMenu)
+            .animation(.spring(response: 0.22, dampingFraction: 0.86), value: showAvatarMenu)
             .allowsHitTesting(showAvatarMenu)
         }
+        .simultaneousGesture(
+            TapGesture().onEnded {
+                UIApplication.shared.sendAction(
+                    #selector(UIResponder.resignFirstResponder),
+                    to: nil, from: nil, for: nil
+                )
+            }
+        )
     }
 }
 
@@ -191,7 +199,8 @@ private struct FRERotatingWord: View {
 
     var body: some View {
         Text(words[index])
-            .fixedSize(horizontal: false, vertical: true)
+            .lineLimit(1)
+            .minimumScaleFactor(0.78)
             .opacity(visible ? 1 : 0)
             .offset(y: visible ? 0 : 8)
             .onReceive(timer) { _ in
@@ -307,8 +316,8 @@ private struct FRETrendingChips: View {
                     ForEach(row, id: \.self) { topic in
                         Button(action: { onSelect(topic) }) {
                             HStack(spacing: 6) {
-                                Image(systemName: "chart.line.uptrend.xyaxis")
-                                    .font(.system(size: 11, weight: .semibold))
+                                Image(systemName: "arrow.up")
+                                    .font(.system(size: 11, weight: .bold))
                                     .foregroundColor(.Nexus.faint)
                                 Text(topic)
                                     .font(.system(size: 13.5, weight: .medium))
@@ -391,7 +400,7 @@ private struct FREAvatarButton: View {
     }
 }
 
-// MARK: - Avatar bloom menu card
+// MARK: - Avatar menu card (Notion-quality contextual menu)
 
 private struct FREAvatarMenuCard: View {
     let onClose: () -> Void
@@ -399,92 +408,81 @@ private struct FREAvatarMenuCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Header: avatar circle + name + email
-            HStack(spacing: 11) {
+            // Header
+            HStack(spacing: 10) {
                 ZStack {
                     Circle()
                         .fill(Color.Nexus.bloom)
-                        .frame(width: 40, height: 40)
+                        .frame(width: 36, height: 36)
                     Text("S")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(Color.Nexus.accent)
                 }
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 1) {
                     Text("Srihari")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.Nexus.ink)
-                        .kerning(-0.2)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(Color(UIColor.label))
                     Text("srihari.scorp@gmail.com")
-                        .font(.system(size: 12.5))
-                        .foregroundColor(.Nexus.muted)
+                        .font(.system(size: 12))
+                        .foregroundColor(Color(UIColor.secondaryLabel))
                         .lineLimit(1)
                 }
                 Spacer(minLength: 0)
             }
-            .padding(.horizontal, 10)
-            .padding(.top, 9)
-            .padding(.bottom, 11)
+            .padding(.horizontal, 12)
+            .padding(.top, 12)
+            .padding(.bottom, 10)
 
-            // Menu rows
+            Divider()
+                .padding(.horizontal, 8)
+
+            // Rows
             ForEach(["Account", "Settings", "Feedback"], id: \.self) { label in
                 AvatarMenuRow(label: label, action: onClose)
             }
 
             Divider()
-                .padding(.horizontal, 10)
-                .padding(.vertical, 2)
+                .padding(.horizontal, 8)
 
             AvatarMenuRow(label: "Sign out", tint: Color.Nexus.destructive) {
                 onClose()
                 authManager.signOut()
             }
-            .padding(.bottom, 4)
         }
-        .frame(width: 238)
-        .background {
-            ZStack {
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            stops: [
-                                .init(color: .white.opacity(0.42), location: 0),
-                                .init(color: .white.opacity(0.10), location: 0.30),
-                                .init(color: .white.opacity(0.03), location: 0.54),
-                                .init(color: .white.opacity(0.36), location: 1.0),
-                            ],
-                            startPoint: UnitPoint(x: 0, y: 0),
-                            endPoint: UnitPoint(x: 1, y: 1)
-                        )
-                    )
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .stroke(Color.white.opacity(0.45), lineWidth: 1)
-            }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-        .shadow(color: .black.opacity(0.22), radius: 30, x: 0, y: 12)
-        .shadow(color: .black.opacity(0.13), radius: 8, x: 0, y: 4)
+        .frame(width: 210)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color(UIColor.separator), lineWidth: 0.5)
+        )
+        .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 6)
+        .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
     }
 }
 
 private struct AvatarMenuRow: View {
     let label: String
-    var tint: Color = Color.Nexus.ink
+    var tint: Color = Color(UIColor.label)
     let action: () -> Void
+    @State private var pressed = false
 
     var body: some View {
         Button(action: action) {
             Text(label)
-                .font(.system(size: 15.5, weight: .medium))
+                .font(.system(size: 14.5, weight: .regular))
                 .foregroundColor(tint)
-                .kerning(-0.2)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 11)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 9)
                 .contentShape(Rectangle())
+                .background(pressed ? Color(UIColor.systemGray5) : Color.clear)
         }
         .buttonStyle(.plain)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in pressed = true }
+                .onEnded { _ in pressed = false }
+        )
     }
 }
 

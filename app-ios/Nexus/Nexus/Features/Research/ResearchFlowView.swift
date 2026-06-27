@@ -81,18 +81,11 @@ struct ResearchFlowView: View {
 private struct FREInputScreen: View {
     @ObservedObject var vm: ResearchViewModel
     @EnvironmentObject private var authManager: AuthManager
+    @State private var showAvatarMenu = false
 
     var body: some View {
         ZStack(alignment: .top) {
             NexusBackground()
-
-            // Avatar button — top right
-            HStack {
-                Spacer()
-                FREAvatarButton(authManager: authManager)
-                    .padding(.trailing, NexusSpacing.standard)
-                    .padding(.top, NexusSpacing.safeTop + 6)
-            }
 
             // Main content — vertically centered with safe area clearance
             VStack(spacing: 0) {
@@ -140,6 +133,49 @@ private struct FREInputScreen: View {
                 Spacer()
                 Spacer()
             }
+
+            // Avatar button — top right
+            HStack {
+                Spacer()
+                FREAvatarButton(active: showAvatarMenu) {
+                    withAnimation(.spring(response: 0.46, dampingFraction: 0.78)) {
+                        showAvatarMenu = true
+                    }
+                }
+                .padding(.trailing, NexusSpacing.standard)
+                .padding(.top, NexusSpacing.safeTop + 6)
+            }
+
+            // Scrim — transparent, tap to close the menu
+            if showAvatarMenu {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                            showAvatarMenu = false
+                        }
+                    }
+            }
+
+            // Avatar bloom menu — springs from the top-right corner
+            VStack {
+                HStack {
+                    Spacer()
+                    FREAvatarMenuCard {
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                            showAvatarMenu = false
+                        }
+                    }
+                    .padding(.trailing, NexusSpacing.standard)
+                }
+                Spacer()
+            }
+            .padding(.top, NexusSpacing.safeTop + 6 + 32 + 8)
+            .scaleEffect(showAvatarMenu ? 1 : 0.12, anchor: .topTrailing)
+            .opacity(showAvatarMenu ? 1 : 0)
+            .animation(.spring(response: 0.46, dampingFraction: 0.78), value: showAvatarMenu)
+            .allowsHitTesting(showAvatarMenu)
         }
     }
 }
@@ -334,30 +370,121 @@ private struct FRELinkButtons: View {
 // MARK: - Avatar button
 
 private struct FREAvatarButton: View {
-    let authManager: AuthManager
-    @State private var showSettings = false
-
-    private var initials: String {
-        // Use "S" as fallback until real name is stored in user profile
-        "S"
-    }
+    let active: Bool
+    let action: () -> Void
 
     var body: some View {
-        Button(action: { showSettings = true }) {
+        Button(action: action) {
             ZStack {
                 Circle()
                     .fill(Color.Nexus.surface2)
                     .frame(width: 32, height: 32)
                     .overlay(Circle().stroke(Color.Nexus.border, lineWidth: NexusBorder.hair))
-                Text(initials)
+                Text("S")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.Nexus.muted)
             }
         }
         .buttonStyle(.plain)
-        .sheet(isPresented: $showSettings) {
-            SettingsView()
+        .opacity(active ? 0 : 1)
+        .animation(.easeIn(duration: 0.05), value: active)
+    }
+}
+
+// MARK: - Avatar bloom menu card
+
+private struct FREAvatarMenuCard: View {
+    let onClose: () -> Void
+    @EnvironmentObject private var authManager: AuthManager
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header: avatar circle + name + email
+            HStack(spacing: 11) {
+                ZStack {
+                    Circle()
+                        .fill(Color.Nexus.bloom)
+                        .frame(width: 40, height: 40)
+                    Text("S")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(Color.Nexus.accent)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Srihari")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.Nexus.ink)
+                        .kerning(-0.2)
+                    Text("srihari.scorp@gmail.com")
+                        .font(.system(size: 12.5))
+                        .foregroundColor(.Nexus.muted)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 10)
+            .padding(.top, 9)
+            .padding(.bottom, 11)
+
+            // Menu rows
+            ForEach(["Account", "Settings", "Feedback"], id: \.self) { label in
+                AvatarMenuRow(label: label, action: onClose)
+            }
+
+            Divider()
+                .padding(.horizontal, 10)
+                .padding(.vertical, 2)
+
+            AvatarMenuRow(label: "Sign out", tint: Color.Nexus.destructive) {
+                onClose()
+                authManager.signOut()
+            }
+            .padding(.bottom, 4)
         }
+        .frame(width: 238)
+        .background {
+            ZStack {
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            stops: [
+                                .init(color: .white.opacity(0.42), location: 0),
+                                .init(color: .white.opacity(0.10), location: 0.30),
+                                .init(color: .white.opacity(0.03), location: 0.54),
+                                .init(color: .white.opacity(0.36), location: 1.0),
+                            ],
+                            startPoint: UnitPoint(x: 0, y: 0),
+                            endPoint: UnitPoint(x: 1, y: 1)
+                        )
+                    )
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .stroke(Color.white.opacity(0.45), lineWidth: 1)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .shadow(color: .black.opacity(0.22), radius: 30, x: 0, y: 12)
+        .shadow(color: .black.opacity(0.13), radius: 8, x: 0, y: 4)
+    }
+}
+
+private struct AvatarMenuRow: View {
+    let label: String
+    var tint: Color = Color.Nexus.ink
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(label)
+                .font(.system(size: 15.5, weight: .medium))
+                .foregroundColor(tint)
+                .kerning(-0.2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 11)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
 

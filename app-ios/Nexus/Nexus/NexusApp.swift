@@ -125,11 +125,6 @@ private struct AuthPlaceholderView: View {
 
 private struct EchoMarkAuth: View {
     var body: some View {
-        ZStack {
-            Circle()
-                .fill(Color.Nexus.bloom.opacity(0.55))
-                .frame(width: 80, height: 80)
-            EchoMark(color: Color.Nexus.accent, size: 52)
-        }
+        EchoMark(color: Color.Nexus.accent, size: 52)
     }
 }

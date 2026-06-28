@@ -187,14 +187,13 @@ private struct FREInputScreen: View {
             .animation(.spring(response: 0.26, dampingFraction: 0.62), value: showAvatarMenu)
             .allowsHitTesting(showAvatarMenu)
         }
-        .simultaneousGesture(
-            TapGesture().onEnded {
-                UIApplication.shared.sendAction(
-                    #selector(UIResponder.resignFirstResponder),
-                    to: nil, from: nil, for: nil
-                )
-            }
-        )
+        .onTapGesture {
+            // Fires only when no child view (TextField, buttons) consumed the tap.
+            UIApplication.shared.sendAction(
+                #selector(UIResponder.resignFirstResponder),
+                to: nil, from: nil, for: nil
+            )
+        }
     }
 }
 

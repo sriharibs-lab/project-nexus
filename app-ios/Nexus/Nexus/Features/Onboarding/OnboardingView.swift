@@ -82,12 +82,7 @@ private struct WelcomeScreen: View {
 
             VStack(spacing: NexusSpacing.xxxl) {
                 // Brand mark — canonical Echo mark from design system
-                ZStack {
-                    Circle()
-                        .fill(Color.Nexus.bloom.opacity(0.6))
-                        .frame(width: 96, height: 96)
-                    EchoMark(color: Color.Nexus.accent, size: 60)
-                }
+                EchoMark(color: Color.Nexus.accent, size: 60)
                     .opacity(appeared ? 1 : 0)
                     .offset(y: appeared ? 0 : 12)
                     .animation(

@@ -65,45 +65,46 @@ struct EchoMark: View {
             let s = sz.width / 48.0
 
             // Inner arcs — strokeWidth 3, full opacity
-            // Left:  M18.5 16 A11 11 0 0 0 18.5 32  center=(26.05,24) CCW
+            // SwiftUI Path.addArc uses CG Y-up convention: clockwise:true = CCW on screen.
+            // Left "(" arc: appears CCW on screen → clockwise: true
             var li = Path()
             li.addArc(center: CGPoint(x: 26.05 * s, y: 24 * s),
                       radius: 11 * s,
                       startAngle: .degrees(226.6),
                       endAngle: .degrees(133.4),
-                      clockwise: false)
+                      clockwise: true)
             ctx.stroke(li, with: .color(color),
                        style: StrokeStyle(lineWidth: 3 * s, lineCap: .round))
 
-            // Right: M29.5 16 A11 11 0 0 1 29.5 32  center=(21.95,24) CW
+            // Right ")" arc: appears CW on screen → clockwise: false
             var ri = Path()
             ri.addArc(center: CGPoint(x: 21.95 * s, y: 24 * s),
                       radius: 11 * s,
                       startAngle: .degrees(313.4),
                       endAngle: .degrees(46.6),
-                      clockwise: true)
+                      clockwise: false)
             ctx.stroke(ri, with: .color(color),
                        style: StrokeStyle(lineWidth: 3 * s, lineCap: .round))
 
             // Outer arcs — strokeWidth 2.2, opacity 0.32
             let outer = color.opacity(0.32)
-            // Left:  M13.5 9.5 A17.5 17.5 0 0 0 13.5 38.5  center=(23.298,24) CCW
+            // Left outer: CCW on screen → clockwise: true
             var lo = Path()
             lo.addArc(center: CGPoint(x: 23.298 * s, y: 24 * s),
                       radius: 17.5 * s,
                       startAngle: .degrees(236),
                       endAngle: .degrees(124),
-                      clockwise: false)
+                      clockwise: true)
             ctx.stroke(lo, with: .color(outer),
                        style: StrokeStyle(lineWidth: 2.2 * s, lineCap: .round))
 
-            // Right: M34.5 9.5 A17.5 17.5 0 0 1 34.5 38.5  center=(24.702,24) CW
+            // Right outer: CW on screen → clockwise: false
             var ro = Path()
             ro.addArc(center: CGPoint(x: 24.702 * s, y: 24 * s),
                       radius: 17.5 * s,
                       startAngle: .degrees(304),
                       endAngle: .degrees(56),
-                      clockwise: true)
+                      clockwise: false)
             ctx.stroke(ro, with: .color(outer),
                        style: StrokeStyle(lineWidth: 2.2 * s, lineCap: .round))
 

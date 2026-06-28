@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     search_fts_weight: float = 0.3      # weight given to FTS rank in hybrid score (0-1)
     search_semantic_weight: float = 0.7  # weight given to cosine similarity (0-1)
 
+    # Trending topics (1F-007)
+    # How long to cache Google Trends RSS results in-process (seconds).
+    # 15 min default: fresh enough for FRE sessions, low traffic load on Google.
+    trending_cache_ttl_seconds: int = 900
+
     @property
     def is_production(self) -> bool:
         return self.environment == "production"

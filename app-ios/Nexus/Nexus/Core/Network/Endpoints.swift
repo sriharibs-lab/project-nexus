@@ -17,6 +17,7 @@ enum Endpoint {
     case research          // POST /v1/collections/research — SSE streaming
     case search            // GET /v1/search
     case chat(collectionId: UUID) // POST /v1/collections/{id}/chat — SSE streaming
+    case trending          // GET /v1/trending — live topic chips for FRE (no auth)
 
     var path: String {
         switch self {
@@ -38,6 +39,8 @@ enum Endpoint {
             return "/v1/search"
         case .chat(let cid):
             return "/v1/collections/\(cid.uuidString.lowercased())/chat"
+        case .trending:
+            return "/v1/trending"
         }
     }
 

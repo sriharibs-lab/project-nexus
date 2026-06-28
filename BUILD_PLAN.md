@@ -106,10 +106,10 @@ cycle_policy:
 - [x] Keyboard dismiss: tapping outside chat composer in NexusTabView does not dismiss keyboard <!-- nbl:id=1F-004 agent=swe deps=[1C-007] est=0.5h -->
 
 **Enhancements:**
-- [ ] Avatar button: add circular avatar button top-right of FRE input screen (shows initials, taps to open settings) <!-- nbl:id=1F-005 agent=swe deps=[1F-001] est=1h -->
-- [ ] FRE rotating topics from user profile: pull `freTopics` from stored user interest profile instead of hardcoded array <!-- nbl:id=1F-006 agent=swe deps=[1C-009] est=1.5h -->
-- [ ] Live trending chips: fetch top 4 trending topics from public source (NewsAPI headlines or Google Trends RSS) at FRE load time; fall back to static list if unavailable <!-- nbl:id=1F-007 agent=swe deps=[] est=2h -->
-- [ ] FRE composer `+` button: tapping opens a link/URL paste sheet so user can start a collection from a URL directly from the composer <!-- nbl:id=1F-008 agent=swe deps=[] est=1.5h -->
+- [x] Avatar button: add circular avatar button top-right of FRE input screen (shows initials, taps to open settings) <!-- nbl:id=1F-005 agent=swe deps=[1F-001] est=1h -->
+- [x] FRE rotating topics from user profile: pull `freTopics` from stored user interest profile instead of hardcoded array <!-- nbl:id=1F-006 agent=swe deps=[1C-009] est=1.5h -->
+- [x] Live trending chips: fetch top 4 trending topics from public source (NewsAPI headlines or Google Trends RSS) at FRE load time; fall back to static list if unavailable <!-- nbl:id=1F-007 agent=swe deps=[] est=2h -->
+- [x] FRE composer `+` button: tapping opens a link/URL paste sheet so user can start a collection from a URL directly from the composer <!-- nbl:id=1F-008 agent=swe deps=[] est=1.5h -->
 
 ### 1E — Launch Prep (Week 10)
 - [ ] TestFlight beta (500 users)

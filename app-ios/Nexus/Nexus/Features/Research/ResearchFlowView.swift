@@ -65,6 +65,9 @@ struct ResearchFlowView: View {
                     .offset(y: sheetVisible ? 0 : geo.size.height + 40)
                     .animation(.spring(response: 0.48, dampingFraction: 0.86), value: sheetVisible)
             }
+            // Prevent keyboard appearance from changing geo.size, which would
+            // cascade re-renders through FREInputScreen while the user types.
+            .ignoresSafeArea(.keyboard)
         }
         .ignoresSafeArea()
         .onChange(of: vm.phase) { _, phase in
@@ -82,6 +85,9 @@ private struct FREInputScreen: View {
     @ObservedObject var vm: ResearchViewModel
     @EnvironmentObject private var authManager: AuthManager
     @State private var showAvatarMenu = false
+    // Local state scopes TextField rerenders to FREComposer only — avoids
+    // rerendering the entire screen on every keystroke.
+    @State private var composerText = ""
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -114,9 +120,17 @@ private struct FREInputScreen: View {
                     .lineSpacing(2)
                     .padding(.bottom, 24)
 
-                    // Composer
-                    FREComposer(vm: vm)
-                        .padding(.bottom, 20)
+                    // Composer — driven by local state; syncs to vm only on submit
+                    FREComposer(text: $composerText) {
+                        let trimmed = composerText.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !trimmed.isEmpty else { return }
+                        vm.topic = trimmed
+                        vm.startResearch()
+                    }
+                    .padding(.bottom, 20)
+                    .onChange(of: vm.topic) { _, newTopic in
+                        if newTopic.isEmpty { composerText = "" }
+                    }
 
                     // Trending chips
                     FRETrendingChips(onSelect: { topic in
@@ -172,9 +186,9 @@ private struct FREInputScreen: View {
                 Spacer()
             }
             .padding(.top, NexusSpacing.safeTop + 6 + 32 + 8)
-            .scaleEffect(showAvatarMenu ? 1 : 0.88, anchor: .topTrailing)
+            .scaleEffect(showAvatarMenu ? 1 : 0.5, anchor: .topTrailing)
             .opacity(showAvatarMenu ? 1 : 0)
-            .animation(.spring(response: 0.22, dampingFraction: 0.86), value: showAvatarMenu)
+            .animation(.spring(response: 0.42, dampingFraction: 0.64), value: showAvatarMenu)
             .allowsHitTesting(showAvatarMenu)
         }
         .simultaneousGesture(
@@ -216,14 +230,19 @@ private struct FRERotatingWord: View {
 // MARK: - Composer box
 
 private struct FREComposer: View {
-    @ObservedObject var vm: ResearchViewModel
+    @Binding var text: String
+    let onSubmit: () -> Void
     @FocusState private var focused: Bool
+
+    private var hasText: Bool {
+        !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             // Placeholder or text input
             ZStack(alignment: .topLeading) {
-                if vm.topic.isEmpty {
+                if text.isEmpty {
                     Text("Research a topic\u{2026}")
                         .font(.system(size: 17))
                         .foregroundColor(.Nexus.ghost)
@@ -231,25 +250,21 @@ private struct FREComposer: View {
                         .padding(.horizontal, 4)
                         .padding(.top, 2)
                 }
-                TextField("", text: $vm.topic, axis: .vertical)
+                TextField("", text: $text, axis: .vertical)
                     .font(.system(size: 17))
                     .foregroundColor(.Nexus.ink)
                     .focused($focused)
                     .lineLimit(1...3)
-                    .onSubmit {
-                        if !vm.topic.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            vm.startResearch()
-                        }
-                    }
+                    .keyboardType(.default)
+                    .onSubmit { if hasText { onSubmit() } }
                     .padding(.horizontal, 4)
                     .padding(.top, 2)
             }
             .padding(.bottom, 16)
             .frame(minHeight: 28)
 
-            // Bottom toolbar
+            // Bottom toolbar — both buttons share a 42pt frame so height never shifts
             HStack(spacing: 8) {
-                // + attach (stub)
                 ZStack {
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
                         .fill(Color.Nexus.surface2)
@@ -258,34 +273,38 @@ private struct FREComposer: View {
                         .font(.system(size: 15, weight: .medium))
                         .foregroundColor(.Nexus.ink)
                 }
+                .frame(height: 42)  // anchor row to 42pt so mic→send swap doesn't shift height
 
                 Spacer()
 
-                if !vm.topic.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    Button(action: { vm.startResearch() }) {
-                        ZStack {
+                ZStack {
+                    if hasText {
+                        Button(action: onSubmit) {
                             Circle()
                                 .fill(Color.Nexus.accent)
                                 .frame(width: 42, height: 42)
-                            Image(systemName: "arrow.up")
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundColor(.white)
+                                .overlay(
+                                    Image(systemName: "arrow.up")
+                                        .font(.system(size: 15, weight: .semibold))
+                                        .foregroundColor(.white)
+                                )
                         }
-                    }
-                    .transition(.scale.combined(with: .opacity))
-                } else {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .transition(.scale.combined(with: .opacity))
+                    } else {
+                        Circle()
                             .fill(Color.Nexus.surface2)
                             .frame(width: 32, height: 32)
-                        Image(systemName: "mic")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.Nexus.muted)
+                            .overlay(
+                                Image(systemName: "mic")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.Nexus.muted)
+                            )
+                            .transition(.scale.combined(with: .opacity))
                     }
-                    .transition(.scale.combined(with: .opacity))
                 }
+                .frame(width: 42, height: 42)
+                .animation(NexusAnimation.element, value: hasText)
             }
-            .animation(NexusAnimation.element, value: vm.topic.isEmpty)
         }
         .padding(.horizontal, 14)
         .padding(.top, 16)
@@ -298,6 +317,36 @@ private struct FREComposer: View {
         )
         .animation(NexusAnimation.element, value: focused)
         .onTapGesture { focused = true }
+    }
+}
+
+// MARK: - Trending icon (matches ChatGPT Search mode style)
+
+private struct TrendingIcon: View {
+    var color: Color = Color.Nexus.faint
+    var size: CGFloat = 13
+
+    var body: some View {
+        Canvas { ctx, sz in
+            let w = sz.width, h = sz.height
+            // Zigzag line: bottom-left → dip → upper-right (stock-trend style)
+            var line = Path()
+            line.move(to:    CGPoint(x: 0,        y: h * 0.82))
+            line.addLine(to: CGPoint(x: w * 0.30, y: h * 0.38))
+            line.addLine(to: CGPoint(x: w * 0.54, y: h * 0.60))
+            line.addLine(to: CGPoint(x: w,        y: 0))
+            ctx.stroke(line, with: .color(color),
+                       style: StrokeStyle(lineWidth: 1.4, lineCap: .round, lineJoin: .round))
+            // Arrowhead at tip
+            var tip = Path()
+            tip.move(to:    CGPoint(x: w,        y: 0))
+            tip.addLine(to: CGPoint(x: w * 0.66, y: 0))
+            tip.move(to:    CGPoint(x: w,        y: 0))
+            tip.addLine(to: CGPoint(x: w,        y: h * 0.34))
+            ctx.stroke(tip, with: .color(color),
+                       style: StrokeStyle(lineWidth: 1.4, lineCap: .round, lineJoin: .round))
+        }
+        .frame(width: size, height: size * 0.82)
     }
 }
 
@@ -316,9 +365,7 @@ private struct FRETrendingChips: View {
                     ForEach(row, id: \.self) { topic in
                         Button(action: { onSelect(topic) }) {
                             HStack(spacing: 6) {
-                                Image(systemName: "arrow.up")
-                                    .font(.system(size: 11, weight: .bold))
-                                    .foregroundColor(.Nexus.faint)
+                                TrendingIcon(color: .Nexus.faint, size: 13)
                                 Text(topic)
                                     .font(.system(size: 13.5, weight: .medium))
                                     .foregroundColor(.Nexus.ink)
@@ -395,12 +442,12 @@ private struct FREAvatarButton: View {
             }
         }
         .buttonStyle(.plain)
-        .opacity(active ? 0 : 1)
-        .animation(.easeIn(duration: 0.05), value: active)
+        .scaleEffect(active ? 0.88 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: active)
     }
 }
 
-// MARK: - Avatar menu card (Notion-quality contextual menu)
+// MARK: - Avatar menu card
 
 private struct FREAvatarMenuCard: View {
     let onClose: () -> Void
@@ -408,7 +455,7 @@ private struct FREAvatarMenuCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Header
+            // Header: avatar + name + email
             HStack(spacing: 10) {
                 ZStack {
                     Circle()
@@ -424,7 +471,7 @@ private struct FREAvatarMenuCard: View {
                         .foregroundColor(Color(UIColor.label))
                     Text("srihari.scorp@gmail.com")
                         .font(.system(size: 12))
-                        .foregroundColor(Color(UIColor.secondaryLabel))
+                        .foregroundColor(Color(UIColor.tertiaryLabel))
                         .lineLimit(1)
                 }
                 Spacer(minLength: 0)
@@ -433,36 +480,42 @@ private struct FREAvatarMenuCard: View {
             .padding(.top, 12)
             .padding(.bottom, 10)
 
-            Divider()
-                .padding(.horizontal, 8)
+            Divider().padding(.horizontal, 8)
 
-            // Rows
             ForEach(["Account", "Settings", "Feedback"], id: \.self) { label in
                 AvatarMenuRow(label: label, action: onClose)
             }
 
-            Divider()
-                .padding(.horizontal, 8)
+            Divider().padding(.horizontal, 8)
 
-            AvatarMenuRow(label: "Sign out", tint: Color.Nexus.destructive) {
+            // Sign out — same visual weight as other rows, not red
+            AvatarMenuRow(label: "Sign out") {
                 onClose()
                 authManager.signOut()
             }
         }
         .frame(width: 210)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(
+            ZStack {
+                // frosted glass base
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(.thinMaterial)
+                // white wash so the glass reads clearly on the light plum background
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.white.opacity(0.62))
+            }
+        )
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(Color(UIColor.separator), lineWidth: 0.5)
         )
-        .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 6)
-        .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+        .shadow(color: .black.opacity(0.14), radius: 20, x: 0, y: 8)
+        .shadow(color: .black.opacity(0.06), radius: 2, x: 0, y: 1)
     }
 }
 
 private struct AvatarMenuRow: View {
     let label: String
-    var tint: Color = Color(UIColor.label)
     let action: () -> Void
     @State private var pressed = false
 
@@ -470,7 +523,7 @@ private struct AvatarMenuRow: View {
         Button(action: action) {
             Text(label)
                 .font(.system(size: 14.5, weight: .regular))
-                .foregroundColor(tint)
+                .foregroundColor(Color(UIColor.label))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 9)

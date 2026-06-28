@@ -22,6 +22,9 @@ struct NexusTabView: View {
     let collection: NexusCollection
 
     @StateObject private var vm: NexusViewModel
+    /// Lifted from ChatComposer so the parent can dismiss the keyboard
+    /// by setting this to false on any tap outside the composer.
+    @FocusState private var composerFocused: Bool
 
     init(collection: NexusCollection) {
         self.collection = collection
@@ -64,13 +67,19 @@ struct NexusTabView: View {
             promptRow
                 .padding(.horizontal, NexusSpacing.sideGutter)
                 .padding(.bottom, NexusSpacing.sm)
-            // Composer
-            ChatComposer(vm: vm)
+            // Composer — receives the lifted FocusState binding so the parent
+            // can dismiss the keyboard by flipping composerFocused = false.
+            ChatComposer(vm: vm, focused: $composerFocused)
                 .padding(.horizontal, NexusSpacing.sideGutter)
                 .padding(.bottom, NexusSpacing.standard)
         }
         .background(NexusBackground())
-        .onTapGesture { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
+        // Dismiss keyboard when the user taps anywhere outside the composer.
+        // .simultaneousGesture lets child buttons (chips, citation links) still
+        // receive their own taps — unlike .onTapGesture which eats child events.
+        .simultaneousGesture(
+            TapGesture().onEnded { composerFocused = false }
+        )
         // Error banner overlay
         .overlay(alignment: .top) {
             if case .error(let msg) = vm.phase {
@@ -106,6 +115,10 @@ struct NexusTabView: View {
                 .padding(.horizontal, NexusSpacing.sideGutter)
                 .padding(.bottom, NexusSpacing.sm)
             }
+            // Drag-to-dismiss: keyboard slides down interactively as the user
+            // scrolls up through the message history. Consistent with iOS system
+            // patterns (Messages, Mail). Already used in OnboardingView.
+            .scrollDismissesKeyboard(.interactively)
             .onChange(of: vm.messages.count) { _ in
                 withAnimation { proxy.scrollTo("bottom", anchor: .bottom) }
             }
@@ -419,7 +432,9 @@ private struct StarterChip: View {
 
 private struct ChatComposer: View {
     @ObservedObject var vm: NexusViewModel
-    @FocusState private var focused: Bool
+    /// Bound to NexusTabView's @FocusState so the parent can dismiss the
+    /// keyboard by setting composerFocused = false from a tap-outside gesture.
+    var focused: FocusState<Bool>.Binding
 
     private var canSend: Bool {
         !vm.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && vm.phase == .idle
@@ -439,7 +454,7 @@ private struct ChatComposer: View {
                 TextField("", text: $vm.inputText, axis: .vertical)
                     .font(.Nexus.bodySmall)
                     .foregroundColor(.Nexus.ink)
-                    .focused($focused)
+                    .focused(focused)
                     .lineLimit(1...5)
                     .submitLabel(.send)
                     .onSubmit {
@@ -453,7 +468,7 @@ private struct ChatComposer: View {
             .clipShape(RoundedRectangle(cornerRadius: NexusRadius.xxl))
             .overlay(
                 RoundedRectangle(cornerRadius: NexusRadius.xxl)
-                    .stroke(focused ? Color.Nexus.accent.opacity(0.5) : Color.Nexus.border,
+                    .stroke(focused.wrappedValue ? Color.Nexus.accent.opacity(0.5) : Color.Nexus.border,
                             lineWidth: NexusBorder.base)
             )
 

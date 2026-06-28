@@ -27,6 +27,19 @@ enum ResearchPhase: Equatable {
     case error(String)    // terminal error, user can retry
 }
 
+// MARK: - Default FRE topics (shown before profile loads / on error)
+
+/// Curated fallback topics used when the user has no saved content yet or
+/// the API call fails.  Must stay in sync with `_FRE_DEFAULT_TOPICS` in
+/// `api/app/routers/users.py`.
+let freDefaultTopics: [String] = [
+    "the US–Iran conflict",
+    "second-brain tools",
+    "how memory works",
+    "the AI platform shift",
+    "anything you're curious about",
+]
+
 // MARK: - ViewModel
 
 @MainActor
@@ -34,12 +47,37 @@ final class ResearchViewModel: ObservableObject {
     @Published var topic: String = ""
     @Published private(set) var phase: ResearchPhase = .idle
     @Published private(set) var sources: [ResearchSource] = []
+    /// Topics shown in the FRE rotating-word headline.  Starts with defaults;
+    /// replaced by personalised topics once the API call completes.
+    @Published private(set) var freTopics: [String] = freDefaultTopics
 
     /// collection_id received in the SSE "done" event — set before transitioning to .done
     private var pendingCollectionId: UUID?
 
     var selectedSources: [ResearchSource] { sources.filter(\.isSelected) }
     var canConfirm: Bool { !selectedSources.isEmpty }
+
+    // MARK: - Initialiser
+
+    init() {
+        Task { await loadInterestTopics() }
+    }
+
+    // MARK: - Load interest topics from user profile
+
+    private func loadInterestTopics() async {
+        do {
+            let response = try await APIClient.shared.fetchInterestTopics(limit: 5)
+            guard !response.topics.isEmpty else { return }
+            freTopics = response.topics
+        } catch {
+            // Non-fatal: keep the defaults already set.  This fires on every
+            // app launch while unauthenticated (before provision) — suppress
+            // those noisy logs by only logging unexpected error types.
+            if case APIError.unauthorized = error { return }
+            if case APIError.networkError = error { return }
+        }
+    }
 
     // MARK: - Start research
 

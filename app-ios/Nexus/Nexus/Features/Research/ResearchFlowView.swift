@@ -3,13 +3,8 @@ import SwiftUI
 
 // MARK: - Constants
 
-private let freTopics = [
-    "the US–Iran conflict",
-    "second-brain tools",
-    "how memory works",
-    "the AI platform shift",
-    "anything you're curious about",
-]
+// freTopics moved to ResearchViewModel.freTopics (personalised from user interest profile)
+// freTrending stays hardcoded — these are editorial/seasonal and not derived from profile
 
 private let freTrending = [
     "US–Iran conflict",
@@ -112,7 +107,7 @@ private struct FREInputScreen: View {
                             .font(.system(size: 29, weight: .bold))
                             .foregroundColor(.Nexus.muted)
                             .kerning(-0.8)
-                        FRERotatingWord(words: freTopics)
+                        FRERotatingWord(words: vm.freTopics)
                             .font(.system(size: 29, weight: .bold))
                             .foregroundColor(.Nexus.ink)
                             .kerning(-0.8)

@@ -96,6 +96,18 @@ final class APIClient {
         return try await post(.authRefresh, body: body)
     }
 
+    // MARK: - User profile
+
+    /// GET /v1/users/me/interest-topics?limit=<n>
+    ///
+    /// Returns the authenticated user's top interest topics, personalised
+    /// from their reading history. Falls back to curated defaults server-side
+    /// when the user has no saved content yet — so the response is always
+    /// non-empty and safe to use directly in FRERotatingWord.
+    func fetchInterestTopics(limit: Int = 5) async throws -> InterestTopicsResponse {
+        try await get(.interestTopics(limit: limit))
+    }
+
     // MARK: - Search
 
     /// GET /v1/search?q=<query>&mode=<mode>&limit=<limit>
@@ -255,6 +267,15 @@ struct FeedbackRequest: Encodable {
 struct FeedbackSubmitResponse: Decodable {
     let id: String
     let status: String
+}
+
+struct InterestTopicsResponse: Decodable {
+    /// Display-ready topic strings sorted by interest weight descending.
+    /// Never empty — server falls back to curated defaults for new users.
+    let topics: [String]
+    /// true if topics come from the user's real reading history;
+    /// false if they are the generic FRE defaults.
+    let hasProfile: Bool
 }
 
 struct EmptyResponse: Codable {

@@ -85,9 +85,9 @@ private struct FREInputScreen: View {
     @ObservedObject var vm: ResearchViewModel
     @EnvironmentObject private var authManager: AuthManager
     @State private var showAvatarMenu = false
-    // Local state scopes TextField rerenders to FREComposer only — avoids
-    // rerendering the entire screen on every keystroke.
-    @State private var composerText = ""
+    // Increment to signal FREComposer to clear its internal text.
+    // Avoids re-rendering the entire screen on every keystroke.
+    @State private var composerClearTrigger = 0
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -120,16 +120,19 @@ private struct FREInputScreen: View {
                     .lineSpacing(2)
                     .padding(.bottom, 24)
 
-                    // Composer — driven by local state; syncs to vm only on submit
-                    FREComposer(text: $composerText) {
-                        let trimmed = composerText.trimmingCharacters(in: .whitespacesAndNewlines)
-                        guard !trimmed.isEmpty else { return }
-                        vm.topic = trimmed
-                        vm.startResearch()
-                    }
+                    // Composer owns its own text state — FREInputScreen is not
+                    // re-rendered on keystrokes, only when clearTrigger changes.
+                    FREComposer(
+                        onSubmit: { trimmed in
+                            guard !trimmed.isEmpty else { return }
+                            vm.topic = trimmed
+                            vm.startResearch()
+                        },
+                        clearTrigger: composerClearTrigger
+                    )
                     .padding(.bottom, 20)
                     .onChange(of: vm.topic) { _, newTopic in
-                        if newTopic.isEmpty { composerText = "" }
+                        if newTopic.isEmpty { composerClearTrigger += 1 }
                     }
 
                     // Trending chips
@@ -223,8 +226,10 @@ private struct FRERotatingWord: View {
 // MARK: - Composer box
 
 private struct FREComposer: View {
-    @Binding var text: String
-    let onSubmit: () -> Void
+    let onSubmit: (String) -> Void
+    let clearTrigger: Int
+
+    @State private var text = ""
     @FocusState private var focused: Bool
 
     private var hasText: Bool {
@@ -233,7 +238,6 @@ private struct FREComposer: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Placeholder or text input
             ZStack(alignment: .topLeading) {
                 if text.isEmpty {
                     Text("Research a topic\u{2026}")
@@ -249,36 +253,42 @@ private struct FREComposer: View {
                     .focused($focused)
                     .lineLimit(1...3)
                     .keyboardType(.default)
-                    .onSubmit { if hasText { onSubmit() } }
+                    .onSubmit {
+                        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !t.isEmpty { onSubmit(t) }
+                    }
                     .padding(.horizontal, 4)
                     .padding(.top, 2)
             }
-            .padding(.bottom, 16)
+            .padding(.bottom, 12)
             .frame(minHeight: 28)
 
-            // Bottom toolbar — both buttons share a 42pt frame so height never shifts
+            // Toolbar — sized to match Claude iOS input bar (30pt buttons, 34pt row)
             HStack(spacing: 8) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
                         .fill(Color.Nexus.surface2)
-                        .frame(width: 32, height: 32)
+                        .frame(width: 28, height: 28)
                     Image(systemName: "plus")
-                        .font(.system(size: 15, weight: .medium))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.Nexus.ink)
                 }
-                .frame(height: 42)  // anchor row to 42pt so mic→send swap doesn't shift height
+                .frame(height: 34)
 
                 Spacer()
 
                 ZStack {
                     if hasText {
-                        Button(action: onSubmit) {
+                        Button {
+                            let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                            if !t.isEmpty { onSubmit(t) }
+                        } label: {
                             Circle()
                                 .fill(Color.Nexus.accent)
-                                .frame(width: 42, height: 42)
+                                .frame(width: 30, height: 30)
                                 .overlay(
                                     Image(systemName: "arrow.up")
-                                        .font(.system(size: 15, weight: .semibold))
+                                        .font(.system(size: 13, weight: .semibold))
                                         .foregroundColor(.white)
                                 )
                         }
@@ -286,30 +296,31 @@ private struct FREComposer: View {
                     } else {
                         Circle()
                             .fill(Color.Nexus.surface2)
-                            .frame(width: 42, height: 42)
+                            .frame(width: 30, height: 30)
                             .overlay(
                                 Image(systemName: "mic")
-                                    .font(.system(size: 15, weight: .medium))
+                                    .font(.system(size: 13, weight: .medium))
                                     .foregroundColor(.Nexus.muted)
                             )
                             .transition(.scale.combined(with: .opacity))
                     }
                 }
-                .frame(width: 42, height: 42)
+                .frame(width: 34, height: 34)
                 .animation(NexusAnimation.element, value: hasText)
             }
         }
         .padding(.horizontal, 14)
-        .padding(.top, 16)
-        .padding(.bottom, 12)
+        .padding(.top, 14)
+        .padding(.bottom, 10)
         .background(Color.Nexus.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: NexusRadius.xxl, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: NexusRadius.xxl, style: .continuous)
                 .stroke(focused ? Color.Nexus.borderStrong : Color.Nexus.border, lineWidth: NexusBorder.base)
+                .animation(NexusAnimation.element, value: focused)
         )
-        .animation(NexusAnimation.element, value: focused)
         .onTapGesture { focused = true }
+        .onChange(of: clearTrigger) { _, _ in text = "" }
     }
 }
 

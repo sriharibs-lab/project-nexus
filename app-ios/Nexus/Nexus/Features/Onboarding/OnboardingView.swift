@@ -81,8 +81,13 @@ private struct WelcomeScreen: View {
             Spacer()
 
             VStack(spacing: NexusSpacing.xxxl) {
-                // Brand mark — Echo SVG placeholder rendered as stylised "N" glyph
-                EchoMark()
+                // Brand mark — canonical Echo mark from design system
+                ZStack {
+                    Circle()
+                        .fill(Color.Nexus.bloom.opacity(0.6))
+                        .frame(width: 96, height: 96)
+                    EchoMark(color: Color.Nexus.accent, size: 60)
+                }
                     .opacity(appeared ? 1 : 0)
                     .offset(y: appeared ? 0 : 12)
                     .animation(
@@ -140,36 +145,6 @@ private struct WelcomeScreen: View {
 
 // MARK: - Echo mark (brand glyph)
 
-/// Geometric approximation of the Echo brand mark using SwiftUI shapes.
-/// Production version: replaced with actual SVG via UIKit or Image asset.
-private struct EchoMark: View {
-    var body: some View {
-        ZStack {
-            // Outer bloom circle
-            Circle()
-                .fill(Color.Nexus.bloom.opacity(0.6))
-                .frame(width: 96, height: 96)
-
-            // Three concentric arcs representing "echo" / soundwave
-            ForEach([0, 1, 2], id: \.self) { i in
-                let scale = 1.0 - Double(i) * 0.22
-                Circle()
-                    .trim(from: 0.15, to: 0.85)
-                    .stroke(
-                        Color.Nexus.accent.opacity(1.0 - Double(i) * 0.28),
-                        style: StrokeStyle(lineWidth: 2.5 - Double(i) * 0.5, lineCap: .round)
-                    )
-                    .frame(width: 48 * scale, height: 48 * scale)
-                    .rotationEffect(.degrees(-90))
-            }
-
-            // Center dot
-            Circle()
-                .fill(Color.Nexus.accent)
-                .frame(width: 8, height: 8)
-        }
-    }
-}
 
 // MARK: - Screen 2: Topic picker
 

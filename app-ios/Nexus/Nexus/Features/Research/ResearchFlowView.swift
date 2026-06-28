@@ -35,7 +35,7 @@ struct ResearchFlowView: View {
 
     private var sheetVisible: Bool {
         switch vm.phase {
-        case .searching, .reviewing, .confirming: return true
+        case .searching, .reviewing, .confirming, .error: return true
         default: return false
         }
     }
@@ -152,43 +152,36 @@ private struct FREInputScreen: View {
             HStack {
                 Spacer()
                 FREAvatarButton(active: showAvatarMenu) {
-                    withAnimation(.spring(response: 0.22, dampingFraction: 0.86)) {
-                        showAvatarMenu = true
-                    }
+                    showAvatarMenu = true
                 }
                 .padding(.trailing, NexusSpacing.standard)
                 .padding(.top, NexusSpacing.safeTop + 6)
             }
 
-            // Scrim — transparent, tap to close the menu
+            // Scrim — tap to close the menu
             if showAvatarMenu {
-                Color.clear
+                Color.black.opacity(0.001)
                     .contentShape(Rectangle())
                     .ignoresSafeArea()
-                    .onTapGesture {
-                        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
-                            showAvatarMenu = false
-                        }
-                    }
+                    .onTapGesture { showAvatarMenu = false }
             }
 
-            // Avatar bloom menu — snaps from the top-right corner, Notion-style
+            // Avatar menu — drops in from top-right corner, Notion-style spring
             VStack {
                 HStack {
                     Spacer()
                     FREAvatarMenuCard {
-                        withAnimation(.spring(response: 0.2, dampingFraction: 0.85)) {
-                            showAvatarMenu = false
-                        }
+                        showAvatarMenu = false
                     }
                     .padding(.trailing, NexusSpacing.standard)
                 }
                 Spacer()
             }
-            .padding(.top, NexusSpacing.safeTop + 6 + 32 + 8)
-            .scaleEffect(showAvatarMenu ? 1 : 0.5, anchor: .topTrailing)
+            .padding(.top, NexusSpacing.safeTop + 6 + 32 + 6)
+            .scaleEffect(showAvatarMenu ? 1.0 : 0.82, anchor: .topTrailing)
+            .offset(y: showAvatarMenu ? 0 : -6)
             .opacity(showAvatarMenu ? 1 : 0)
-            .animation(.spring(response: 0.42, dampingFraction: 0.64), value: showAvatarMenu)
+            .animation(.spring(response: 0.26, dampingFraction: 0.62), value: showAvatarMenu)
             .allowsHitTesting(showAvatarMenu)
         }
         .simultaneousGesture(
@@ -293,10 +286,10 @@ private struct FREComposer: View {
                     } else {
                         Circle()
                             .fill(Color.Nexus.surface2)
-                            .frame(width: 32, height: 32)
+                            .frame(width: 42, height: 42)
                             .overlay(
                                 Image(systemName: "mic")
-                                    .font(.system(size: 14, weight: .medium))
+                                    .font(.system(size: 15, weight: .medium))
                                     .foregroundColor(.Nexus.muted)
                             )
                             .transition(.scale.combined(with: .opacity))
@@ -428,22 +421,35 @@ private struct FRELinkButtons: View {
 private struct FREAvatarButton: View {
     let active: Bool
     let action: () -> Void
+    @State private var pressing = false
 
     var body: some View {
         Button(action: action) {
             ZStack {
                 Circle()
-                    .fill(Color.Nexus.surface2)
+                    .fill(active ? Color.Nexus.bloom : Color.Nexus.surface2)
                     .frame(width: 32, height: 32)
-                    .overlay(Circle().stroke(Color.Nexus.border, lineWidth: NexusBorder.hair))
+                    .overlay(Circle().stroke(
+                        active ? Color.Nexus.borderStrong : Color.Nexus.border,
+                        lineWidth: NexusBorder.hair
+                    ))
                 Text("S")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.Nexus.muted)
+                    .foregroundColor(active ? Color.Nexus.accent : .Nexus.muted)
             }
         }
         .buttonStyle(.plain)
-        .scaleEffect(active ? 0.88 : 1.0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: active)
+        .scaleEffect(pressing ? 0.88 : 1.0)
+        .animation(.spring(response: 0.18, dampingFraction: 0.65), value: pressing)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in pressing = true }
+                .onEnded { _ in
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                        pressing = false
+                    }
+                }
+        )
     }
 }
 
@@ -494,23 +500,17 @@ private struct FREAvatarMenuCard: View {
                 authManager.signOut()
             }
         }
-        .frame(width: 210)
+        .frame(width: 220)
         .background(
-            ZStack {
-                // frosted glass base
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(.thinMaterial)
-                // white wash so the glass reads clearly on the light plum background
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.white.opacity(0.62))
-            }
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(UIColor.systemBackground))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(Color(UIColor.separator), lineWidth: 0.5)
         )
-        .shadow(color: .black.opacity(0.14), radius: 20, x: 0, y: 8)
-        .shadow(color: .black.opacity(0.06), radius: 2, x: 0, y: 1)
+        .shadow(color: .black.opacity(0.11), radius: 28, x: 0, y: 8)
+        .shadow(color: .black.opacity(0.06), radius: 3, x: 0, y: 1)
     }
 }
 

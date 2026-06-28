@@ -51,6 +51,72 @@ struct NexusBackground: View {
     }
 }
 
+// MARK: - Echo mark (canonical)
+
+/// The Nexus brand mark: two facing C-arcs with a filled center dot.
+/// Translated exactly from logo.jsx in the design system (48×48 viewBox).
+/// Arc geometry: left arcs CCW, right arcs CW — all endpoints match the SVG arc paths.
+struct EchoMark: View {
+    var color: Color = Color.Nexus.accent
+    var size: CGFloat = 48
+
+    var body: some View {
+        Canvas { ctx, sz in
+            let s = sz.width / 48.0
+
+            // Inner arcs — strokeWidth 3, full opacity
+            // Left:  M18.5 16 A11 11 0 0 0 18.5 32  center=(26.05,24) CCW
+            var li = Path()
+            li.addArc(center: CGPoint(x: 26.05 * s, y: 24 * s),
+                      radius: 11 * s,
+                      startAngle: .degrees(226.6),
+                      endAngle: .degrees(133.4),
+                      clockwise: false)
+            ctx.stroke(li, with: .color(color),
+                       style: StrokeStyle(lineWidth: 3 * s, lineCap: .round))
+
+            // Right: M29.5 16 A11 11 0 0 1 29.5 32  center=(21.95,24) CW
+            var ri = Path()
+            ri.addArc(center: CGPoint(x: 21.95 * s, y: 24 * s),
+                      radius: 11 * s,
+                      startAngle: .degrees(313.4),
+                      endAngle: .degrees(46.6),
+                      clockwise: true)
+            ctx.stroke(ri, with: .color(color),
+                       style: StrokeStyle(lineWidth: 3 * s, lineCap: .round))
+
+            // Outer arcs — strokeWidth 2.2, opacity 0.32
+            let outer = color.opacity(0.32)
+            // Left:  M13.5 9.5 A17.5 17.5 0 0 0 13.5 38.5  center=(23.298,24) CCW
+            var lo = Path()
+            lo.addArc(center: CGPoint(x: 23.298 * s, y: 24 * s),
+                      radius: 17.5 * s,
+                      startAngle: .degrees(236),
+                      endAngle: .degrees(124),
+                      clockwise: false)
+            ctx.stroke(lo, with: .color(outer),
+                       style: StrokeStyle(lineWidth: 2.2 * s, lineCap: .round))
+
+            // Right: M34.5 9.5 A17.5 17.5 0 0 1 34.5 38.5  center=(24.702,24) CW
+            var ro = Path()
+            ro.addArc(center: CGPoint(x: 24.702 * s, y: 24 * s),
+                      radius: 17.5 * s,
+                      startAngle: .degrees(304),
+                      endAngle: .degrees(56),
+                      clockwise: true)
+            ctx.stroke(ro, with: .color(outer),
+                       style: StrokeStyle(lineWidth: 2.2 * s, lineCap: .round))
+
+            // Center dot: cx=24, cy=24, r=4.4, filled
+            let dotR = 4.4 * s
+            let dot = Path(ellipseIn: CGRect(x: 24 * s - dotR, y: 24 * s - dotR,
+                                             width: dotR * 2, height: dotR * 2))
+            ctx.fill(dot, with: .color(color))
+        }
+        .frame(width: size, height: size)
+    }
+}
+
 extension Color {
     init(hex: String) {
         let h = hex.hasPrefix("#") ? String(hex.dropFirst()) : hex

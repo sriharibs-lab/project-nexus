@@ -129,20 +129,7 @@ private struct EchoMarkAuth: View {
             Circle()
                 .fill(Color.Nexus.bloom.opacity(0.55))
                 .frame(width: 80, height: 80)
-            ForEach([0, 1, 2], id: \.self) { i in
-                let scale = 1.0 - Double(i) * 0.22
-                Circle()
-                    .trim(from: 0.15, to: 0.85)
-                    .stroke(
-                        Color.Nexus.accent.opacity(1.0 - Double(i) * 0.28),
-                        style: StrokeStyle(lineWidth: 2.5 - Double(i) * 0.5, lineCap: .round)
-                    )
-                    .frame(width: 40 * scale, height: 40 * scale)
-                    .rotationEffect(.degrees(-90))
-            }
-            Circle()
-                .fill(Color.Nexus.accent)
-                .frame(width: 7, height: 7)
+            EchoMark(color: Color.Nexus.accent, size: 52)
         }
     }
 }

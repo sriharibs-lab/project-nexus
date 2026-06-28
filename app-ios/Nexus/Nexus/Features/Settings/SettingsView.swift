@@ -24,6 +24,14 @@ struct SettingsView: View {
                         }
                     }
 
+                    #if DEBUG
+                    Section("Debug") {
+                        NavigationLink("Glass Playground") {
+                            GlassPlaygroundView()
+                        }
+                    }
+                    #endif
+
                     Section {
                         Button("Sign Out", role: .destructive) {
                             authManager.signOut()

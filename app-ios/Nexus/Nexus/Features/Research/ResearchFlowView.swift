@@ -161,11 +161,11 @@ private struct FREInputScreen: View {
                 .padding(.top, NexusSpacing.safeTop + 6)
             }
 
-            // Scrim — tap to close the menu
+            // Scrim — slight darkening makes glass card visually distinct over light bg
             if showAvatarMenu {
-                Color.black.opacity(0.001)
-                    .contentShape(Rectangle())
+                Color.black.opacity(0.08)
                     .ignoresSafeArea()
+                    .contentShape(Rectangle())
                     .onTapGesture { showAvatarMenu = false }
             }
 
@@ -439,10 +439,9 @@ private struct FREAvatarButton: View {
                 Circle()
                     .fill(active ? Color.Nexus.bloom : Color.Nexus.surface2)
                     .frame(width: 32, height: 32)
-                    .overlay(Circle().stroke(
-                        active ? Color.Nexus.borderStrong : Color.Nexus.border,
-                        lineWidth: NexusBorder.hair
-                    ))
+                    .overlay(
+                        Circle().stroke(Color(UIColor.separator), lineWidth: NexusBorder.base)
+                    )
                 Text("S")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(active ? Color.Nexus.accent : .Nexus.muted)
@@ -513,7 +512,7 @@ private struct FREAvatarMenuCard: View {
         .frame(width: 220)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color(UIColor.systemBackground))
+                .fill(.ultraThinMaterial)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -521,6 +520,7 @@ private struct FREAvatarMenuCard: View {
         )
         .shadow(color: .black.opacity(0.11), radius: 28, x: 0, y: 8)
         .shadow(color: .black.opacity(0.06), radius: 3, x: 0, y: 1)
+        .environment(\.colorScheme, .light)
     }
 }
 

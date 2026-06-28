@@ -70,7 +70,16 @@ struct NexusTabView: View {
                 .padding(.bottom, NexusSpacing.standard)
         }
         .background(NexusBackground())
-        .onTapGesture { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
+        // simultaneousGesture avoids eating child taps (e.g. citation chips, send button).
+        // Plain .onTapGesture would intercept those taps before they reach child views.
+        .simultaneousGesture(
+            TapGesture().onEnded {
+                UIApplication.shared.sendAction(
+                    #selector(UIResponder.resignFirstResponder),
+                    to: nil, from: nil, for: nil
+                )
+            }
+        )
         // Error banner overlay
         .overlay(alignment: .top) {
             if case .error(let msg) = vm.phase {

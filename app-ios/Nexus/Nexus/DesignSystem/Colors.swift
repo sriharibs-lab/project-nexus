@@ -51,6 +51,68 @@ struct NexusBackground: View {
     }
 }
 
+// MARK: - Echo mark (canonical)
+
+/// The Nexus brand mark: two facing C-arcs with a filled center dot.
+/// Translated exactly from logo.jsx in the design system (48×48 viewBox).
+struct EchoMark: View {
+    var color: Color = Color.Nexus.accent
+    var size: CGFloat = 48
+
+    var body: some View {
+        Canvas { ctx, sz in
+            let s = sz.width / 48.0
+
+            // Inner arcs — strokeWidth 3, full opacity
+            // SwiftUI Path.addArc uses CG Y-up: clockwise:true = CCW on screen.
+            var li = Path()
+            li.addArc(center: CGPoint(x: 26.05 * s, y: 24 * s),
+                      radius: 11 * s,
+                      startAngle: .degrees(226.6),
+                      endAngle: .degrees(133.4),
+                      clockwise: true)
+            ctx.stroke(li, with: .color(color),
+                       style: StrokeStyle(lineWidth: 3 * s, lineCap: .round))
+
+            var ri = Path()
+            ri.addArc(center: CGPoint(x: 21.95 * s, y: 24 * s),
+                      radius: 11 * s,
+                      startAngle: .degrees(313.4),
+                      endAngle: .degrees(46.6),
+                      clockwise: false)
+            ctx.stroke(ri, with: .color(color),
+                       style: StrokeStyle(lineWidth: 3 * s, lineCap: .round))
+
+            // Outer arcs — strokeWidth 2.2, opacity 0.32
+            let outer = color.opacity(0.32)
+            var lo = Path()
+            lo.addArc(center: CGPoint(x: 23.298 * s, y: 24 * s),
+                      radius: 17.5 * s,
+                      startAngle: .degrees(236),
+                      endAngle: .degrees(124),
+                      clockwise: true)
+            ctx.stroke(lo, with: .color(outer),
+                       style: StrokeStyle(lineWidth: 2.2 * s, lineCap: .round))
+
+            var ro = Path()
+            ro.addArc(center: CGPoint(x: 24.702 * s, y: 24 * s),
+                      radius: 17.5 * s,
+                      startAngle: .degrees(304),
+                      endAngle: .degrees(56),
+                      clockwise: false)
+            ctx.stroke(ro, with: .color(outer),
+                       style: StrokeStyle(lineWidth: 2.2 * s, lineCap: .round))
+
+            // Center dot
+            let dotR = 4.4 * s
+            let dot = Path(ellipseIn: CGRect(x: 24 * s - dotR, y: 24 * s - dotR,
+                                             width: dotR * 2, height: dotR * 2))
+            ctx.fill(dot, with: .color(color))
+        }
+        .frame(width: size, height: size)
+    }
+}
+
 extension Color {
     init(hex: String) {
         let h = hex.hasPrefix("#") ? String(hex.dropFirst()) : hex

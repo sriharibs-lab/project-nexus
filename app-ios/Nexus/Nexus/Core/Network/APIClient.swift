@@ -64,6 +64,44 @@ final class APIClient {
         try await post(.feedback, body: request)
     }
 
+    /// Create a new user-owned collection (used by the URL paste sheet FRE flow).
+    func createCollection(name: String) async throws -> NexusCollection {
+        let body = CreateCollectionRequest(name: name)
+        return try await post(.collections, body: body)
+    }
+
+    // MARK: - Auth
+
+    /// Send a magic-link OTP email via our backend (keeps Supabase service key server-side).
+    func sendMagicLink(email: String) async throws {
+        let body = MagicLinkRequest(email: email)
+        let _: MagicLinkResponse = try await post(.authMagicLink, body: body)
+    }
+
+    /// Verify a 6-digit OTP code and receive session tokens.
+    func verifyOTP(email: String, token: String) async throws -> AuthTokenResponse {
+        let body = OTPVerifyRequest(email: email, token: token)
+        return try await post(.authVerifyOTP, body: body)
+    }
+
+    /// Exchange an Apple identity token for Nexus session tokens.
+    func signInWithApple(identityToken: String) async throws -> AuthTokenResponse {
+        let body = AppleSignInRequest(identityToken: identityToken)
+        return try await post(.authApple, body: body)
+    }
+
+    /// Upsert the authenticated user in the Nexus DB. Call after every sign-in.
+    @discardableResult
+    func provisionUser() async throws -> ProvisionUserResponse {
+        return try await post(.authProvision, body: EmptyRequest())
+    }
+
+    /// Refresh the access token using the stored refresh token.
+    func refreshAccessToken(refreshToken: String) async throws -> TokenRefreshResponse {
+        let body = TokenRefreshRequest(refreshToken: refreshToken)
+        return try await post(.authRefresh, body: body)
+    }
+
     // MARK: - Search
 
     /// GET /v1/search?q=<query>&mode=<mode>&limit=<limit>
@@ -228,6 +266,63 @@ struct FeedbackSubmitResponse: Decodable {
 struct EmptyResponse: Codable {
     init() {}
     init(from decoder: Decoder) throws {}
+}
+
+/// An empty body for POST endpoints that take no payload.
+struct EmptyRequest: Encodable {}
+
+struct CreateCollectionRequest: Encodable {
+    let name: String
+}
+
+// MARK: - Auth types
+
+struct MagicLinkRequest: Encodable {
+    let email: String
+}
+
+struct MagicLinkResponse: Decodable {
+    let message: String
+}
+
+struct OTPVerifyRequest: Encodable {
+    let email: String
+    let token: String
+}
+
+struct AppleSignInRequest: Encodable {
+    let identityToken: String
+}
+
+/// Returned by /auth/verify-otp and /auth/apple.
+struct AuthTokenResponse: Decodable {
+    let accessToken: String
+    let refreshToken: String
+    let userId: String
+    let expiresIn: Int
+
+    var userUUID: UUID { UUID(uuidString: userId) ?? UUID() }
+}
+
+struct TokenRefreshRequest: Encodable {
+    let refreshToken: String
+}
+
+struct TokenRefreshResponse: Decodable {
+    let accessToken: String
+    let refreshToken: String
+    let expiresIn: Int
+    let tokenType: String
+}
+
+struct ProvisionUserResponse: Decodable {
+    struct UserProfile: Decodable {
+        let id: String
+        let supabaseId: String
+        let email: String
+    }
+    let user: UserProfile
+    let isNew: Bool
 }
 
 // Type-erased Encodable wrapper for heterogeneous bodies

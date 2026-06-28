@@ -44,7 +44,7 @@ struct ResearchFlowView: View {
         GeometryReader { geo in
             ZStack(alignment: .bottom) {
                 // ── Input screen — scales back when the sheet rises ──
-                FREInputScreen(vm: vm)
+                FREInputScreen(vm: vm, onComplete: onComplete)
                     .scaleEffect(sheetVisible ? 0.945 : 1.0)
                     .clipShape(RoundedRectangle(cornerRadius: sheetVisible ? 22 : 0, style: .continuous))
                     .animation(.spring(response: 0.52, dampingFraction: 0.86), value: sheetVisible)
@@ -83,11 +83,15 @@ struct ResearchFlowView: View {
 
 private struct FREInputScreen: View {
     @ObservedObject var vm: ResearchViewModel
+    var onComplete: (UUID) -> Void
     @EnvironmentObject private var authManager: AuthManager
     @State private var showAvatarMenu = false
     // Local state scopes TextField rerenders to FREComposer only — avoids
     // rerendering the entire screen on every keystroke.
     @State private var composerText = ""
+    // URL paste sheet state
+    @State private var showLinkSheet = false
+    @State private var linkSheetContentType: LinkContentType = .website
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -121,12 +125,15 @@ private struct FREInputScreen: View {
                     .padding(.bottom, 24)
 
                     // Composer — driven by local state; syncs to vm only on submit
-                    FREComposer(text: $composerText) {
+                    FREComposer(text: $composerText, onSubmit: {
                         let trimmed = composerText.trimmingCharacters(in: .whitespacesAndNewlines)
                         guard !trimmed.isEmpty else { return }
                         vm.topic = trimmed
                         vm.startResearch()
-                    }
+                    }, onLinkTap: {
+                        linkSheetContentType = .website
+                        showLinkSheet = true
+                    })
                     .padding(.bottom, 20)
                     .onChange(of: vm.topic) { _, newTopic in
                         if newTopic.isEmpty { composerText = "" }
@@ -140,7 +147,10 @@ private struct FREInputScreen: View {
                     .padding(.bottom, 26)
 
                     // Or start with a link
-                    FRELinkButtons()
+                    FRELinkButtons(onSelect: { contentType in
+                        linkSheetContentType = contentType
+                        showLinkSheet = true
+                    })
                 }
                 .padding(.horizontal, NexusSpacing.sideGutter + 4)
 
@@ -199,6 +209,14 @@ private struct FREInputScreen: View {
                 )
             }
         )
+        // URL paste sheet — medium detent, expandable to large
+        .sheet(isPresented: $showLinkSheet) {
+            LinkURLSheetView(initialContentType: linkSheetContentType) { collectionId in
+                onComplete(collectionId)
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
     }
 }
 
@@ -232,7 +250,10 @@ private struct FRERotatingWord: View {
 private struct FREComposer: View {
     @Binding var text: String
     let onSubmit: () -> Void
+    /// Called when the + button is tapped — opens the URL paste sheet.
+    let onLinkTap: () -> Void
     @FocusState private var focused: Bool
+    @State private var plusPressed = false
 
     private var hasText: Bool {
         !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -265,14 +286,21 @@ private struct FREComposer: View {
 
             // Bottom toolbar — both buttons share a 42pt frame so height never shifts
             HStack(spacing: 8) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Color.Nexus.surface2)
-                        .frame(width: 32, height: 32)
-                    Image(systemName: "plus")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(.Nexus.ink)
+                // + button — opens URL paste sheet
+                Button(action: onLinkTap) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(Color.Nexus.surface2)
+                            .frame(width: 32, height: 32)
+                        Image(systemName: "plus")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(.Nexus.ink)
+                    }
                 }
+                .buttonStyle(.plain)
+                .scaleEffect(plusPressed ? NexusScale.pressBase : 1)
+                .animation(NexusAnimation.press, value: plusPressed)
+                .onLongPressGesture(minimumDuration: 0, pressing: { p in plusPressed = p }, perform: {})
                 .frame(height: 42)  // anchor row to 42pt so mic→send swap doesn't shift height
 
                 Spacer()
@@ -389,11 +417,8 @@ private struct FRETrendingChips: View {
 // MARK: - "Or start with a link" buttons
 
 private struct FRELinkButtons: View {
-    private let options: [(String, String)] = [
-        ("globe", "Website"),
-        ("doc", "PDF"),
-        ("play.rectangle", "YouTube"),
-    ]
+    /// Called with the selected content type when user taps a button.
+    let onSelect: (LinkContentType) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -403,23 +428,39 @@ private struct FRELinkButtons: View {
                 .kerning(-0.1)
 
             HStack(spacing: 7) {
-                ForEach(options, id: \.1) { icon, label in
-                    VStack(spacing: 5) {
-                        Image(systemName: icon)
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(.Nexus.muted)
-                        Text(label)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.Nexus.muted)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(Color.Nexus.cardBackground)
-                    .clipShape(Capsule())
-                    .overlay(Capsule().stroke(Color.Nexus.border, lineWidth: NexusBorder.base))
+                ForEach(LinkContentType.allCases) { type in
+                    FRELinkTypeButton(type: type) { onSelect(type) }
                 }
             }
         }
+    }
+}
+
+private struct FRELinkTypeButton: View {
+    let type: LinkContentType
+    let action: () -> Void
+    @State private var isPressed = false
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 5) {
+                Image(systemName: type.icon)
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(.Nexus.muted)
+                Text(type.rawValue)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.Nexus.muted)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 50)
+            .background(Color.Nexus.cardBackground)
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(Color.Nexus.border, lineWidth: NexusBorder.base))
+            .scaleEffect(isPressed ? NexusScale.pressLight : 1)
+            .animation(NexusAnimation.press, value: isPressed)
+        }
+        .buttonStyle(.plain)
+        .onLongPressGesture(minimumDuration: 0, pressing: { p in isPressed = p }, perform: {})
     }
 }
 

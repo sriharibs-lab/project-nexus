@@ -3,18 +3,16 @@ Auth router — Sign in with Apple + Magic link email auth.
 
 Auth flow overview
 ------------------
-The iOS client delegates the full Supabase auth flow (Apple OAuth exchange,
-magic-link OTP verification) to the Supabase client SDK.  After the SDK
-completes, it hands the iOS app a short-lived Supabase access_token + refresh_token.
+All Supabase credentials (service_role key, anon key) stay server-side.
+The iOS client never touches Supabase directly.
 
-Our API then:
-  POST /v1/auth/provision   — receive Supabase JWT, upsert user in Nexus DB,
-                              return Nexus user profile.  Called after every
-                              successful Supabase sign-in (Apple or magic link).
-  POST /v1/auth/magic-link  — proxy: call Supabase Admin API to send OTP email.
-                              Keeps the Supabase anon key out of the iOS app.
+Endpoints:
+  POST /v1/auth/magic-link  — send OTP email via Supabase Admin API.
+  POST /v1/auth/verify-otp  — verify 6-digit OTP, upsert Nexus user, return tokens + user_id.
+  POST /v1/auth/apple       — exchange Apple identity token with Supabase, upsert user, return tokens.
+  POST /v1/auth/provision   — (legacy) receive existing Supabase JWT, upsert user. Still valid.
+  POST /v1/auth/refresh     — proxy Supabase token refresh.
   GET  /v1/auth/me          — return current user's Nexus profile (JWT required).
-  POST /v1/auth/refresh     — proxy Supabase token refresh (keeps anon key server-side).
 
 All protected routes accept a Bearer token (Supabase access_token).
 """
@@ -71,6 +69,25 @@ class UserProfile(BaseModel):
 class ProvisionResponse(BaseModel):
     user: UserProfile
     is_new: bool
+
+
+class OTPVerifyRequest(BaseModel):
+    email: EmailStr
+    token: str  # 6-digit OTP from email
+
+
+class AppleSignInRequest(BaseModel):
+    identity_token: str  # JWT from ASAuthorizationAppleIDCredential.identityToken
+
+
+class AuthTokenResponse(BaseModel):
+    """Returned after a successful sign-in (OTP verify or Apple)."""
+
+    access_token: str
+    refresh_token: str
+    expires_in: int
+    token_type: str
+    user_id: str  # Nexus DB UUID (str for JSON compat)
 
 
 # ---------------------------------------------------------------------------
@@ -240,6 +257,165 @@ async def refresh_token(payload: TokenRefreshRequest) -> TokenRefreshResponse:
         expires_in=data["expires_in"],
         token_type=data.get("token_type", "bearer"),
     )
+
+
+@router.post(
+    "/verify-otp",
+    response_model=AuthTokenResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def verify_otp(
+    payload: OTPVerifyRequest,
+    db: AsyncSession = Depends(get_db),
+) -> AuthTokenResponse:
+    """
+    Verify a 6-digit OTP sent via magic link.
+
+    Proxies Supabase POST /auth/v1/verify (type=email).
+    On success: upserts the user in Nexus DB and returns session tokens + Nexus user_id.
+
+    Keeping this server-side means neither the anon key nor service key ships in the iOS binary.
+    Supabase endpoint: POST /auth/v1/verify
+    """
+    url = f"{settings.supabase_url}/auth/v1/verify"
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+            resp = await client.post(
+                url,
+                json={
+                    "email": payload.email,
+                    "token": payload.token,
+                    "type": "email",
+                },
+                headers={
+                    "apikey": settings.supabase_publishable_key,
+                    "Content-Type": "application/json",
+                },
+            )
+            if resp.status_code != 200:
+                body = resp.json() if resp.content else {}
+                logger.warning(
+                    "Supabase OTP verify failed status=%s body=%s",
+                    resp.status_code,
+                    body,
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid or expired code — please try again",
+                )
+            data = resp.json()
+        except httpx.RequestError as exc:
+            logger.error("Supabase verify-otp network error: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Could not reach auth service — please try again",
+            ) from exc
+
+    supabase_id: str = data.get("user", {}).get("id", "")
+    email: str = data.get("user", {}).get("email", payload.email)
+
+    user, _ = await _upsert_user(db, supabase_id, email)
+
+    return AuthTokenResponse(
+        access_token=data["access_token"],
+        refresh_token=data["refresh_token"],
+        expires_in=data.get("expires_in", 3600),
+        token_type=data.get("token_type", "bearer"),
+        user_id=str(user.id),
+    )
+
+
+@router.post(
+    "/apple",
+    response_model=AuthTokenResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def sign_in_with_apple(
+    payload: AppleSignInRequest,
+    db: AsyncSession = Depends(get_db),
+) -> AuthTokenResponse:
+    """
+    Exchange an Apple identity token (JWT from ASAuthorizationAppleIDCredential)
+    with Supabase to get a session.
+
+    Supabase endpoint: POST /auth/v1/token?grant_type=id_token
+    On success: upserts the user in Nexus DB and returns session tokens + Nexus user_id.
+
+    Keeping this server-side means the Supabase anon key never ships in the iOS binary.
+    """
+    url = f"{settings.supabase_url}/auth/v1/token"
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+            resp = await client.post(
+                url,
+                params={"grant_type": "id_token"},
+                json={
+                    "id_token": payload.identity_token,
+                    "provider": "apple",
+                },
+                headers={
+                    "apikey": settings.supabase_publishable_key,
+                    "Content-Type": "application/json",
+                },
+            )
+            if resp.status_code != 200:
+                body = resp.json() if resp.content else {}
+                logger.warning(
+                    "Supabase Apple sign-in failed status=%s body=%s",
+                    resp.status_code,
+                    body,
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Apple sign-in failed — please try again",
+                )
+            data = resp.json()
+        except httpx.RequestError as exc:
+            logger.error("Supabase apple sign-in network error: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Could not reach auth service — please try again",
+            ) from exc
+
+    supabase_id: str = data.get("user", {}).get("id", "")
+    email: str = data.get("user", {}).get("email", "")
+
+    if not email:
+        # Apple can hide the email — extract from token if present
+        email = _extract_email_from_jwt(data.get("access_token", "")) or ""
+
+    user, _ = await _upsert_user(db, supabase_id, email)
+
+    return AuthTokenResponse(
+        access_token=data["access_token"],
+        refresh_token=data["refresh_token"],
+        expires_in=data.get("expires_in", 3600),
+        token_type=data.get("token_type", "bearer"),
+        user_id=str(user.id),
+    )
+
+
+def _extract_email_from_jwt(token: str) -> str | None:
+    """
+    Best-effort: decode JWT payload (no signature verification) to get the email claim.
+    Used only as a fallback when the Supabase response body omits the email.
+    """
+    import base64
+    import json
+
+    try:
+        parts = token.split(".")
+        if len(parts) != 3:
+            return None
+        # Add padding if needed
+        padded = parts[1] + "=" * (-len(parts[1]) % 4)
+        decoded = base64.urlsafe_b64decode(padded)
+        claims = json.loads(decoded)
+        return claims.get("email")
+    except Exception:
+        return None
 
 
 @router.get("/me", response_model=UserProfile, status_code=status.HTTP_200_OK)

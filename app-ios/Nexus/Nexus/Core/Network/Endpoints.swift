@@ -8,6 +8,15 @@ enum Endpoint {
             ?? "http://localhost:8000"
     }
 
+    // Auth
+    case authMagicLink          // POST /v1/auth/magic-link — request OTP email
+    case authVerifyOTP          // POST /v1/auth/verify-otp — verify OTP, get tokens
+    case authApple              // POST /v1/auth/apple — exchange Apple identity token
+    case authProvision          // POST /v1/auth/provision — upsert user after sign-in
+    case authRefresh            // POST /v1/auth/refresh — refresh access token
+    case authMe                 // GET  /v1/auth/me — current user profile
+
+    // Collections
     case collections
     case collection(id: UUID)
     case items(collectionId: UUID)
@@ -20,6 +29,12 @@ enum Endpoint {
 
     var path: String {
         switch self {
+        case .authMagicLink:    return "/v1/auth/magic-link"
+        case .authVerifyOTP:    return "/v1/auth/verify-otp"
+        case .authApple:        return "/v1/auth/apple"
+        case .authProvision:    return "/v1/auth/provision"
+        case .authRefresh:      return "/v1/auth/refresh"
+        case .authMe:           return "/v1/auth/me"
         case .collections:
             return "/v1/collections"
         case .collection(let id):

@@ -320,33 +320,16 @@ private struct FREComposer: View {
     }
 }
 
-// MARK: - Trending icon (matches ChatGPT Search mode style)
+// MARK: - Trending icon
 
 private struct TrendingIcon: View {
     var color: Color = Color.Nexus.faint
     var size: CGFloat = 13
 
     var body: some View {
-        Canvas { ctx, sz in
-            let w = sz.width, h = sz.height
-            // Zigzag line: bottom-left → dip → upper-right (stock-trend style)
-            var line = Path()
-            line.move(to:    CGPoint(x: 0,        y: h * 0.82))
-            line.addLine(to: CGPoint(x: w * 0.30, y: h * 0.38))
-            line.addLine(to: CGPoint(x: w * 0.54, y: h * 0.60))
-            line.addLine(to: CGPoint(x: w,        y: 0))
-            ctx.stroke(line, with: .color(color),
-                       style: StrokeStyle(lineWidth: 1.4, lineCap: .round, lineJoin: .round))
-            // Arrowhead at tip
-            var tip = Path()
-            tip.move(to:    CGPoint(x: w,        y: 0))
-            tip.addLine(to: CGPoint(x: w * 0.66, y: 0))
-            tip.move(to:    CGPoint(x: w,        y: 0))
-            tip.addLine(to: CGPoint(x: w,        y: h * 0.34))
-            ctx.stroke(tip, with: .color(color),
-                       style: StrokeStyle(lineWidth: 1.4, lineCap: .round, lineJoin: .round))
-        }
-        .frame(width: size, height: size * 0.82)
+        Image(systemName: "chart.line.uptrend.xyaxis")
+            .font(.system(size: size, weight: .medium))
+            .foregroundColor(color)
     }
 }
 

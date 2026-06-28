@@ -81,15 +81,12 @@ struct ResearchFlowView: View {
 
 // MARK: - Input screen
 
-private enum AvatarMenuAction {
-    case account, settings, feedback, signOut
-}
-
 private struct FREInputScreen: View {
     @ObservedObject var vm: ResearchViewModel
     @EnvironmentObject private var authManager: AuthManager
     @State private var showAvatarMenu = false
     @State private var showSettings = false
+    @State private var showFeedback = false
     @State private var composerClearTrigger = 0
 
     var body: some View {
@@ -154,11 +151,13 @@ private struct FREInputScreen: View {
                 Spacer()
             }
 
-            // Avatar button — top right
+            // Avatar button — top right, hides when menu is open (bloom-morph pattern)
             HStack {
                 Spacer()
-                FREAvatarButton(active: showAvatarMenu) {
-                    showAvatarMenu = true
+                FREAvatarButton(initial: authManager.avatarInitial, active: showAvatarMenu) {
+                    withAnimation(.spring(response: 0.22, dampingFraction: 0.86)) {
+                        showAvatarMenu = true
+                    }
                 }
                 .padding(.trailing, NexusSpacing.standard)
                 .padding(.top, NexusSpacing.safeTop + 6)
@@ -176,20 +175,20 @@ private struct FREInputScreen: View {
             VStack(spacing: 0) {
                 HStack {
                     Spacer()
-                    FREAvatarMenuCard(onAction: { action in
-                        switch action {
-                        case .settings:
-                            showAvatarMenu = false
-                            showSettings = true
-                        case .signOut:
-                            showAvatarMenu = false
-                            authManager.signOut()
-                        default:
-                            showAvatarMenu = false
+                    FREAvatarMenuCard(
+                        onSettings: {
+                            withAnimation(.spring(response: 0.2, dampingFraction: 0.85)) { showAvatarMenu = false }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) { showSettings = true }
+                        },
+                        onFeedback: {
+                            withAnimation(.spring(response: 0.2, dampingFraction: 0.85)) { showAvatarMenu = false }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) { showFeedback = true }
+                        },
+                        onClose: {
+                            withAnimation(.spring(response: 0.2, dampingFraction: 0.85)) { showAvatarMenu = false }
                         }
-                    })
-                    .scaleEffect(showAvatarMenu ? 1.0 : 0.72, anchor: .topTrailing)
-                    .offset(y: showAvatarMenu ? 0 : -4)
+                    )
+                    .scaleEffect(showAvatarMenu ? 1.0 : 0.5, anchor: .topTrailing)
                     .opacity(showAvatarMenu ? 1 : 0)
                     .animation(.spring(response: 0.38, dampingFraction: 0.52), value: showAvatarMenu)
                     .allowsHitTesting(showAvatarMenu)
@@ -199,14 +198,21 @@ private struct FREInputScreen: View {
             }
             .padding(.top, NexusSpacing.safeTop + 6)
         }
-        .onTapGesture {
-            UIApplication.shared.sendAction(
-                #selector(UIResponder.resignFirstResponder),
-                to: nil, from: nil, for: nil
-            )
-        }
+        .simultaneousGesture(
+            TapGesture().onEnded {
+                UIApplication.shared.sendAction(
+                    #selector(UIResponder.resignFirstResponder),
+                    to: nil, from: nil, for: nil
+                )
+            }
+        )
         .sheet(isPresented: $showSettings) {
             SettingsView().environmentObject(authManager)
+        }
+        .sheet(isPresented: $showFeedback) {
+            NavigationStack {
+                FeedbackView()
+            }
         }
     }
 }
@@ -426,9 +432,9 @@ private struct FRELinkButtons: View {
 // MARK: - Avatar button
 
 private struct FREAvatarButton: View {
+    let initial: String
     let active: Bool
     let action: () -> Void
-    @State private var pressing = false
 
     var body: some View {
         Button(action: action) {
@@ -436,60 +442,89 @@ private struct FREAvatarButton: View {
                 Circle()
                     .fill(active ? Color.Nexus.bloom : Color.Nexus.surface2)
                     .frame(width: 32, height: 32)
-                    .overlay(
-                        Circle().stroke(Color(UIColor.separator), lineWidth: NexusBorder.base)
-                    )
-                Text("S")
+                    .overlay(Circle().stroke(Color.Nexus.border, lineWidth: NexusBorder.hair))
+                Text(initial)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(active ? Color.Nexus.accent : .Nexus.muted)
             }
         }
         .buttonStyle(.plain)
-        .scaleEffect(pressing ? 0.88 : 1.0)
-        .animation(.spring(response: 0.18, dampingFraction: 0.65), value: pressing)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in pressing = true }
-                .onEnded { _ in
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-                        pressing = false
-                    }
-                }
-        )
+        // Bloom-morph: avatar hides when menu opens so it doesn't show through
+        .opacity(active ? 0 : 1)
+        .scaleEffect(active ? 0.88 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: active)
     }
 }
 
 // MARK: - Avatar menu card
 
 private struct FREAvatarMenuCard: View {
-    let onAction: (AvatarMenuAction) -> Void
+    let onSettings: () -> Void
+    let onFeedback: () -> Void
+    let onClose: () -> Void
+    @EnvironmentObject private var authManager: AuthManager
 
-    private let rows: [(icon: String, label: String, action: AvatarMenuAction)] = [
-        ("person.circle", "Account", .account),
-        ("gearshape", "Settings", .settings),
-        ("message", "Feedback", .feedback),
-    ]
+    private var headerName: String {
+        authManager.displayName.isEmpty ? "Nexus User" : authManager.displayName
+    }
+
+    private var headerEmail: String {
+        authManager.email.isEmpty ? "" : authManager.email
+    }
 
     var body: some View {
-        VStack(spacing: 0) {
-            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                FlatMenuRow(icon: row.icon, label: row.label) { onAction(row.action) }
+        VStack(alignment: .leading, spacing: 0) {
+            // Header: avatar + name + email
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(Color.Nexus.bloom)
+                        .frame(width: 36, height: 36)
+                    Text(authManager.avatarInitial)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(Color.Nexus.accent)
+                }
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(headerName)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(Color(UIColor.label))
+                        .lineLimit(1)
+                    if !headerEmail.isEmpty {
+                        Text(headerEmail)
+                            .font(.system(size: 12))
+                            .foregroundColor(Color(UIColor.tertiaryLabel))
+                            .lineLimit(1)
+                    }
+                }
+                Spacer(minLength: 0)
             }
+            .padding(.horizontal, 12)
+            .padding(.top, 12)
+            .padding(.bottom, 10)
+
+            Divider().padding(.horizontal, 8)
+
+            // TODO: Account row is a stub — no destination view yet (post-MVP)
+            AvatarMenuRow(label: "Account", action: onClose)
+            AvatarMenuRow(label: "Settings", action: onSettings)
+            AvatarMenuRow(label: "Feedback", action: onFeedback)
 
             Divider()
 
-            FlatMenuRow(icon: "rectangle.portrait.and.arrow.right", label: "Sign out") {
-                onAction(.signOut)
+            AvatarMenuRow(label: "Sign out") {
+                onClose()
+                authManager.signOut()
             }
         }
         .frame(width: 196)
         .background(
             ZStack {
-                // UIKit blur — bypasses SwiftUI material quirks on light bg
-                VisualEffectBlur(style: .systemUltraThinMaterial, cornerRadius: 14)
-                // White overlay so card reads clearly against dark scrim
+                // Liquid Glass: frosted base
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.white.opacity(0.42))
+                    .fill(.thinMaterial)
+                // White wash so the glass reads clearly on the light plum background
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.white.opacity(0.62))
             }
         )
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -502,19 +537,14 @@ private struct FREAvatarMenuCard: View {
     }
 }
 
-private struct FlatMenuRow: View {
-    let icon: String
+private struct AvatarMenuRow: View {
     let label: String
     let action: () -> Void
     @State private var pressed = false
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 9) {
-                Image(systemName: icon)
-                    .font(.system(size: 12.5, weight: .regular))
-                    .foregroundColor(Color(UIColor.label))
-                    .frame(width: 18, alignment: .center)
+            HStack {
                 Text(label)
                     .font(.system(size: 13.5, weight: .regular))
                     .foregroundColor(Color(UIColor.label))

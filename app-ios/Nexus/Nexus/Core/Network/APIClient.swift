@@ -108,6 +108,28 @@ final class APIClient {
         try await get(.interestTopics(limit: limit))
     }
 
+    // MARK: - Trending topics (FRE, no auth required)
+
+    /// GET /v1/trending — up to 4 trending topic strings for onboarding chip row.
+    ///
+    /// Called at FRE load time before sign-in, so no Authorization header is sent.
+    /// Returns topics from Google Trends RSS or a static fallback if unavailable.
+    /// Never throws — on any failure the caller falls back to the static list.
+    func fetchTrendingTopics() async -> TrendingTopicsResponse? {
+        var req = URLRequest(url: Endpoint.trending.url)
+        req.httpMethod = "GET"
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        // Intentionally no Authorization header: this endpoint is public.
+        req.timeoutInterval = 5.0  // FRE load must not feel slow
+
+        guard let (data, response) = try? await URLSession.shared.data(for: req),
+              let http = response as? HTTPURLResponse,
+              (200...299).contains(http.statusCode)
+        else { return nil }
+
+        return try? decoder.decode(TrendingTopicsResponse.self, from: data)
+    }
+
     // MARK: - Search
 
     /// GET /v1/search?q=<query>&mode=<mode>&limit=<limit>
@@ -283,6 +305,7 @@ struct EmptyResponse: Codable {
     init(from decoder: Decoder) throws {}
 }
 
+<<<<<<< HEAD
 /// An empty body for POST endpoints that take no payload.
 struct EmptyRequest: Encodable {}
 
@@ -337,6 +360,14 @@ struct ProvisionUserResponse: Decodable {
     }
     let user: UserProfile
     let isNew: Bool
+=======
+/// Response from GET /v1/trending.
+struct TrendingTopicsResponse: Decodable {
+    /// Up to 4 trending topic strings (Google Trends RSS or static fallback).
+    let topics: [String]
+    /// "trends" if live data was fetched, "static" if the fallback was used.
+    let source: String
+>>>>>>> worktree-wf_6e4224b6-f69-11
 }
 
 // Type-erased Encodable wrapper for heterogeneous bodies

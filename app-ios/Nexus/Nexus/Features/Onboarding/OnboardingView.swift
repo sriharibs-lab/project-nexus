@@ -168,58 +168,72 @@ private struct TopicsScreen: View {
 
             // Scrollable topic chips
             ScrollView {
-                // Flowing chip layout using a lazy grid
-                LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: 120, maximum: 200), spacing: NexusSpacing.sm)],
-                    spacing: NexusSpacing.sm
-                ) {
-                    ForEach(OnboardingViewModel.suggestedTopics, id: \.self) { topic in
-                        TopicChip(
-                            label: topic,
-                            isSelected: vm.selectedTopics.contains(topic)
+                VStack(alignment: .leading, spacing: NexusSpacing.xl) {
+
+                    // ── Trending now row (1F-007) ──────────────────────────────
+                    TrendingChipsSection(vm: vm)
+                        .padding(.horizontal, NexusSpacing.sideGutter + NexusSpacing.sm)
+
+                    // ── Suggested topics grid ──────────────────────────────────
+                    VStack(alignment: .leading, spacing: NexusSpacing.sm) {
+                        Text("EXPLORE")
+                            .font(.Nexus.overline)
+                            .foregroundColor(.Nexus.ghost)
+                            .kerning(NexusKerning.wide)
+                            .padding(.horizontal, NexusSpacing.sideGutter + NexusSpacing.sm)
+
+                        LazyVGrid(
+                            columns: [GridItem(.adaptive(minimum: 120, maximum: 200), spacing: NexusSpacing.sm)],
+                            spacing: NexusSpacing.sm
                         ) {
-                            withAnimation(NexusAnimation.element) {
-                                vm.toggleTopic(topic)
+                            ForEach(OnboardingViewModel.suggestedTopics, id: \.self) { topic in
+                                TopicChip(
+                                    label: topic,
+                                    isSelected: vm.selectedTopics.contains(topic)
+                                ) {
+                                    withAnimation(NexusAnimation.element) {
+                                        vm.toggleTopic(topic)
+                                    }
+                                }
                             }
                         }
+                        .padding(.horizontal, NexusSpacing.sideGutter + NexusSpacing.sm)
                     }
-                }
-                .padding(.horizontal, NexusSpacing.sideGutter + NexusSpacing.sm)
-                .padding(.bottom, NexusSpacing.xl)
 
-                // Custom topic field
-                VStack(alignment: .leading, spacing: NexusSpacing.sm) {
-                    Text("ADD YOUR OWN")
-                        .font(.Nexus.overline)
-                        .foregroundColor(.Nexus.ghost)
-                        .kerning(NexusKerning.wide)
+                    // ── Custom topic field ─────────────────────────────────────
+                    VStack(alignment: .leading, spacing: NexusSpacing.sm) {
+                        Text("ADD YOUR OWN")
+                            .font(.Nexus.overline)
+                            .foregroundColor(.Nexus.ghost)
+                            .kerning(NexusKerning.wide)
 
-                    ZStack(alignment: .leading) {
-                        if vm.customTopic.isEmpty {
-                            Text("e.g. Ancient Rome, Behavioral economics…")
+                        ZStack(alignment: .leading) {
+                            if vm.customTopic.isEmpty {
+                                Text("e.g. Ancient Rome, Behavioral economics…")
+                                    .font(.Nexus.bodySmall)
+                                    .foregroundColor(.Nexus.ghost)
+                            }
+                            TextField("", text: $vm.customTopic)
                                 .font(.Nexus.bodySmall)
-                                .foregroundColor(.Nexus.ghost)
+                                .foregroundColor(.Nexus.ink)
+                                .focused($customFocused)
+                                .submitLabel(.done)
                         }
-                        TextField("", text: $vm.customTopic)
-                            .font(.Nexus.bodySmall)
-                            .foregroundColor(.Nexus.ink)
-                            .focused($customFocused)
-                            .submitLabel(.done)
+                        .padding(.horizontal, NexusSpacing.standard)
+                        .padding(.vertical, NexusSpacing.md)
+                        .background(Color.Nexus.cardBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: NexusRadius.md))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: NexusRadius.md)
+                                .stroke(
+                                    customFocused ? Color.Nexus.accent.opacity(0.6) : Color.Nexus.border,
+                                    lineWidth: customFocused ? NexusBorder.base : NexusBorder.hair
+                                )
+                        )
+                        .animation(NexusAnimation.element, value: customFocused)
                     }
-                    .padding(.horizontal, NexusSpacing.standard)
-                    .padding(.vertical, NexusSpacing.md)
-                    .background(Color.Nexus.cardBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: NexusRadius.md))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: NexusRadius.md)
-                            .stroke(
-                                customFocused ? Color.Nexus.accent.opacity(0.6) : Color.Nexus.border,
-                                lineWidth: customFocused ? NexusBorder.base : NexusBorder.hair
-                            )
-                    )
-                    .animation(NexusAnimation.element, value: customFocused)
+                    .padding(.horizontal, NexusSpacing.sideGutter + NexusSpacing.sm)
                 }
-                .padding(.horizontal, NexusSpacing.sideGutter + NexusSpacing.sm)
                 .padding(.bottom, NexusSpacing.xl + NexusSpacing.buttonHeight + NexusSpacing.xxl + NexusSpacing.safeBottom)
             }
             .scrollDismissesKeyboard(.interactively)
@@ -246,6 +260,126 @@ private struct TopicsScreen: View {
                 .background(Color.Nexus.pageBackground)
             }
         }
+    }
+}
+
+// MARK: - Trending chips section (1F-007)
+
+/// Horizontal scroll row showing live trending topics fetched at FRE load.
+/// While the fetch is in flight, shows four placeholder shimmer chips.
+/// Falls back silently to the static curated list on network failure.
+private struct TrendingChipsSection: View {
+    @ObservedObject var vm: OnboardingViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: NexusSpacing.sm) {
+            // Section header with live indicator dot
+            HStack(spacing: NexusSpacing.xs) {
+                Text("TRENDING NOW")
+                    .font(.Nexus.overline)
+                    .foregroundColor(.Nexus.ghost)
+                    .kerning(NexusKerning.wide)
+
+                if vm.trendingIsLive {
+                    // Green dot: confirms live data, not static fallback
+                    Circle()
+                        .fill(Color.green.opacity(0.7))
+                        .frame(width: 5, height: 5)
+                }
+            }
+
+            // Chip row: loading skeleton → live/static topics
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: NexusSpacing.sm) {
+                    if let topics = vm.trendingTopics {
+                        ForEach(topics, id: \.self) { topic in
+                            TrendingChip(
+                                label: topic,
+                                isSelected: vm.selectedTopics.contains(topic)
+                            ) {
+                                withAnimation(NexusAnimation.element) {
+                                    vm.toggleTopic(topic)
+                                }
+                            }
+                        }
+                    } else {
+                        // Loading skeleton: 4 shimmering placeholder chips
+                        ForEach(0..<4, id: \.self) { _ in
+                            TrendingChipSkeleton()
+                        }
+                    }
+                }
+                .padding(.vertical, 2)  // prevent clipping of shadows/borders
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: vm.trendingTopics == nil)
+    }
+}
+
+// MARK: - Trending chip (compact, capsule style — distinct from grid TopicChip)
+
+/// A compact horizontal capsule chip for the trending row.
+/// Visually distinct from the grid TopicChip: uses a capsule shape and
+/// a subtle accent-tinted background when selected.
+private struct TrendingChip: View {
+    let label: String
+    let isSelected: Bool
+    let onTap: () -> Void
+
+    @State private var isPressed = false
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: NexusSpacing.xs) {
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(Color.Nexus.accent)
+                }
+                Text(label)
+                    .font(.Nexus.labelSmall)
+                    .foregroundColor(isSelected ? Color.Nexus.accent : Color.Nexus.ink)
+                    .kerning(NexusKerning.normal)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, NexusSpacing.standard)
+            .padding(.vertical, NexusSpacing.sm)
+            .background(
+                isSelected
+                    ? Color.Nexus.bloom.opacity(0.7)
+                    : Color.Nexus.cardBackground
+            )
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(
+                        isSelected ? Color.Nexus.accent.opacity(0.5) : Color.Nexus.border,
+                        lineWidth: isSelected ? NexusBorder.base : NexusBorder.hair
+                    )
+            )
+            .scaleEffect(isPressed ? NexusScale.pressLight : 1.0)
+        }
+        .buttonStyle(.plain)
+        .onLongPressGesture(minimumDuration: 0, pressing: { pressing in
+            withAnimation(NexusAnimation.press) { isPressed = pressing }
+        }, perform: {})
+    }
+}
+
+// MARK: - Trending chip skeleton (loading state)
+
+private struct TrendingChipSkeleton: View {
+    @State private var shimmer = false
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 99)
+            .fill(Color.Nexus.border.opacity(shimmer ? 0.4 : 0.25))
+            .frame(width: 110, height: 32)
+            .onAppear {
+                withAnimation(
+                    .easeInOut(duration: 0.9).repeatForever(autoreverses: true)
+                ) { shimmer = true }
+            }
     }
 }
 

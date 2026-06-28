@@ -85,6 +85,8 @@ private struct FREInputScreen: View {
     @ObservedObject var vm: ResearchViewModel
     @EnvironmentObject private var authManager: AuthManager
     @State private var showAvatarMenu = false
+    @State private var showSettings = false
+    @State private var showFeedback = false
     // Local state scopes TextField rerenders to FREComposer only — avoids
     // rerendering the entire screen on every keystroke.
     @State private var composerText = ""
@@ -148,10 +150,10 @@ private struct FREInputScreen: View {
                 Spacer()
             }
 
-            // Avatar button — top right
+            // Avatar button — top right, hides when menu is open (bloom-morph pattern)
             HStack {
                 Spacer()
-                FREAvatarButton(active: showAvatarMenu) {
+                FREAvatarButton(initial: authManager.avatarInitial, active: showAvatarMenu) {
                     withAnimation(.spring(response: 0.22, dampingFraction: 0.86)) {
                         showAvatarMenu = true
                     }
@@ -176,11 +178,19 @@ private struct FREInputScreen: View {
             VStack {
                 HStack {
                     Spacer()
-                    FREAvatarMenuCard {
-                        withAnimation(.spring(response: 0.2, dampingFraction: 0.85)) {
-                            showAvatarMenu = false
+                    FREAvatarMenuCard(
+                        onSettings: {
+                            withAnimation(.spring(response: 0.2, dampingFraction: 0.85)) { showAvatarMenu = false }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) { showSettings = true }
+                        },
+                        onFeedback: {
+                            withAnimation(.spring(response: 0.2, dampingFraction: 0.85)) { showAvatarMenu = false }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) { showFeedback = true }
+                        },
+                        onClose: {
+                            withAnimation(.spring(response: 0.2, dampingFraction: 0.85)) { showAvatarMenu = false }
                         }
-                    }
+                    )
                     .padding(.trailing, NexusSpacing.standard)
                 }
                 Spacer()
@@ -199,6 +209,14 @@ private struct FREInputScreen: View {
                 )
             }
         )
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
+        }
+        .sheet(isPresented: $showFeedback) {
+            NavigationStack {
+                FeedbackView()
+            }
+        }
     }
 }
 
@@ -426,6 +444,7 @@ private struct FRELinkButtons: View {
 // MARK: - Avatar button
 
 private struct FREAvatarButton: View {
+    let initial: String
     let active: Bool
     let action: () -> Void
 
@@ -436,13 +455,15 @@ private struct FREAvatarButton: View {
                     .fill(Color.Nexus.surface2)
                     .frame(width: 32, height: 32)
                     .overlay(Circle().stroke(Color.Nexus.border, lineWidth: NexusBorder.hair))
-                Text("S")
+                Text(initial)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.Nexus.muted)
             }
         }
         .buttonStyle(.plain)
-        .scaleEffect(active ? 0.88 : 1.0)
+        // Bloom-morph: avatar hides when menu opens so it doesn't show through
+        .opacity(active ? 0 : 1)
+        .scaleEffect(active ? NexusScale.pressAvatar : 1.0)
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: active)
     }
 }
@@ -450,8 +471,18 @@ private struct FREAvatarButton: View {
 // MARK: - Avatar menu card
 
 private struct FREAvatarMenuCard: View {
+    let onSettings: () -> Void
+    let onFeedback: () -> Void
     let onClose: () -> Void
     @EnvironmentObject private var authManager: AuthManager
+
+    private var headerName: String {
+        authManager.displayName.isEmpty ? "Nexus User" : authManager.displayName
+    }
+
+    private var headerEmail: String {
+        authManager.email.isEmpty ? "" : authManager.email
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -461,18 +492,21 @@ private struct FREAvatarMenuCard: View {
                     Circle()
                         .fill(Color.Nexus.bloom)
                         .frame(width: 36, height: 36)
-                    Text("S")
+                    Text(authManager.avatarInitial)
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(Color.Nexus.accent)
                 }
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("Srihari")
+                    Text(headerName)
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(Color(UIColor.label))
-                    Text("srihari.scorp@gmail.com")
-                        .font(.system(size: 12))
-                        .foregroundColor(Color(UIColor.tertiaryLabel))
                         .lineLimit(1)
+                    if !headerEmail.isEmpty {
+                        Text(headerEmail)
+                            .font(.system(size: 12))
+                            .foregroundColor(Color(UIColor.tertiaryLabel))
+                            .lineLimit(1)
+                    }
                 }
                 Spacer(minLength: 0)
             }
@@ -482,9 +516,9 @@ private struct FREAvatarMenuCard: View {
 
             Divider().padding(.horizontal, 8)
 
-            ForEach(["Account", "Settings", "Feedback"], id: \.self) { label in
-                AvatarMenuRow(label: label, action: onClose)
-            }
+            AvatarMenuRow(label: "Account", action: onClose)
+            AvatarMenuRow(label: "Settings", action: onSettings)
+            AvatarMenuRow(label: "Feedback", action: onFeedback)
 
             Divider().padding(.horizontal, 8)
 
@@ -497,10 +531,10 @@ private struct FREAvatarMenuCard: View {
         .frame(width: 210)
         .background(
             ZStack {
-                // frosted glass base
+                // Liquid Glass: frosted base
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(.thinMaterial)
-                // white wash so the glass reads clearly on the light plum background
+                // White wash so the glass reads clearly on the light plum background
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(Color.white.opacity(0.62))
             }

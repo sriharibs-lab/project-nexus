@@ -86,7 +86,17 @@ private struct AuthPlaceholderView: View {
                         case .success(let auth):
                             if let cred = auth.credential as? ASAuthorizationAppleIDCredential {
                                 let uid = UUID(uuidString: cred.user) ?? UUID()
-                                authManager.setSession(token: cred.user, userId: uid)
+                                // Apple only sends fullName + email on first authorisation.
+                                // AuthManager persists them so subsequent launches restore them.
+                                let name = [cred.fullName?.givenName, cred.fullName?.familyName]
+                                    .compactMap { $0 }
+                                    .joined(separator: " ")
+                                authManager.setSession(
+                                    token: cred.user,
+                                    userId: uid,
+                                    displayName: name,
+                                    email: cred.email ?? ""
+                                )
                             }
                         case .failure(let err):
                             appleError = err.localizedDescription

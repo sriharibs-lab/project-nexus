@@ -64,6 +64,12 @@ final class APIClient {
         try await post(.feedback, body: request)
     }
 
+    /// Create a new user-owned collection (used by the URL paste sheet FRE flow).
+    func createCollection(name: String) async throws -> NexusCollection {
+        let body = CreateCollectionRequest(name: name)
+        return try await post(.collections, body: body)
+    }
+
     // MARK: - Auth
 
     /// Send a magic-link OTP email via our backend (keeps Supabase service key server-side).
@@ -305,9 +311,12 @@ struct EmptyResponse: Codable {
     init(from decoder: Decoder) throws {}
 }
 
-<<<<<<< HEAD
 /// An empty body for POST endpoints that take no payload.
 struct EmptyRequest: Encodable {}
+
+struct CreateCollectionRequest: Encodable {
+    let name: String
+}
 
 // MARK: - Auth types
 
@@ -360,14 +369,14 @@ struct ProvisionUserResponse: Decodable {
     }
     let user: UserProfile
     let isNew: Bool
-=======
+}
+
 /// Response from GET /v1/trending.
 struct TrendingTopicsResponse: Decodable {
     /// Up to 4 trending topic strings (Google Trends RSS or static fallback).
     let topics: [String]
     /// "trends" if live data was fetched, "static" if the fallback was used.
     let source: String
->>>>>>> worktree-wf_6e4224b6-f69-11
 }
 
 // Type-erased Encodable wrapper for heterogeneous bodies

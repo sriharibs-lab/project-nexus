@@ -53,9 +53,9 @@ struct GlassPlaygroundView: View {
             .background(NexusBackground().ignoresSafeArea())
             .ignoresSafeArea(edges: .top)
 
-            // ── Scrim (same as production) ───────────────────────────
+            // ── Scrim ────────────────────────────────────────────────
             if menuOpen {
-                Color.black.opacity(0.08)
+                Color.black.opacity(0.35)
                     .ignoresSafeArea()
                     .contentShape(Rectangle())
                     .onTapGesture { menuOpen = false }
@@ -66,21 +66,21 @@ struct GlassPlaygroundView: View {
                 .padding(.trailing, NexusSpacing.standard)
                 .padding(.top, NexusSpacing.safeTop + 6)
 
-            // ── Glass menu card ──────────────────────────────────────
-            VStack {
+            // ── Glass menu card — grows from button's top-right corner
+            VStack(spacing: 0) {
                 HStack {
                     Spacer()
                     PlaygroundMenuCard { menuOpen = false }
+                        .scaleEffect(menuOpen ? 1.0 : 0.72, anchor: .topTrailing)
+                        .offset(y: menuOpen ? 0 : -4)
+                        .opacity(menuOpen ? 1 : 0)
+                        .animation(.spring(response: 0.38, dampingFraction: 0.52), value: menuOpen)
+                        .allowsHitTesting(menuOpen)
                         .padding(.trailing, NexusSpacing.standard)
                 }
                 Spacer()
             }
-            .padding(.top, NexusSpacing.safeTop + 6 + 32 + 6)
-            .scaleEffect(menuOpen ? 1.0 : 0.82, anchor: .topTrailing)
-            .offset(y: menuOpen ? 0 : -6)
-            .opacity(menuOpen ? 1 : 0)
-            .animation(.spring(response: 0.26, dampingFraction: 0.62), value: menuOpen)
-            .allowsHitTesting(menuOpen)
+            .padding(.top, NexusSpacing.safeTop + 6)
         }
         .navigationTitle("Glass Playground")
         .navigationBarTitleDisplayMode(.inline)
@@ -124,63 +124,66 @@ private struct PlaygroundAvatarButton: View {
 private struct PlaygroundMenuCard: View {
     let onClose: () -> Void
 
+    private let rows: [(String, String)] = [
+        ("person.circle", "Account"),
+        ("gearshape", "Settings"),
+        ("message", "Feedback"),
+    ]
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 10) {
-                ZStack {
-                    Circle().fill(Color.Nexus.bloom).frame(width: 36, height: 36)
-                    Text("S")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(Color.Nexus.accent)
-                }
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Srihari")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(Color(UIColor.label))
-                    Text("srihari.scorp@gmail.com")
-                        .font(.system(size: 12))
-                        .foregroundColor(Color(UIColor.tertiaryLabel))
-                        .lineLimit(1)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 12).padding(.top, 12).padding(.bottom, 10)
-
-            Divider().padding(.horizontal, 8)
-
-            ForEach(["Account", "Settings", "Feedback"], id: \.self) { label in
+        VStack(spacing: 0) {
+            ForEach(rows, id: \.1) { icon, label in
                 Button(action: onClose) {
-                    Text(label)
-                        .font(.system(size: 14.5))
-                        .foregroundColor(Color(UIColor.label))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 14).padding(.vertical, 9)
+                    HStack(spacing: 9) {
+                        Image(systemName: icon)
+                            .font(.system(size: 12.5, weight: .regular))
+                            .foregroundColor(Color(UIColor.label))
+                            .frame(width: 18, alignment: .center)
+                        Text(label)
+                            .font(.system(size: 13.5, weight: .regular))
+                            .foregroundColor(Color(UIColor.label))
+                        Spacer()
+                    }
+                    .padding(.horizontal, 13)
+                    .padding(.vertical, 10)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
 
-            Divider().padding(.horizontal, 8)
+            Divider()
 
             Button(action: onClose) {
-                Text("Sign out")
-                    .font(.system(size: 14.5))
-                    .foregroundColor(Color(UIColor.label))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 14).padding(.vertical, 9)
+                HStack(spacing: 9) {
+                    Image(systemName: "rectangle.portrait.and.arrow.right")
+                        .font(.system(size: 12.5, weight: .regular))
+                        .foregroundColor(Color(UIColor.label))
+                        .frame(width: 18, alignment: .center)
+                    Text("Sign out")
+                        .font(.system(size: 13.5, weight: .regular))
+                        .foregroundColor(Color(UIColor.label))
+                    Spacer()
+                }
+                .padding(.horizontal, 13)
+                .padding(.vertical, 10)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }
-        .frame(width: 220)
+        .frame(width: 196)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(.ultraThinMaterial)
+            ZStack {
+                VisualEffectBlur(style: .systemUltraThinMaterial, cornerRadius: 14)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.white.opacity(0.42))
+            }
         )
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color(UIColor.separator), lineWidth: 0.5)
+                .stroke(Color.white.opacity(0.5), lineWidth: 0.5)
         )
-        .shadow(color: .black.opacity(0.11), radius: 28, x: 0, y: 8)
-        .shadow(color: .black.opacity(0.06), radius: 3, x: 0, y: 1)
-        .environment(\.colorScheme, .light)
+        .shadow(color: .black.opacity(0.18), radius: 24, x: 0, y: 8)
+        .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
     }
 }

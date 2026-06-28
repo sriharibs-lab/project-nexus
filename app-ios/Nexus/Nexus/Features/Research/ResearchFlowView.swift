@@ -81,12 +81,15 @@ struct ResearchFlowView: View {
 
 // MARK: - Input screen
 
+private enum AvatarMenuAction {
+    case account, settings, feedback, signOut
+}
+
 private struct FREInputScreen: View {
     @ObservedObject var vm: ResearchViewModel
     @EnvironmentObject private var authManager: AuthManager
     @State private var showAvatarMenu = false
-    // Increment to signal FREComposer to clear its internal text.
-    // Avoids re-rendering the entire screen on every keystroke.
+    @State private var showSettings = false
     @State private var composerClearTrigger = 0
 
     var body: some View {
@@ -161,38 +164,49 @@ private struct FREInputScreen: View {
                 .padding(.top, NexusSpacing.safeTop + 6)
             }
 
-            // Scrim — slight darkening makes glass card visually distinct over light bg
+            // Scrim — 0.35 creates enough contrast so glass reads over light bg
             if showAvatarMenu {
-                Color.black.opacity(0.08)
+                Color.black.opacity(0.35)
                     .ignoresSafeArea()
                     .contentShape(Rectangle())
                     .onTapGesture { showAvatarMenu = false }
             }
 
-            // Avatar menu — drops in from top-right corner, Notion-style spring
-            VStack {
+            // Avatar menu — grows from button's top-right corner (Weather app style)
+            VStack(spacing: 0) {
                 HStack {
                     Spacer()
-                    FREAvatarMenuCard {
-                        showAvatarMenu = false
-                    }
+                    FREAvatarMenuCard(onAction: { action in
+                        switch action {
+                        case .settings:
+                            showAvatarMenu = false
+                            showSettings = true
+                        case .signOut:
+                            showAvatarMenu = false
+                            authManager.signOut()
+                        default:
+                            showAvatarMenu = false
+                        }
+                    })
+                    .scaleEffect(showAvatarMenu ? 1.0 : 0.72, anchor: .topTrailing)
+                    .offset(y: showAvatarMenu ? 0 : -4)
+                    .opacity(showAvatarMenu ? 1 : 0)
+                    .animation(.spring(response: 0.38, dampingFraction: 0.52), value: showAvatarMenu)
+                    .allowsHitTesting(showAvatarMenu)
                     .padding(.trailing, NexusSpacing.standard)
                 }
                 Spacer()
             }
-            .padding(.top, NexusSpacing.safeTop + 6 + 32 + 6)
-            .scaleEffect(showAvatarMenu ? 1.0 : 0.82, anchor: .topTrailing)
-            .offset(y: showAvatarMenu ? 0 : -6)
-            .opacity(showAvatarMenu ? 1 : 0)
-            .animation(.spring(response: 0.26, dampingFraction: 0.62), value: showAvatarMenu)
-            .allowsHitTesting(showAvatarMenu)
+            .padding(.top, NexusSpacing.safeTop + 6)
         }
         .onTapGesture {
-            // Fires only when no child view (TextField, buttons) consumed the tap.
             UIApplication.shared.sendAction(
                 #selector(UIResponder.resignFirstResponder),
                 to: nil, from: nil, for: nil
             )
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView().environmentObject(authManager)
         }
     }
 }
@@ -465,80 +479,68 @@ private struct FREAvatarButton: View {
 // MARK: - Avatar menu card
 
 private struct FREAvatarMenuCard: View {
-    let onClose: () -> Void
-    @EnvironmentObject private var authManager: AuthManager
+    let onAction: (AvatarMenuAction) -> Void
+
+    private let rows: [(icon: String, label: String, action: AvatarMenuAction)] = [
+        ("person.circle", "Account", .account),
+        ("gearshape", "Settings", .settings),
+        ("message", "Feedback", .feedback),
+    ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header: avatar + name + email
-            HStack(spacing: 10) {
-                ZStack {
-                    Circle()
-                        .fill(Color.Nexus.bloom)
-                        .frame(width: 36, height: 36)
-                    Text("S")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(Color.Nexus.accent)
-                }
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Srihari")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(Color(UIColor.label))
-                    Text("srihari.scorp@gmail.com")
-                        .font(.system(size: 12))
-                        .foregroundColor(Color(UIColor.tertiaryLabel))
-                        .lineLimit(1)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 12)
-            .padding(.top, 12)
-            .padding(.bottom, 10)
-
-            Divider().padding(.horizontal, 8)
-
-            ForEach(["Account", "Settings", "Feedback"], id: \.self) { label in
-                AvatarMenuRow(label: label, action: onClose)
+        VStack(spacing: 0) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                FlatMenuRow(icon: row.icon, label: row.label) { onAction(row.action) }
             }
 
-            Divider().padding(.horizontal, 8)
+            Divider()
 
-            // Sign out — same visual weight as other rows, not red
-            AvatarMenuRow(label: "Sign out") {
-                onClose()
-                authManager.signOut()
+            FlatMenuRow(icon: "rectangle.portrait.and.arrow.right", label: "Sign out") {
+                onAction(.signOut)
             }
         }
-        .frame(width: 220)
+        .frame(width: 196)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(.ultraThinMaterial)
+            ZStack {
+                // UIKit blur — bypasses SwiftUI material quirks on light bg
+                VisualEffectBlur(style: .systemUltraThinMaterial, cornerRadius: 14)
+                // White overlay so card reads clearly against dark scrim
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.white.opacity(0.42))
+            }
         )
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color(UIColor.separator), lineWidth: 0.5)
+                .stroke(Color.white.opacity(0.5), lineWidth: 0.5)
         )
-        .shadow(color: .black.opacity(0.11), radius: 28, x: 0, y: 8)
-        .shadow(color: .black.opacity(0.06), radius: 3, x: 0, y: 1)
-        .environment(\.colorScheme, .light)
+        .shadow(color: .black.opacity(0.18), radius: 24, x: 0, y: 8)
+        .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
     }
 }
 
-private struct AvatarMenuRow: View {
+private struct FlatMenuRow: View {
+    let icon: String
     let label: String
     let action: () -> Void
     @State private var pressed = false
 
     var body: some View {
         Button(action: action) {
-            Text(label)
-                .font(.system(size: 14.5, weight: .regular))
-                .foregroundColor(Color(UIColor.label))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 9)
-                .contentShape(Rectangle())
-                .background(pressed ? Color(UIColor.systemGray5) : Color.clear)
+            HStack(spacing: 9) {
+                Image(systemName: icon)
+                    .font(.system(size: 12.5, weight: .regular))
+                    .foregroundColor(Color(UIColor.label))
+                    .frame(width: 18, alignment: .center)
+                Text(label)
+                    .font(.system(size: 13.5, weight: .regular))
+                    .foregroundColor(Color(UIColor.label))
+                Spacer()
+            }
+            .padding(.horizontal, 13)
+            .padding(.vertical, 10)
+            .contentShape(Rectangle())
+            .background(pressed ? Color.black.opacity(0.06) : Color.clear)
         }
         .buttonStyle(.plain)
         .simultaneousGesture(

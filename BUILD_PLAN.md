@@ -98,12 +98,12 @@ cycle_policy:
 ### 1F — FRE & UX Polish (bugs + enhancements from first device test)
 
 **Critical fixes:**
-- [ ] Auth screen: replace `AuthPlaceholderView` stub with proper sign-in UI (Sign in with Apple button + "Continue as dev" secondary CTA) matching Nexus design system <!-- nbl:id=1F-001 agent=swe deps=[] est=2h -->
-- [ ] Wire chat submit: NexusTabView composer send button + return key currently do nothing — connect to `vm.send()` <!-- nbl:id=1F-002 agent=swe deps=[1C-007] est=1h -->
+- [x] Auth screen: replace `AuthPlaceholderView` stub with proper sign-in UI (Sign in with Apple button + "Continue as dev" secondary CTA) matching Nexus design system <!-- nbl:id=1F-001 agent=swe deps=[] est=2h -->
+- [!] Wire chat submit: NexusTabView composer send button + return key currently do nothing — connect to `vm.send()` <!-- nbl:id=1F-002 agent=swe deps=[1C-007] est=1h -->
 
 **Bugs:**
-- [ ] FRE trending icon: `arrow.up.right` looks like "open in new tab" — replace with `chart.line.uptrend.xyaxis` SF Symbol <!-- nbl:id=1F-003 agent=swe deps=[] est=0.5h -->
-- [ ] Keyboard dismiss: tapping outside chat composer in NexusTabView does not dismiss keyboard <!-- nbl:id=1F-004 agent=swe deps=[1C-007] est=0.5h -->
+- [x] FRE trending icon: `arrow.up.right` looks like "open in new tab" — replace with `chart.line.uptrend.xyaxis` SF Symbol <!-- nbl:id=1F-003 agent=swe deps=[] est=0.5h -->
+- [x] Keyboard dismiss: tapping outside chat composer in NexusTabView does not dismiss keyboard <!-- nbl:id=1F-004 agent=swe deps=[1C-007] est=0.5h -->
 
 **Enhancements:**
 - [ ] Avatar button: add circular avatar button top-right of FRE input screen (shows initials, taps to open settings) <!-- nbl:id=1F-005 agent=swe deps=[1F-001] est=1h -->

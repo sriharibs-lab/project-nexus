@@ -130,3 +130,11 @@ Tasks blocked: none
 Gated (waiting on human): 1A-008 (S3/R2 bucket — needs cloud storage credentials in api/.env), 1C-011 (Daily Briefing push UI — needs APNs key from Apple Developer portal), store listing subtitle selection (pick compliant ≤ 30-char variant from app-store/store-listing.md before submission)
 Commit SHA: ccbd8c0e95f8e7e8eef434b471c31c1ebb9eabd8
 Phase 1D complete. Next: Phase 1E — Launch Prep (TestFlight, bug bash, App Store submission).
+
+---
+
+## Cycle 2026-06-28T00:00:00Z
+Tasks completed: 1F-001 (Auth screen — Sign in with Apple + magic link OTP; 31/31 tests pass), 1F-003 (FRE trending icon — chart.line.uptrend.xyaxis SF Symbol; 13/13 tests pass), 1F-004 (Keyboard dismiss — simultaneousGesture + scrollDismissesKeyboard + FocusState lift; 34/34 tests pass)
+Tasks blocked: 1F-002 (Wire chat submit — request_changes ×2; APIClient.swift still checks dict["event"] not dict["type"]; test file still untracked despite SWE claiming it was committed)
+Gated (waiting on human): 1A-008 (S3/R2 bucket — create R2/S3 bucket, paste credentials into api/.env), 1C-011 (Daily Briefing iOS UI — add APNs key to api/.env)
+Commit SHA: 35bca9b

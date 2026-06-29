@@ -111,6 +111,20 @@ cycle_policy:
 - [x] Live trending chips: fetch top 4 trending topics from public source (NewsAPI headlines or Google Trends RSS) at FRE load time; fall back to static list if unavailable <!-- nbl:id=1F-007 agent=swe deps=[] est=2h -->
 - [x] FRE composer `+` button: tapping opens a link/URL paste sheet so user can start a collection from a URL directly from the composer <!-- nbl:id=1F-008 agent=swe deps=[] est=1.5h -->
 
+### 1G — Full Flow Wiring (device-tested gaps)
+
+**Account & Settings:**
+- [ ] Account screen — `AccountView.swift` showing user initials avatar + email from `AuthManager.shared`; "Sign Out" button; presented as sheet from avatar menu "Account" row (wire `FREAvatarMenuCard` `onClose` → present AccountView) and as a row in `SettingsView` <!-- nbl:id=1G-001 agent=swe deps=[1F-005] est=2h -->
+
+**Starting a collection from a link:**
+- [ ] FRELinkButtons tap → open LinkURLSheetView — wire Website/PDF/YouTube buttons in `FRELinkButtons` to present `LinkURLSheetView(initialContentType:)`; `onComplete(collectionId)` calls parent `ResearchFlowView.onComplete` to navigate to new `CollectionView` <!-- nbl:id=1G-002 agent=swe deps=[1F-008] est=2h -->
+- [ ] URL content-type auto-detect — in `LinkURLSheetView`, when URL text changes detect: youtube.com/youtu.be → `.youtube`; ends with `.pdf` → `.pdf`; otherwise `.website`; update `contentType` chip automatically <!-- nbl:id=1G-003 agent=swe deps=[1G-002] est=1h -->
+- [ ] HomeView new-collection choice — when user has existing collections and taps "+", present bottom sheet offering "Research a topic" (opens ResearchFlowView) and "Start with a link" (opens LinkURLSheetView directly); both navigate to the new collection on complete <!-- nbl:id=1G-004 agent=swe deps=[1G-002] est=1.5h -->
+
+**Managing sources in a collection:**
+- [ ] Add source to existing collection — "+" button in SourcesTabView toolbar opens `LinkURLSheetView` pre-bound to the current `collectionId`; skips collection creation step (posts only to `/v1/ingest`); dismisses and refreshes sources list on success <!-- nbl:id=1G-005 agent=swe deps=[1F-008] est=2h -->
+- [ ] Source ingest auto-polling — `CollectionViewModel` polls `GET /v1/collections/{id}/items` every 4s while any item has `ingestStatus` ∈ {queued, processing}; cancels when all items reach a terminal state; updates items array in place without full reload <!-- nbl:id=1G-006 agent=swe deps=[1G-005] est=1.5h -->
+
 ### 1E — Launch Prep (Week 10)
 - [ ] TestFlight beta (500 users)
 - [ ] Bug bash

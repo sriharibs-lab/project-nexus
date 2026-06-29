@@ -1,39 +1,40 @@
 # Nexus Build — Cycle Checkpoint
-**Date:** 2026-06-28   **Status:** ⚠️ Review recommended
+**Date:** 2026-06-29   **Status:** ⚠️ Review recommended
 
 ## What was built
 
-The FRE (First Run Experience) now feels like a real product. When you open the app, the avatar button in the top-right shows your actual initials, taps open a Liquid Glass bloom menu with Settings, Feedback, and Sign Out. The rotating words underneath "Start a collection on" come from your personal interest profile stored on the server — not hardcoded. The trending chips (AI platform shifts, Ozempic & longevity, etc.) are now pulled live from Google Trends RSS at load time with a silent fallback. And the "+" button in the composer opens a full URL paste sheet where you can paste any link, pick the content type (Website, PDF, YouTube), and save it as a new collection — the app creates the collection and starts ingesting the content immediately in the background.
+The app now has a proper account screen: tap the avatar circle in the top-left of your collections list and a sheet slides up showing your name, email, and a Sign Out button — your initials are computed from your Apple ID and displayed in a plum circle. Starting a collection from a link now actually works end-to-end: the three buttons on the first-run screen (Website, PDF, YouTube) open the URL paste sheet pre-set to the right type, and completing it navigates you directly to the new collection. Inside any existing collection, a new "+" button appears in the top-right of the Sources tab — tap it, paste a URL, and the source is added to that collection immediately without creating a new one.
 
 ## Verify it worked
 
-- [ ] **Avatar button** — Open the app on device, tap the circular button top-right of the FRE screen — menu should bloom out from the top-right with a spring animation; avatar button should disappear while menu is open. Tap Settings — settings sheet should rise after ~0.22s delay.
-- [ ] **Personalized topics** — Sign in, wait 5 seconds, then open the FRE screen — the rotating word should cycle through topics fetched from `GET /v1/users/me/interest-topics` (or defaults if no profile yet).
-- [ ] **Live trending chips** — Open the FRE Topics screen (onboarding step 2): within 5 seconds of appearing, the TRENDING NOW row should show a green dot and 4 chips from Google Trends. Kill network and reload — 4 static chips appear, no error shown.
-- [ ] **URL paste sheet** — Copy any https:// URL to clipboard, tap "+" in the FRE composer or any of the Website/PDF/YouTube buttons — sheet opens at medium detent with URL auto-filled. Tap Save — collection created, app navigates to it.
-- [ ] **Backend tests** — `cd api && python -m pytest tests/routers/test_users_interest_topics.py tests/test_1f007_trending.py -v` — 23 tests should pass.
+- [ ] **Account screen** — Open the app with at least one collection, tap the initials circle in the top-left of the list; sheet should open showing your initials at large size, your display name (or just email if name unavailable), and a Sign Out button. Tapping Sign Out should return to the auth screen.
+- [ ] **FRE link buttons** — From the first-run screen, tap "Website," "PDF," or "YouTube" — the URL paste sheet should open with the matching type chip already selected. Paste a valid URL and tap Save — app should navigate to the new collection.
+- [ ] **Add source to collection** — Open any collection, tap Sources tab, tap "+" top-right — sheet should open titled "Add a source" with no collection name field. Paste a URL, tap Add — sheet dismisses and the source appears in the list with a Queued status.
 
 ## Decisions made this cycle (no action needed)
 
 | What was decided | Options considered | Why |
 |---|---|---|
-| Google Trends RSS for live trending (no API key) | NewsAPI (paid key), Twitter trending (OAuth + paid) | Free, no credentials, available before user signs in |
-| Avatar data persisted in UserDefaults app group | Memory only, API fetch per launch | Apple only sends name/email on first Sign in with Apple — must persist |
-| Fire-and-forget ingest after URL paste save | Block until ingest done, show progress in sheet | Ingest takes seconds-to-minutes; blocking the user is bad UX |
-| 15-minute in-process TTL cache for trending | Redis, CDN, no cache | No new dependencies; FRE is low-traffic at beta scale |
-| Shimmer skeleton while trending loads | Spinner, nothing | Prevents layout shift when data arrives |
+| Avatar in HomeView leading toolbar (left side) | Trailing (conflicts with +), tab bar | iOS convention for profile access; trailing slot taken by + button |
+| AvatarCircle as reusable component (not inline) | Inline in HomeView only | AccountView also needs it at 72pt; shared component avoids duplication |
+| Initials fallback: name words → email first char → "N"/"?" | Always show SF Symbol person icon | Initials feel personal; "N" is branded fallback; "?" signals incomplete data |
+| LinkURLSheetMode enum (create vs addToCollection) | isAddMode Bool, two separate sheets | Named enum is self-documenting and carries collectionId cleanly |
+| canSubmit in add mode = URL valid only | Same formula for both modes | Collection name field is hidden in add mode — nothing to validate |
+| Refresh triggered at CollectionView call site, not inside sheet | Pass CollectionViewModel into sheet, NotificationCenter | Loose coupling; sheet only signals success, caller decides what to do |
 
 ## Decisions that need your input
 
-**1F-008 restores the full auth contract (AuthView, AuthViewModel, backend auth.py with `verify_otp` and `sign_in_with_apple`).** This means the iOS app now calls our backend to exchange Apple's identity token, not Supabase directly. The Supabase service_role key stays server-side only. This was the original design — but it's worth confirming you're aligned before the next iOS device test: when you tap "Sign in with Apple," it calls `POST /v1/auth/apple` on our FastAPI backend, which exchanges with Supabase and returns Nexus tokens. The dev bypass ("Continue without account") still works as before.
+**1G-001 review flagged a pre-existing auth contract issue:** when you tap Sign In with Apple, the current iOS code sends Apple's raw user identifier directly as a session token, bypassing the `POST /v1/auth/apple` FastAPI exchange. This was present before this cycle and is not introduced by the Account screen work. It needs to be fixed before TestFlight — the backend needs to validate the Apple identity token and issue Nexus JWTs. This is the same decision flagged in the last checkpoint about which auth path you want (iOS → FastAPI → Supabase, which 1F-008 implemented). Confirm you're aligned so the wiring task can be scheduled.
+
+**1G-005 review noted an SSE event field inconsistency:** `streamSSE` now correctly reads `dict["type"]` for terminal events (fixed this cycle), but `handleSSEEvent` in ResearchViewModel still dispatches on `dict["event"]`. These may be two different fields in the backend SSE format — worth confirming with a live test so chat events are not silently dropped.
 
 ## Next cycle will work on
 
-1F-002 (wire chat submit) is the last unresolved FRE blocker — fixing the SSE event key from `dict["event"]` to `dict["type"]` in APIClient. Once that's done, the entire FRE → save → chat loop runs on real device. That unlocks the first true end-to-end iPhone test.
+1G-003 (URL auto-detect: youtube.com → YouTube chip, .pdf → PDF chip), 1G-004 (HomeView + button opens a choice sheet: "Research a topic" vs "Start with a link"), and 1G-006 (ingest status auto-polling every 4 seconds until all sources reach a terminal state). Completing these closes every identified dead end before TestFlight.
 
 ## Waiting on you (blocked tasks)
 
 | Task | What you need to do | What it unlocks |
 |---|---|---|
 | S3/R2 bucket (1A-008) | Create an R2 or S3 bucket, paste credentials into `api/.env` as `R2_ACCESS_KEY`, `R2_SECRET_KEY`, `R2_BUCKET` | Full-text storage for extracted articles; Reader view shows real content |
-| APNs key (1C-011) | Download an APNs key from Apple Developer portal, paste path into project config | Daily Briefing push notifications |
+| APNs key (1C-011) | Download an APNs key from Apple Developer portal, add path + key ID + team ID to `api/.env` | Daily Briefing push notifications delivered to device |

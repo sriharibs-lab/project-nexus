@@ -146,3 +146,11 @@ Tasks completed: 1F-005 (Avatar button with bloom menu — displays initials fro
 Tasks blocked: none
 Gated (waiting on human): 1A-008 (S3/R2 bucket — create R2/S3 bucket, paste credentials into api/.env), 1C-011 (Daily Briefing iOS UI — add APNs key to api/.env)
 Commit SHA: 35957a1
+
+---
+
+## Cycle 2026-06-29T00:00:00Z
+Tasks completed: 1G-001 (AccountView showing user initials + email + Sign Out — AvatarCircle at 72pt in AccountView sheet + 30pt in HomeView leading toolbar; approve_with_notes; 74/74 tests pass), 1G-002 (FRELinkButtons tap → open LinkURLSheetView wiring — onSelect callback, press-scale animation, sheet presentation with correct initialContentType; approve; 93/93 tests pass), 1G-005 (Add source to existing collection — '+' in SourcesTabView opens LinkURLSheetView in add mode pre-bound to collectionId, LinkURLSheetMode enum, SSE fix dict["type"]; approve_with_notes; 69/69 tests pass)
+Tasks blocked: none
+Gated (waiting on human): 1A-008 (S3/R2 bucket — create R2/S3 bucket, paste credentials into api/.env), 1C-011 (Daily Briefing iOS UI — add APNs key to api/.env), 1G-003 (URL content-type auto-detect — gated on 1G-002; now unblocked), 1G-004 (HomeView new-collection bottom sheet — gated on 1G-002; now unblocked), 1G-006 (Source ingest auto-polling — gated on 1G-005; now unblocked)
+Commit SHA: 715b02c

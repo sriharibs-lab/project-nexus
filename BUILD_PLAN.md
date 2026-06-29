@@ -99,7 +99,7 @@ cycle_policy:
 
 **Critical fixes:**
 - [x] Auth screen: replace `AuthPlaceholderView` stub with proper sign-in UI (Sign in with Apple button + "Continue as dev" secondary CTA) matching Nexus design system <!-- nbl:id=1F-001 agent=swe deps=[] est=2h -->
-- [!] Wire chat submit: NexusTabView composer send button + return key currently do nothing — connect to `vm.send()` <!-- nbl:id=1F-002 agent=swe deps=[1C-007] est=1h -->
+- [x] Wire chat submit: NexusTabView composer send button + return key currently do nothing — connect to `vm.send()` <!-- nbl:id=1F-002 status=done -->
 
 **Bugs:**
 - [x] FRE trending icon: `arrow.up.right` looks like "open in new tab" — replace with `chart.line.uptrend.xyaxis` SF Symbol <!-- nbl:id=1F-003 agent=swe deps=[] est=0.5h -->

@@ -127,7 +127,28 @@ async def get_item(
     item = result.scalar_one_or_none()
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
-    return item
+
+    # If raw_content was uploaded to R2, fetch it back for the Reader view.
+    # Falls back to item.raw_content (Postgres TEXT) if R2 download fails.
+    raw_content = item.raw_content
+    if item.r2_key and raw_content is None:
+        from app.core.storage import download_raw_content
+        raw_content = await download_raw_content(item.r2_key)
+
+    return ItemDetailResponse(
+        id=item.id,
+        user_id=item.user_id,
+        url=item.url,
+        title=item.title,
+        content_type=item.content_type,
+        raw_content=raw_content,
+        summary=item.summary,
+        insights=item.insights,
+        tags=[t.name for t in item.tags],
+        ingest_status=item.ingest_status,
+        created_at=item.created_at,
+        updated_at=item.updated_at,
+    )
 
 
 @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)

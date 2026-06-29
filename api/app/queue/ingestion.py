@@ -260,7 +260,22 @@ async def _process_job(
             # ── 3. Update item ─────────────────────────────────────────────
             if extraction.title:
                 item.title = extraction.title
-            item.raw_content = content
+
+            # Upload raw_content to R2. Falls back to Postgres TEXT on failure.
+            from app.core.storage import upload_raw_content
+            r2_key = await upload_raw_content(
+                user_id=str(item.user_id),
+                item_id=str(item.id),
+                content=content,
+            )
+            if r2_key:
+                # Content is in R2 — clear raw_content to avoid double-storage
+                item.r2_key = r2_key
+                item.raw_content = None
+            else:
+                # R2 unavailable — store in Postgres TEXT (TestFlight fallback)
+                item.raw_content = content
+
             item.summary = processed.tldr
             item.insights = processed.insights
             item.metadata_ = {

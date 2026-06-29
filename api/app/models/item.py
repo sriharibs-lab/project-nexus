@@ -57,6 +57,10 @@ class Item(Base):
         Enum(ContentType, name="content_type_enum"), nullable=False, default=ContentType.article
     )
     raw_content: Mapped[Optional[str]] = mapped_column(Text)
+    # R2 object key when raw_content is stored in R2 (1A-008).
+    # Format: raw/{user_id}/{item_id}.txt
+    # None means content lives in raw_content TEXT column (Postgres fallback).
+    r2_key: Mapped[Optional[str]] = mapped_column(String(500))
     summary: Mapped[Optional[str]] = mapped_column(Text)
     insights: Mapped[Optional[list]] = mapped_column(ARRAY(Text))
     metadata_: Mapped[Optional[dict]] = mapped_column("metadata", JSONB, default=dict)

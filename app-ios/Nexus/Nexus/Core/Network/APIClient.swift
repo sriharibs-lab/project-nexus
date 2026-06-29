@@ -219,8 +219,12 @@ final class APIClient {
                   let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
             else { continue }
             onEvent(.success(dict))
-            // Stop consuming on terminal events
-            if let event = dict["type"] as? String, event == "done" || event == "error" {
+            // Stop consuming on terminal events.
+            // The backend may use "type" (chat endpoint) or "event" (research endpoint)
+            // as the discriminant field — check both via nil-coalescing so the stream
+            // terminates correctly regardless of which field the backend emits.
+            let eventDiscriminant = (dict["event"] as? String) ?? (dict["type"] as? String)
+            if eventDiscriminant == "done" || eventDiscriminant == "error" {
                 break
             }
         }

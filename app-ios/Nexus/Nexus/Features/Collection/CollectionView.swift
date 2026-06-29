@@ -11,6 +11,8 @@ struct ItemDetailRoute: Hashable {
 struct CollectionView: View {
     @StateObject private var vm: CollectionViewModel
     @State private var selectedTab: Tab = .nexus
+    // Link URL sheet — presented by the + toolbar button on the Sources tab
+    @State private var linkSheetContentType: DetectedContentType? = nil
 
     enum Tab: String, CaseIterable {
         case nexus   = "Nexus"
@@ -42,6 +44,21 @@ struct CollectionView: View {
         }
         .navigationTitle(vm.collection.name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            // "+" button in Sources tab → open link sheet pre-scoped to this collection
+            if selectedTab == .sources {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        linkSheetContentType = .website
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundColor(.Nexus.accent)
+                            .frame(width: NexusSpacing.hitTarget, height: NexusSpacing.hitTarget)
+                    }
+                }
+            }
+        }
         .task { await vm.load() }
         // Non-fatal delete error: show an alert if the API call fails.
         .alert("Couldn't delete source", isPresented: Binding(
@@ -51,6 +68,20 @@ struct CollectionView: View {
             Button("OK", role: .cancel) { vm.deleteError = nil }
         } message: {
             Text(vm.deleteError?.errorDescription ?? "Please try again.")
+        }
+        // Link sheet pre-scoped to this collection
+        .sheet(item: $linkSheetContentType) { contentType in
+            LinkURLSheetView(
+                initialContentType: contentType,
+                collections: [],
+                preselectedCollectionId: vm.collection.id,
+                onComplete: { _, _ in
+                    // Refresh the sources list so the new item appears.
+                    Task { await vm.load() }
+                }
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.hidden)
         }
     }
 

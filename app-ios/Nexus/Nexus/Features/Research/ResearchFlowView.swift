@@ -88,6 +88,8 @@ private struct FREInputScreen: View {
     // Local state scopes TextField rerenders to FREComposer only — avoids
     // rerendering the entire screen on every keystroke.
     @State private var composerText = ""
+    // Link sheet presentation
+    @State private var linkSheetContentType: DetectedContentType? = nil
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -140,7 +142,9 @@ private struct FREInputScreen: View {
                     .padding(.bottom, 26)
 
                     // Or start with a link
-                    FRELinkButtons()
+                    FRELinkButtons { contentType in
+                        linkSheetContentType = contentType
+                    }
                 }
                 .padding(.horizontal, NexusSpacing.sideGutter + 4)
 
@@ -199,6 +203,22 @@ private struct FREInputScreen: View {
                 )
             }
         )
+        // Link URL sheet — presented when user taps Website / PDF / YouTube
+        .sheet(item: $linkSheetContentType) { contentType in
+            LinkURLSheetView(
+                initialContentType: contentType,
+                // FRE has no collection context yet; picker is hidden
+                // (collections: []) so user will assign on next visit.
+                // A future task can wire a real collection picker here.
+                collections: [],
+                onComplete: { _, _ in
+                    // Sheet auto-dismisses via dismiss() inside LinkURLSheetView.
+                    // No FRE navigation needed — user returns to the input screen.
+                }
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.hidden) // custom grabber rendered in the sheet
+        }
     }
 }
 
@@ -389,10 +409,13 @@ private struct FRETrendingChips: View {
 // MARK: - "Or start with a link" buttons
 
 private struct FRELinkButtons: View {
-    private let options: [(String, String)] = [
-        ("globe", "Website"),
-        ("doc", "PDF"),
-        ("play.rectangle", "YouTube"),
+    // Callback receives the selected content-type hint so the sheet can pre-select it.
+    let onSelect: (DetectedContentType) -> Void
+
+    private let options: [(icon: String, label: String, type: DetectedContentType)] = [
+        ("globe",          "Website", .website),
+        ("doc",            "PDF",     .pdf),
+        ("play.rectangle", "YouTube", .youtube),
     ]
 
     var body: some View {
@@ -403,20 +426,23 @@ private struct FRELinkButtons: View {
                 .kerning(-0.1)
 
             HStack(spacing: 7) {
-                ForEach(options, id: \.1) { icon, label in
-                    VStack(spacing: 5) {
-                        Image(systemName: icon)
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(.Nexus.muted)
-                        Text(label)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.Nexus.muted)
+                ForEach(options, id: \.label) { option in
+                    Button(action: { onSelect(option.type) }) {
+                        VStack(spacing: 5) {
+                            Image(systemName: option.icon)
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundColor(.Nexus.muted)
+                            Text(option.label)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.Nexus.muted)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(Color.Nexus.cardBackground)
+                        .clipShape(Capsule())
+                        .overlay(Capsule().stroke(Color.Nexus.border, lineWidth: NexusBorder.base))
                     }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(Color.Nexus.cardBackground)
-                    .clipShape(Capsule())
-                    .overlay(Capsule().stroke(Color.Nexus.border, lineWidth: NexusBorder.base))
+                    .buttonStyle(.plain)
                 }
             }
         }

@@ -58,7 +58,7 @@ cycle_policy:
 - [x] Content extraction service — Jina+trafilatura(fallback) wired into _process_job <!-- nbl:id=1A-005 status=done -->
 - [x] YouTube transcript ingestion — wired <!-- nbl:id=1A-006 status=done -->
 - [x] Podcast transcript ingestion (Deepgram Nova-3) — wired <!-- nbl:id=1A-007 status=done -->
-- [!] S3/R2 bucket for full-text storage <!-- nbl:id=1A-008 agent=none gate=HUMAN:cloud_storage_credentials -->
+- [ ] S3/R2 storage integration — wire R2_ACCOUNT_ID/R2_ACCESS_KEY_ID/R2_SECRET_ACCESS_KEY/R2_BUCKET_NAME from env into aioboto3 client; upload raw_content to R2 on ingest, read back on item detail; fall back to Postgres TEXT if R2 unavailable <!-- nbl:id=1A-008 agent=swe deps=[1A-005] est=2h -->
 - [x] Anthropic API integration: summarize + insights pipeline — Claude Haiku 4.5, cost-tracked <!-- nbl:id=1A-009 status=done -->
 - [x] Background job queue (async AI processing) — upgraded to pgqueuer (durable, Postgres-backed); Procfile added <!-- nbl:id=1A-010 status=done -->
 - [x] Feedback API: POST /v1/feedback + DB model + screenshot_url field <!-- nbl:id=1A-011 status=done -->

@@ -11,6 +11,8 @@ struct ItemDetailRoute: Hashable {
 struct CollectionView: View {
     @StateObject private var vm: CollectionViewModel
     @State private var selectedTab: Tab = .nexus
+    /// Controls presentation of LinkURLSheetView in add-to-collection mode.
+    @State private var showAddSourceSheet = false
 
     enum Tab: String, CaseIterable {
         case nexus   = "Nexus"
@@ -42,6 +44,31 @@ struct CollectionView: View {
         }
         .navigationTitle(vm.collection.name)
         .navigationBarTitleDisplayMode(.inline)
+        // '+' toolbar button — only visible when Sources tab is active.
+        // Tapping opens LinkURLSheetView pre-bound to this collection (add mode).
+        .toolbar {
+            if selectedTab == .sources {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showAddSourceSheet = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundColor(.Nexus.ink)
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showAddSourceSheet) {
+            LinkURLSheetView(
+                collectionId: vm.collection.id,
+                onDismiss: {
+                    Task { await vm.load() }
+                }
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
         .task { await vm.load() }
         // Non-fatal delete error: show an alert if the API call fails.
         .alert("Couldn't delete source", isPresented: Binding(

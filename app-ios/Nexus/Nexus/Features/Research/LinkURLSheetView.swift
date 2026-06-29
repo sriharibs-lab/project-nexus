@@ -27,32 +27,92 @@ enum LinkContentType: String, CaseIterable, Identifiable {
     }
 }
 
+// MARK: - Sheet mode
+
+/// Determines whether the sheet creates a new collection (create mode)
+/// or adds a source to an existing one (add mode).
+enum LinkURLSheetMode {
+    /// Create mode: create a new collection then ingest the URL into it.
+    /// `onComplete` is called with the new collection's UUID on success.
+    case create(onComplete: (UUID) -> Void)
+    /// Add mode: ingest the URL directly into an existing collection.
+    /// `onDismiss` is called on success so the caller can refresh its sources list.
+    case addToCollection(collectionId: UUID, onDismiss: () -> Void)
+}
+
 // MARK: - Sheet view
 
-/// URL paste sheet opened by the + button or link-type buttons in the FRE composer.
-/// Detent: .medium initially, expands to .large when the keyboard appears.
+/// URL paste sheet opened by:
+///  • The + button or link-type buttons in the FRE composer (create mode)
+///  • The + toolbar button in SourcesTabView (add mode)
 ///
-/// Flow:
+/// Create mode flow:
 ///  1. User pastes / types a URL
 ///  2. Collection name auto-fills from domain (editable)
 ///  3. Taps "Save to collection"
 ///  4. POST /v1/collections → creates the collection
 ///  5. POST /v1/ingest   → queues the URL (fire-and-forget)
 ///  6. Sheet dismisses and `onComplete(collectionId)` navigates to the new CollectionView
+///
+/// Add mode flow:
+///  1. User pastes / types a URL
+///  2. Collection name field is hidden (collection already exists)
+///  3. Taps "Add"
+///  4. POST /v1/ingest directly (no collection creation)
+///  5. Sheet dismisses and `onDismiss()` triggers vm.load() to refresh Sources tab
 struct LinkURLSheetView: View {
     /// Pre-selected content type (set by which button opened the sheet).
     let initialContentType: LinkContentType
-    /// Called with the new collection UUID on successful create+ingest.
-    let onComplete: (UUID) -> Void
+    let mode: LinkURLSheetMode
 
     @StateObject private var vm: LinkURLViewModel
     @Environment(\.dismiss) private var dismiss
 
-    init(initialContentType: LinkContentType = .website, onComplete: @escaping (UUID) -> Void) {
+    // MARK: - Convenience initialisers
+
+    /// Create mode initialiser (original FRE flow).
+    init(
+        initialContentType: LinkContentType = .website,
+        onComplete: @escaping (UUID) -> Void
+    ) {
         self.initialContentType = initialContentType
-        self.onComplete = onComplete
-        _vm = StateObject(wrappedValue: LinkURLViewModel(contentType: initialContentType))
+        self.mode = .create(onComplete: onComplete)
+        _vm = StateObject(wrappedValue: LinkURLViewModel(
+            contentType: initialContentType,
+            isAddMode: false
+        ))
     }
+
+    /// Add-to-existing-collection mode initialiser (Sources tab '+' button).
+    init(
+        collectionId: UUID,
+        initialContentType: LinkContentType = .website,
+        onDismiss: @escaping () -> Void
+    ) {
+        self.initialContentType = initialContentType
+        self.mode = .addToCollection(collectionId: collectionId, onDismiss: onDismiss)
+        _vm = StateObject(wrappedValue: LinkURLViewModel(
+            contentType: initialContentType,
+            isAddMode: true
+        ))
+    }
+
+    // MARK: - Computed helpers
+
+    private var isAddMode: Bool {
+        if case .addToCollection = mode { return true }
+        return false
+    }
+
+    private var navigationTitle: String {
+        isAddMode ? "Add a source" : "Start with a link"
+    }
+
+    private var submitLabel: String {
+        isAddMode ? "Add" : "Save"
+    }
+
+    // MARK: - Body
 
     var body: some View {
         NavigationStack {
@@ -68,13 +128,15 @@ struct LinkURLSheetView: View {
                         // ── URL field ──
                         urlField
 
-                        // ── Collection name field ──
-                        collectionNameField
+                        // ── Collection name field (create mode only) ──
+                        if !isAddMode {
+                            collectionNameField
+                        }
 
                         // ── Error banner ──
                         if let errMsg = vm.errorMessage {
                             errorBanner(message: errMsg) {
-                                Task { await vm.submit(dismiss: { dismiss() }, onComplete: onComplete) }
+                                Task { await submitAction() }
                             }
                         }
                     }
@@ -83,7 +145,7 @@ struct LinkURLSheetView: View {
                     .padding(.bottom, NexusSpacing.xxl)
                 }
             }
-            .navigationTitle("Start with a link")
+            .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -97,6 +159,21 @@ struct LinkURLSheetView: View {
             }
         }
         .onAppear { vm.autoFillFromClipboard() }
+    }
+
+    // MARK: - Submit action (dispatches to the right mode)
+
+    private func submitAction() async {
+        switch mode {
+        case .create(let onComplete):
+            await vm.submitCreate(dismiss: { dismiss() }, onComplete: onComplete)
+        case .addToCollection(let collectionId, let onDismiss):
+            await vm.submitAdd(
+                collectionId: collectionId,
+                dismiss: { dismiss() },
+                onDismiss: onDismiss
+            )
+        }
     }
 
     // MARK: - Content type selector
@@ -186,7 +263,7 @@ struct LinkURLSheetView: View {
         .animation(NexusAnimation.element, value: vm.urlValidationError != nil)
     }
 
-    // MARK: - Collection name field
+    // MARK: - Collection name field (create mode)
 
     private var collectionNameField: some View {
         VStack(alignment: .leading, spacing: NexusSpacing.sm) {
@@ -213,10 +290,9 @@ struct LinkURLSheetView: View {
     // MARK: - Save button
 
     private var saveButton: some View {
-        Button {
-            Task {
-                await vm.submit(dismiss: { dismiss() }, onComplete: onComplete)
-            }
+        let canSubmit = isAddMode ? vm.isURLValid : vm.canSubmit
+        return Button {
+            Task { await submitAction() }
         } label: {
             ZStack {
                 if vm.isSubmitting {
@@ -227,17 +303,17 @@ struct LinkURLSheetView: View {
                         .background(Color.Nexus.accent)
                         .clipShape(Capsule())
                 } else {
-                    Text("Save")
+                    Text(submitLabel)
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(.white)
                         .frame(width: 72, height: 30)
-                        .background(vm.canSubmit ? Color.Nexus.accent : Color.Nexus.ghost)
+                        .background(canSubmit ? Color.Nexus.accent : Color.Nexus.ghost)
                         .clipShape(Capsule())
                 }
             }
             .animation(NexusAnimation.element, value: vm.isSubmitting)
         }
-        .disabled(!vm.canSubmit || vm.isSubmitting)
+        .disabled(!canSubmit || vm.isSubmitting)
     }
 
     // MARK: - Error banner
@@ -321,8 +397,12 @@ final class LinkURLViewModel: ObservableObject {
     @Published var errorMessage: String? = nil
     @Published var isSubmitting = false
 
-    init(contentType: LinkContentType = .website) {
+    /// Whether the sheet is in add-to-existing-collection mode.
+    let isAddMode: Bool
+
+    init(contentType: LinkContentType = .website, isAddMode: Bool = false) {
         self.contentType = contentType
+        self.isAddMode = isAddMode
     }
 
     // MARK: - Computed
@@ -342,12 +422,15 @@ final class LinkURLViewModel: ObservableObject {
         return url.scheme == "http" || url.scheme == "https"
     }
 
-    var canSubmit: Bool { isURLValid && !effectiveCollectionName.isEmpty }
+    /// In create mode: URL must be valid AND effectiveCollectionName must be non-empty.
+    /// In add mode: only URL validity matters (no collection name field).
+    var canSubmit: Bool {
+        isAddMode ? isURLValid : (isURLValid && !effectiveCollectionName.isEmpty)
+    }
 
     // MARK: - Actions
 
     /// Auto-fill URL from clipboard if it looks like a valid URL.
-    /// Uses URL(string:).scheme check — not a string heuristic.
     func autoFillFromClipboard() {
         guard urlText.isEmpty else { return }
         guard let clip = UIPasteboard.general.string else { return }
@@ -368,13 +451,15 @@ final class LinkURLViewModel: ObservableObject {
     func onURLChanged() {
         // Clear previous validation error on every edit
         urlValidationError = nil
-        // Derive collection name from domain if user hasn't typed one
-        if collectionName.isEmpty, let domain = extractedDomain(from: urlText) {
+        // Derive collection name from domain if user hasn't typed one (create mode)
+        if !isAddMode, collectionName.isEmpty, let domain = extractedDomain(from: urlText) {
             collectionName = domain.capitalized
         }
     }
 
-    func submit(dismiss: () -> Void, onComplete: @escaping (UUID) -> Void) async {
+    // MARK: - Submit: create mode
+
+    func submitCreate(dismiss: () -> Void, onComplete: @escaping (UUID) -> Void) async {
         guard canSubmit else {
             urlValidationError = isURLValid ? nil : "Enter a valid URL starting with https://"
             return
@@ -404,6 +489,35 @@ final class LinkURLViewModel: ObservableObject {
             dismiss()
             onComplete(collection.id)
 
+        } catch {
+            errorMessage = friendlyError(error)
+        }
+    }
+
+    // MARK: - Submit: add mode
+
+    /// Posts directly to /v1/ingest with the provided collectionId.
+    /// No collection creation step — the collection already exists.
+    func submitAdd(collectionId: UUID, dismiss: () -> Void, onDismiss: @escaping () -> Void) async {
+        guard isURLValid else {
+            urlValidationError = "Enter a valid URL starting with https://"
+            return
+        }
+
+        errorMessage = nil
+        isSubmitting = true
+        defer { isSubmitting = false }
+
+        let url = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        do {
+            _ = try await APIClient.shared.ingest(
+                url: url,
+                collectionId: collectionId,
+                contentType: contentType.apiValue
+            )
+            dismiss()
+            onDismiss()
         } catch {
             errorMessage = friendlyError(error)
         }

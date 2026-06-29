@@ -64,6 +64,29 @@ final class APIClient {
         try await post(.feedback, body: request)
     }
 
+    // MARK: - Auth
+
+    /// Exchange an Apple identity token for a Nexus access token.
+    ///
+    /// Call this immediately after ASAuthorization succeeds, passing the
+    /// identityToken JWT from ASAuthorizationAppleIDCredential. Never use
+    /// the raw `cred.user` string as a bearer token — it is an opaque user
+    /// identifier, not a signed credential the server can verify.
+    func signInWithApple(
+        identityToken: String,
+        userId: String,
+        email: String?,
+        fullName: String?
+    ) async throws -> AppleSignInResponse {
+        let body = AppleSignInRequest(
+            identityToken: identityToken,
+            userId: userId,
+            email: email,
+            fullName: fullName
+        )
+        return try await post(.authApple, body: body)
+    }
+
     // MARK: - Search
 
     /// GET /v1/search?q=<query>&mode=<mode>&limit=<limit>
@@ -193,6 +216,29 @@ final class APIClient {
 }
 
 // MARK: - Request / Response types
+
+// MARK: - Apple Sign-In
+
+struct AppleSignInRequest: Encodable {
+    let identityToken: String
+    let userId: String
+    let email: String?
+    let fullName: String?
+}
+
+struct AppleSignInUserProfile: Decodable {
+    let id: String
+    let supabaseId: String
+    let email: String
+}
+
+struct AppleSignInResponse: Decodable {
+    let accessToken: String
+    let tokenType: String
+    let expiresIn: Int
+    let user: AppleSignInUserProfile
+    let isNew: Bool
+}
 
 struct ResearchRequestBody: Encodable {
     let topic: String

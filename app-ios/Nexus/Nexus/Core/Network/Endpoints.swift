@@ -8,6 +8,7 @@ enum Endpoint {
             ?? "http://localhost:8000"
     }
 
+    case authApple          // POST /v1/auth/apple — Apple Sign-In JWT exchange
     case collections
     case collection(id: UUID)
     case items(collectionId: UUID)
@@ -20,6 +21,8 @@ enum Endpoint {
 
     var path: String {
         switch self {
+        case .authApple:
+            return "/v1/auth/apple"
         case .collections:
             return "/v1/collections"
         case .collection(let id):

@@ -12,6 +12,11 @@ class Settings(BaseSettings):
     supabase_secret_key: str       # JWT secret for HS256 token validation
     supabase_publishable_key: str  # anon/public key for client-side use
 
+    # Apple Sign-In — required for POST /v1/auth/apple
+    # Must match the Bundle ID of the iOS app (app.nexus or com.example.nexus).
+    # Gate: add APPLE_APP_BUNDLE_ID to api/.env before TestFlight.
+    apple_app_bundle_id: str = ""
+
     # Anthropic — required for AI endpoints (1C-001 research, 1C-008 chat)
     # Gate: add ANTHROPIC_API_KEY to api/.env before live testing
     anthropic_api_key: str = ""

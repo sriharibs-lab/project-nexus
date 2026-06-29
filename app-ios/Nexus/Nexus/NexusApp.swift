@@ -43,6 +43,7 @@ private struct AuthPlaceholderView: View {
     @EnvironmentObject var authManager: AuthManager
     @State private var appeared = false
     @State private var appleError: String?
+    @State private var isSigningIn = false
 
     var body: some View {
         ZStack {
@@ -78,25 +79,29 @@ private struct AuthPlaceholderView: View {
 
                 // Auth buttons
                 VStack(spacing: NexusSpacing.md) {
-                    // Sign in with Apple
-                    SignInWithAppleButton(.signIn) { req in
-                        req.requestedScopes = [.fullName, .email]
-                    } onCompletion: { result in
-                        switch result {
-                        case .success(let auth):
-                            if let cred = auth.credential as? ASAuthorizationAppleIDCredential {
-                                let uid = UUID(uuidString: cred.user) ?? UUID()
-                                authManager.setSession(token: cred.user, userId: uid)
-                            }
-                        case .failure(let err):
-                            appleError = err.localizedDescription
+                    if isSigningIn {
+                        // Spinner shown while the backend token exchange is in-flight
+                        HStack(spacing: NexusSpacing.sm) {
+                            ProgressView()
+                                .tint(Color.Nexus.accent)
+                            Text("Signing in…")
+                                .font(.Nexus.bodySmall)
+                                .foregroundColor(.Nexus.muted)
                         }
+                        .frame(height: NexusSpacing.buttonHeight)
+                    } else {
+                        // Sign in with Apple
+                        SignInWithAppleButton(.signIn) { req in
+                            req.requestedScopes = [.fullName, .email]
+                        } onCompletion: { result in
+                            handleAppleResult(result)
+                        }
+                        .signInWithAppleButtonStyle(.black)
+                        .frame(height: NexusSpacing.buttonHeight)
+                        .clipShape(RoundedRectangle(cornerRadius: NexusRadius.md, style: .continuous))
                     }
-                    .signInWithAppleButtonStyle(.black)
-                    .frame(height: NexusSpacing.buttonHeight)
-                    .clipShape(RoundedRectangle(cornerRadius: NexusRadius.md, style: .continuous))
 
-                    // Dev bypass
+                    // Dev bypass — simulator / local testing only
                     Button("Continue without account  (dev only)") {
                         authManager.setSession(token: "dev", userId: UUID())
                     }
@@ -118,6 +123,61 @@ private struct AuthPlaceholderView: View {
             }
         }
         .onAppear { appeared = true }
+    }
+
+    // MARK: - Apple Sign-In handler
+
+    private func handleAppleResult(_ result: Result<ASAuthorization, Error>) {
+        switch result {
+        case .success(let auth):
+            guard let cred = auth.credential as? ASAuthorizationAppleIDCredential else { return }
+            guard let tokenData = cred.identityToken,
+                  let identityToken = String(data: tokenData, encoding: .utf8) else {
+                appleError = "Apple did not provide an identity token. Please try again."
+                return
+            }
+
+            let email = cred.email
+            let fullName: String? = {
+                guard let name = cred.fullName else { return nil }
+                return [name.givenName, name.familyName]
+                    .compactMap { $0 }
+                    .joined(separator: " ")
+                    .isEmpty ? nil : [name.givenName, name.familyName]
+                    .compactMap { $0 }
+                    .joined(separator: " ")
+            }()
+
+            isSigningIn = true
+            appleError = nil
+
+            Task {
+                do {
+                    let response = try await APIClient.shared.signInWithApple(
+                        identityToken: identityToken,
+                        userId: cred.user,
+                        email: email,
+                        fullName: fullName
+                    )
+                    // Exchange succeeded — store the server-issued JWT
+                    let nexusUserId = UUID(uuidString: response.user.id) ?? UUID()
+                    authManager.setSession(token: response.accessToken, userId: nexusUserId)
+                } catch {
+                    appleError = "Sign in failed: \(error.localizedDescription). Please try again."
+                }
+                isSigningIn = false
+            }
+
+        case .failure(let err):
+            // ASAuthorizationError.canceled (code 1001) is the user dismissing the sheet —
+            // don't show an error for that.
+            let asErr = err as NSError
+            if asErr.domain == ASAuthorizationError.errorDomain,
+               asErr.code == ASAuthorizationError.canceled.rawValue {
+                return
+            }
+            appleError = err.localizedDescription
+        }
     }
 }
 

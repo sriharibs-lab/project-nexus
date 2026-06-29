@@ -130,3 +130,27 @@ Tasks blocked: none
 Gated (waiting on human): 1A-008 (S3/R2 bucket — needs cloud storage credentials in api/.env), 1C-011 (Daily Briefing push UI — needs APNs key from Apple Developer portal), store listing subtitle selection (pick compliant ≤ 30-char variant from app-store/store-listing.md before submission)
 Commit SHA: ccbd8c0e95f8e7e8eef434b471c31c1ebb9eabd8
 Phase 1D complete. Next: Phase 1E — Launch Prep (TestFlight, bug bash, App Store submission).
+
+---
+
+## Cycle 2026-06-28T00:00:00Z
+Tasks completed: 1F-001 (Auth screen — Sign in with Apple + magic link OTP; 31/31 tests pass), 1F-003 (FRE trending icon — chart.line.uptrend.xyaxis SF Symbol; 13/13 tests pass), 1F-004 (Keyboard dismiss — simultaneousGesture + scrollDismissesKeyboard + FocusState lift; 34/34 tests pass)
+Tasks blocked: 1F-002 (Wire chat submit — request_changes ×2; APIClient.swift still checks dict["event"] not dict["type"]; test file still untracked despite SWE claiming it was committed)
+Gated (waiting on human): 1A-008 (S3/R2 bucket — create R2/S3 bucket, paste credentials into api/.env), 1C-011 (Daily Briefing iOS UI — add APNs key to api/.env)
+Commit SHA: 35bca9b
+
+---
+
+## Cycle 2026-06-28T12:00:00Z
+Tasks completed: 1F-005 (Avatar button with bloom menu — displays initials from AuthManager, Settings/Feedback sheets with 0.22s delay post-bloom-close; 60/60 tests pass; approve_with_notes), 1F-006 (FRE rotating topics from user interest profile — GET /v1/users/me/interest-topics backend, ResearchViewModel.freTopics @Published with fallback defaults; 12/12 tests pass; approve), 1F-007 (Live trending chips — GET /v1/trending from Google Trends RSS with 15-min TTL cache, silent fallback to static list, shimmer skeleton in OnboardingView TRENDING NOW row; 11/11 tests pass; approve_with_notes), 1F-008 (FRE URL paste sheet + restore auth contract — LinkURLSheetView with medium/large detents, URL(string:).scheme validation, content-type chips, POST /v1/collections + fire-and-forget ingest, inline error banner with Retry; auth contract fully restored; 100/104 tests pass; approve_with_notes)
+Tasks blocked: none
+Gated (waiting on human): 1A-008 (S3/R2 bucket — create R2/S3 bucket, paste credentials into api/.env), 1C-011 (Daily Briefing iOS UI — add APNs key to api/.env)
+Commit SHA: 35957a1
+
+---
+
+## Cycle 2026-06-29T00:00:00Z
+Tasks completed: 1G-005 (Add source to existing collection — "+" toolbar button in CollectionView when Sources tab active, opens LinkURLSheetView in add mode pre-bound to collectionId, skips collection creation, posts to /v1/ingest directly, dismisses and refreshes Sources list on success; LinkURLSheetMode enum separating create/add flows; canSubmit in add mode = isURLValid only; SSE key bug fixed dict["event"]→dict["type"]; auth/profile API surface restored: createCollection, sendMagicLink, verifyOTP, signInWithApple, provisionUser, refreshAccessToken, fetchInterestTopics, fetchTrendingTopics; Endpoints.swift auth cases restored; BUILD_PLAN 1F tasks re-checked and 1G section added; AGENT_LOG Phase 1F cycle entries restored; CHECKPOINT.md date restored to 2026-06-28)
+Tasks blocked: none
+Gated (waiting on human): 1A-008 (S3/R2 bucket — create R2/S3 bucket, paste credentials into api/.env), 1C-011 (Daily Briefing iOS UI — add APNs key to api/.env)
+Commit SHA: (pending)

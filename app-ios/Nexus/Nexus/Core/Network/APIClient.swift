@@ -64,6 +64,78 @@ final class APIClient {
         try await post(.feedback, body: request)
     }
 
+    /// Create a new user-owned collection (used by the URL paste sheet FRE flow).
+    func createCollection(name: String) async throws -> NexusCollection {
+        let body = CreateCollectionRequest(name: name)
+        return try await post(.collections, body: body)
+    }
+
+    // MARK: - Auth
+
+    /// Send a magic-link OTP email via our backend (keeps Supabase service key server-side).
+    func sendMagicLink(email: String) async throws {
+        let body = MagicLinkRequest(email: email)
+        let _: MagicLinkResponse = try await post(.authMagicLink, body: body)
+    }
+
+    /// Verify a 6-digit OTP code and receive session tokens.
+    func verifyOTP(email: String, token: String) async throws -> AuthTokenResponse {
+        let body = OTPVerifyRequest(email: email, token: token)
+        return try await post(.authVerifyOTP, body: body)
+    }
+
+    /// Exchange an Apple identity token for Nexus session tokens.
+    func signInWithApple(identityToken: String) async throws -> AuthTokenResponse {
+        let body = AppleSignInRequest(identityToken: identityToken)
+        return try await post(.authApple, body: body)
+    }
+
+    /// Upsert the authenticated user in the Nexus DB. Call after every sign-in.
+    @discardableResult
+    func provisionUser() async throws -> ProvisionUserResponse {
+        return try await post(.authProvision, body: EmptyRequest())
+    }
+
+    /// Refresh the access token using the stored refresh token.
+    func refreshAccessToken(refreshToken: String) async throws -> TokenRefreshResponse {
+        let body = TokenRefreshRequest(refreshToken: refreshToken)
+        return try await post(.authRefresh, body: body)
+    }
+
+    // MARK: - User profile
+
+    /// GET /v1/users/me/interest-topics?limit=<n>
+    ///
+    /// Returns the authenticated user's top interest topics, personalised
+    /// from their reading history. Falls back to curated defaults server-side
+    /// when the user has no saved content yet — so the response is always
+    /// non-empty and safe to use directly in FRERotatingWord.
+    func fetchInterestTopics(limit: Int = 5) async throws -> InterestTopicsResponse {
+        try await get(.interestTopics(limit: limit))
+    }
+
+    // MARK: - Trending topics (FRE, no auth required)
+
+    /// GET /v1/trending — up to 4 trending topic strings for onboarding chip row.
+    ///
+    /// Called at FRE load time before sign-in, so no Authorization header is sent.
+    /// Returns topics from Google Trends RSS or a static fallback if unavailable.
+    /// Never throws — on any failure the caller falls back to the static list.
+    func fetchTrendingTopics() async -> TrendingTopicsResponse? {
+        var req = URLRequest(url: Endpoint.trending.url)
+        req.httpMethod = "GET"
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        // Intentionally no Authorization header: this endpoint is public.
+        req.timeoutInterval = 5.0  // FRE load must not feel slow
+
+        guard let (data, response) = try? await URLSession.shared.data(for: req),
+              let http = response as? HTTPURLResponse,
+              (200...299).contains(http.statusCode)
+        else { return nil }
+
+        return try? decoder.decode(TrendingTopicsResponse.self, from: data)
+    }
+
     // MARK: - Search
 
     /// GET /v1/search?q=<query>&mode=<mode>&limit=<limit>
@@ -148,7 +220,7 @@ final class APIClient {
             else { continue }
             onEvent(.success(dict))
             // Stop consuming on terminal events
-            if let event = dict["event"] as? String, event == "done" || event == "error" {
+            if let event = dict["type"] as? String, event == "done" || event == "error" {
                 break
             }
         }
@@ -228,6 +300,83 @@ struct FeedbackSubmitResponse: Decodable {
 struct EmptyResponse: Codable {
     init() {}
     init(from decoder: Decoder) throws {}
+}
+
+/// An empty body for POST endpoints that take no payload.
+struct EmptyRequest: Encodable {}
+
+struct CreateCollectionRequest: Encodable {
+    let name: String
+}
+
+// MARK: - Auth types
+
+struct MagicLinkRequest: Encodable {
+    let email: String
+}
+
+struct MagicLinkResponse: Decodable {
+    let message: String
+}
+
+struct OTPVerifyRequest: Encodable {
+    let email: String
+    let token: String
+}
+
+struct AppleSignInRequest: Encodable {
+    let identityToken: String
+}
+
+/// Returned by /auth/verify-otp and /auth/apple (sign-in endpoints that include Nexus user_id).
+struct AuthTokenResponse: Decodable {
+    let accessToken: String
+    let refreshToken: String
+    /// Nexus DB user UUID returned as a string; decoded directly from snake_case JSON field.
+    let userId: String
+    let expiresIn: Int
+
+    /// Convenience: parse userId string to UUID, falling back to a new UUID on malformed input.
+    var userUUID: UUID { UUID(uuidString: userId) ?? UUID() }
+}
+
+struct TokenRefreshRequest: Encodable {
+    let refreshToken: String
+}
+
+/// Returned by /auth/refresh (no user_id — caller already has it from sign-in).
+struct TokenRefreshResponse: Decodable {
+    let accessToken: String
+    let refreshToken: String
+    let expiresIn: Int
+    let tokenType: String
+}
+
+struct ProvisionUserResponse: Decodable {
+    struct UserProfile: Decodable {
+        let id: String
+        let supabaseId: String
+        let email: String
+    }
+    let user: UserProfile
+    let isNew: Bool
+}
+
+struct InterestTopicsResponse: Decodable {
+    /// Display-ready topic strings sorted by interest weight descending.
+    /// Never empty — server falls back to curated defaults for new users.
+    let topics: [String]
+    /// true if topics come from the user's real reading history;
+    /// false if they are the generic FRE defaults.
+    let hasProfile: Bool
+}
+
+/// Response from GET /v1/trending.
+struct TrendingTopicsResponse: Decodable {
+    /// Up to 4 trending topic strings (Google Trends RSS or static fallback).
+    let topics: [String]
+    /// "trends" if live data was fetched, "static" if the fallback was used.
+    let source: String
 }
 
 // Type-erased Encodable wrapper for heterogeneous bodies

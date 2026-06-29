@@ -3,8 +3,13 @@ import SwiftUI
 
 // MARK: - Constants
 
-// freTopics moved to ResearchViewModel.freTopics (personalised from user interest profile)
-// freTrending stays hardcoded — these are editorial/seasonal and not derived from profile
+private let freTopics = [
+    "the US–Iran conflict",
+    "second-brain tools",
+    "how memory works",
+    "the AI platform shift",
+    "anything you're curious about",
+]
 
 private let freTrending = [
     "US–Iran conflict",
@@ -30,7 +35,7 @@ struct ResearchFlowView: View {
 
     private var sheetVisible: Bool {
         switch vm.phase {
-        case .searching, .reviewing, .confirming, .error: return true
+        case .searching, .reviewing, .confirming: return true
         default: return false
         }
     }
@@ -39,7 +44,7 @@ struct ResearchFlowView: View {
         GeometryReader { geo in
             ZStack(alignment: .bottom) {
                 // ── Input screen — scales back when the sheet rises ──
-                FREInputScreen(vm: vm, onComplete: onComplete)
+                FREInputScreen(vm: vm)
                     .scaleEffect(sheetVisible ? 0.945 : 1.0)
                     .clipShape(RoundedRectangle(cornerRadius: sheetVisible ? 22 : 0, style: .continuous))
                     .animation(.spring(response: 0.52, dampingFraction: 0.86), value: sheetVisible)
@@ -78,16 +83,13 @@ struct ResearchFlowView: View {
 
 private struct FREInputScreen: View {
     @ObservedObject var vm: ResearchViewModel
-    /// Forwarded from ResearchFlowView — used by the link sheet to navigate to the
-    /// newly created collection without going through the research flow.
-    let onComplete: (UUID) -> Void
     @EnvironmentObject private var authManager: AuthManager
     @State private var showAvatarMenu = false
-    @State private var showSettings = false
-    @State private var showFeedback = false
-    @State private var composerClearTrigger = 0
-    @State private var showLinkSheet = false
-    @State private var linkContentType: LinkContentType = .website
+    // Local state scopes TextField rerenders to FREComposer only — avoids
+    // rerendering the entire screen on every keystroke.
+    @State private var composerText = ""
+    // Link sheet presentation
+    @State private var linkSheetContentType: DetectedContentType? = nil
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -112,7 +114,7 @@ private struct FREInputScreen: View {
                             .font(.system(size: 29, weight: .bold))
                             .foregroundColor(.Nexus.muted)
                             .kerning(-0.8)
-                        FRERotatingWord(words: vm.freTopics)
+                        FRERotatingWord(words: freTopics)
                             .font(.system(size: 29, weight: .bold))
                             .foregroundColor(.Nexus.ink)
                             .kerning(-0.8)
@@ -120,19 +122,16 @@ private struct FREInputScreen: View {
                     .lineSpacing(2)
                     .padding(.bottom, 24)
 
-                    // Composer owns its own text state — FREInputScreen is not
-                    // re-rendered on keystrokes, only when clearTrigger changes.
-                    FREComposer(
-                        onSubmit: { trimmed in
-                            guard !trimmed.isEmpty else { return }
-                            vm.topic = trimmed
-                            vm.startResearch()
-                        },
-                        clearTrigger: composerClearTrigger
-                    )
+                    // Composer — driven by local state; syncs to vm only on submit
+                    FREComposer(text: $composerText) {
+                        let trimmed = composerText.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !trimmed.isEmpty else { return }
+                        vm.topic = trimmed
+                        vm.startResearch()
+                    }
                     .padding(.bottom, 20)
                     .onChange(of: vm.topic) { _, newTopic in
-                        if newTopic.isEmpty { composerClearTrigger += 1 }
+                        if newTopic.isEmpty { composerText = "" }
                     }
 
                     // Trending chips
@@ -144,8 +143,7 @@ private struct FREInputScreen: View {
 
                     // Or start with a link
                     FRELinkButtons { contentType in
-                        linkContentType = contentType
-                        showLinkSheet = true
+                        linkSheetContentType = contentType
                     }
                 }
                 .padding(.horizontal, NexusSpacing.sideGutter + 4)
@@ -154,10 +152,10 @@ private struct FREInputScreen: View {
                 Spacer()
             }
 
-            // Avatar button — top right, hides when menu is open (bloom-morph pattern)
+            // Avatar button — top right
             HStack {
                 Spacer()
-                FREAvatarButton(initial: authManager.avatarInitial, active: showAvatarMenu) {
+                FREAvatarButton(active: showAvatarMenu) {
                     withAnimation(.spring(response: 0.22, dampingFraction: 0.86)) {
                         showAvatarMenu = true
                     }
@@ -166,55 +164,60 @@ private struct FREInputScreen: View {
                 .padding(.top, NexusSpacing.safeTop + 6)
             }
 
-            // Invisible tap-catcher — closes menu without dimming the background
+            // Scrim — transparent, tap to close the menu
             if showAvatarMenu {
                 Color.clear
-                    .ignoresSafeArea()
                     .contentShape(Rectangle())
+                    .ignoresSafeArea()
                     .onTapGesture {
-                        withAnimation(.spring(response: 0.22, dampingFraction: 0.85)) {
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
                             showAvatarMenu = false
                         }
                     }
             }
 
-            // Avatar menu — grows from button's top-right corner (Weather app style)
-            VStack(spacing: 0) {
+            // Avatar bloom menu — snaps from the top-right corner, Notion-style
+            VStack {
                 HStack {
                     Spacer()
-                    FREAvatarMenuCard(
-                        onSettings: {
-                            withAnimation(.spring(response: 0.2, dampingFraction: 0.85)) { showAvatarMenu = false }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) { showSettings = true }
-                        },
-                        onFeedback: {
-                            withAnimation(.spring(response: 0.2, dampingFraction: 0.85)) { showAvatarMenu = false }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) { showFeedback = true }
-                        },
-                        onClose: {
-                            withAnimation(.spring(response: 0.2, dampingFraction: 0.85)) { showAvatarMenu = false }
+                    FREAvatarMenuCard {
+                        withAnimation(.spring(response: 0.2, dampingFraction: 0.85)) {
+                            showAvatarMenu = false
                         }
-                    )
-                    .scaleEffect(showAvatarMenu ? 1.0 : 0.5, anchor: .topTrailing)
-                    .opacity(showAvatarMenu ? 1 : 0)
-                    .animation(.spring(response: 0.38, dampingFraction: 0.52), value: showAvatarMenu)
-                    .allowsHitTesting(showAvatarMenu)
+                    }
                     .padding(.trailing, NexusSpacing.standard)
                 }
                 Spacer()
             }
-            .padding(.top, NexusSpacing.safeTop + 6)
+            .padding(.top, NexusSpacing.safeTop + 6 + 32 + 8)
+            .scaleEffect(showAvatarMenu ? 1 : 0.5, anchor: .topTrailing)
+            .opacity(showAvatarMenu ? 1 : 0)
+            .animation(.spring(response: 0.42, dampingFraction: 0.64), value: showAvatarMenu)
+            .allowsHitTesting(showAvatarMenu)
         }
-        .sheet(isPresented: $showSettings) {
-            SettingsView().environmentObject(authManager)
-        }
-        .sheet(isPresented: $showFeedback) {
-            NavigationStack {
-                FeedbackView()
+        .simultaneousGesture(
+            TapGesture().onEnded {
+                UIApplication.shared.sendAction(
+                    #selector(UIResponder.resignFirstResponder),
+                    to: nil, from: nil, for: nil
+                )
             }
-        }
-        .sheet(isPresented: $showLinkSheet) {
-            LinkURLSheetView(initialContentType: linkContentType, onComplete: onComplete)
+        )
+        // Link URL sheet — presented when user taps Website / PDF / YouTube
+        .sheet(item: $linkSheetContentType) { contentType in
+            LinkURLSheetView(
+                initialContentType: contentType,
+                // FRE has no collection context yet; picker is hidden
+                // (collections: []) so user will assign on next visit.
+                // A future task can wire a real collection picker here.
+                collections: [],
+                onComplete: { _, _ in
+                    // Sheet auto-dismisses via dismiss() inside LinkURLSheetView.
+                    // No FRE navigation needed — user returns to the input screen.
+                }
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.hidden) // custom grabber rendered in the sheet
         }
     }
 }
@@ -247,10 +250,8 @@ private struct FRERotatingWord: View {
 // MARK: - Composer box
 
 private struct FREComposer: View {
-    let onSubmit: (String) -> Void
-    let clearTrigger: Int
-
-    @State private var text = ""
+    @Binding var text: String
+    let onSubmit: () -> Void
     @FocusState private var focused: Bool
 
     private var hasText: Bool {
@@ -259,6 +260,7 @@ private struct FREComposer: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // Placeholder or text input
             ZStack(alignment: .topLeading) {
                 if text.isEmpty {
                     Text("Research a topic\u{2026}")
@@ -274,42 +276,36 @@ private struct FREComposer: View {
                     .focused($focused)
                     .lineLimit(1...3)
                     .keyboardType(.default)
-                    .onSubmit {
-                        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
-                        if !t.isEmpty { onSubmit(t) }
-                    }
+                    .onSubmit { if hasText { onSubmit() } }
                     .padding(.horizontal, 4)
                     .padding(.top, 2)
             }
-            .padding(.bottom, 12)
+            .padding(.bottom, 16)
             .frame(minHeight: 28)
 
-            // Toolbar — sized to match Claude iOS input bar (30pt buttons, 34pt row)
+            // Bottom toolbar — both buttons share a 42pt frame so height never shifts
             HStack(spacing: 8) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
                         .fill(Color.Nexus.surface2)
-                        .frame(width: 28, height: 28)
+                        .frame(width: 32, height: 32)
                     Image(systemName: "plus")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 15, weight: .medium))
                         .foregroundColor(.Nexus.ink)
                 }
-                .frame(height: 34)
+                .frame(height: 42)  // anchor row to 42pt so mic→send swap doesn't shift height
 
                 Spacer()
 
                 ZStack {
                     if hasText {
-                        Button {
-                            let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
-                            if !t.isEmpty { onSubmit(t) }
-                        } label: {
+                        Button(action: onSubmit) {
                             Circle()
                                 .fill(Color.Nexus.accent)
-                                .frame(width: 30, height: 30)
+                                .frame(width: 42, height: 42)
                                 .overlay(
                                     Image(systemName: "arrow.up")
-                                        .font(.system(size: 13, weight: .semibold))
+                                        .font(.system(size: 15, weight: .semibold))
                                         .foregroundColor(.white)
                                 )
                         }
@@ -317,35 +313,34 @@ private struct FREComposer: View {
                     } else {
                         Circle()
                             .fill(Color.Nexus.surface2)
-                            .frame(width: 30, height: 30)
+                            .frame(width: 32, height: 32)
                             .overlay(
                                 Image(systemName: "mic")
-                                    .font(.system(size: 13, weight: .medium))
+                                    .font(.system(size: 14, weight: .medium))
                                     .foregroundColor(.Nexus.muted)
                             )
                             .transition(.scale.combined(with: .opacity))
                     }
                 }
-                .frame(width: 34, height: 34)
+                .frame(width: 42, height: 42)
                 .animation(NexusAnimation.element, value: hasText)
             }
         }
         .padding(.horizontal, 14)
-        .padding(.top, 14)
-        .padding(.bottom, 10)
+        .padding(.top, 16)
+        .padding(.bottom, 12)
         .background(Color.Nexus.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: NexusRadius.xxl, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: NexusRadius.xxl, style: .continuous)
                 .stroke(focused ? Color.Nexus.borderStrong : Color.Nexus.border, lineWidth: NexusBorder.base)
-                .animation(NexusAnimation.element, value: focused)
         )
+        .animation(NexusAnimation.element, value: focused)
         .onTapGesture { focused = true }
-        .onChange(of: clearTrigger) { _, _ in text = "" }
     }
 }
 
-// MARK: - Trending icon
+// MARK: - Trending icon (matches ChatGPT Search mode style)
 
 private struct TrendingIcon: View {
     var color: Color = Color.Nexus.faint
@@ -354,6 +349,7 @@ private struct TrendingIcon: View {
     var body: some View {
         Canvas { ctx, sz in
             let w = sz.width, h = sz.height
+            // Zigzag line: bottom-left → dip → upper-right (stock-trend style)
             var line = Path()
             line.move(to:    CGPoint(x: 0,        y: h * 0.82))
             line.addLine(to: CGPoint(x: w * 0.30, y: h * 0.38))
@@ -361,6 +357,7 @@ private struct TrendingIcon: View {
             line.addLine(to: CGPoint(x: w,        y: 0))
             ctx.stroke(line, with: .color(color),
                        style: StrokeStyle(lineWidth: 1.4, lineCap: .round, lineJoin: .round))
+            // Arrowhead at tip
             var tip = Path()
             tip.move(to:    CGPoint(x: w,        y: 0))
             tip.addLine(to: CGPoint(x: w * 0.66, y: 0))
@@ -412,17 +409,14 @@ private struct FRETrendingChips: View {
 // MARK: - "Or start with a link" buttons
 
 private struct FRELinkButtons: View {
-    /// Called with the tapped content type — opens `LinkURLSheetView` in the parent.
-    let onSelect: (LinkContentType) -> Void
+    // Callback receives the selected content-type hint so the sheet can pre-select it.
+    let onSelect: (DetectedContentType) -> Void
 
-    /// Ordered list of content-type options shown as tappable capsule buttons.
-    private let options: [(icon: String, label: String, type: LinkContentType)] = [
+    private let options: [(icon: String, label: String, type: DetectedContentType)] = [
         ("globe",          "Website", .website),
         ("doc",            "PDF",     .pdf),
         ("play.rectangle", "YouTube", .youtube),
     ]
-
-    @State private var pressedType: LinkContentType? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -432,10 +426,8 @@ private struct FRELinkButtons: View {
                 .kerning(-0.1)
 
             HStack(spacing: 7) {
-                ForEach(options, id: \.type) { option in
-                    Button {
-                        onSelect(option.type)
-                    } label: {
+                ForEach(options, id: \.label) { option in
+                    Button(action: { onSelect(option.type) }) {
                         VStack(spacing: 5) {
                             Image(systemName: option.icon)
                                 .font(.system(size: 18, weight: .medium))
@@ -449,15 +441,8 @@ private struct FRELinkButtons: View {
                         .background(Color.Nexus.cardBackground)
                         .clipShape(Capsule())
                         .overlay(Capsule().stroke(Color.Nexus.border, lineWidth: NexusBorder.base))
-                        .scaleEffect(pressedType == option.type ? NexusScale.pressLight : 1.0)
-                        .animation(NexusAnimation.press, value: pressedType)
                     }
                     .buttonStyle(.plain)
-                    .onLongPressGesture(minimumDuration: 0, pressing: { pressing in
-                        withAnimation(NexusAnimation.press) {
-                            pressedType = pressing ? option.type : nil
-                        }
-                    }, perform: {})
                 }
             }
         }
@@ -467,115 +452,109 @@ private struct FRELinkButtons: View {
 // MARK: - Avatar button
 
 private struct FREAvatarButton: View {
-    let initial: String
     let active: Bool
     let action: () -> Void
 
-    @State private var bounceScale: CGFloat = 1.0
-
     var body: some View {
-        Button {
-            // Squish on tap — snaps small instantly, springs back as menu opens
-            bounceScale = 0.72
-            withAnimation(.spring(response: 0.38, dampingFraction: 0.46)) {
-                bounceScale = 1.0
-            }
-            action()
-        } label: {
+        Button(action: action) {
             ZStack {
                 Circle()
                     .fill(Color.Nexus.surface2)
                     .frame(width: 32, height: 32)
-                    .overlay(Circle().stroke(Color.Nexus.borderStrong, lineWidth: 1.0))
-                Text(initial)
+                    .overlay(Circle().stroke(Color.Nexus.border, lineWidth: NexusBorder.hair))
+                Text("S")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.Nexus.muted)
             }
         }
         .buttonStyle(.plain)
-        .scaleEffect(bounceScale)
-        // Button hides while menu is open (menu occupies same corner)
-        .opacity(active ? 0 : 1)
-        .animation(.spring(response: 0.26, dampingFraction: 0.72), value: active)
-        .onChange(of: active) { _, newActive in
-            guard !newActive else { return }
-            // Menu dismissed — button springs back in with an overshoot (swallow effect)
-            bounceScale = 1.28
-            withAnimation(.spring(response: 0.48, dampingFraction: 0.38)) {
-                bounceScale = 1.0
-            }
-        }
+        .scaleEffect(active ? 0.88 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: active)
     }
 }
 
 // MARK: - Avatar menu card
 
 private struct FREAvatarMenuCard: View {
-    let onSettings: () -> Void
-    let onFeedback: () -> Void
     let onClose: () -> Void
+    @EnvironmentObject private var authManager: AuthManager
 
     var body: some View {
-        VStack(spacing: 0) {
-            AvatarMenuRow(icon: "person.circle", label: "Account", action: onClose)
-            AvatarMenuRow(icon: "gearshape",     label: "Settings",  action: onSettings)
-            AvatarMenuRow(icon: "message",       label: "Feedback",  action: onFeedback)
+        VStack(alignment: .leading, spacing: 0) {
+            // Header: avatar + name + email
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(Color.Nexus.bloom)
+                        .frame(width: 36, height: 36)
+                    Text("S")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(Color.Nexus.accent)
+                }
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Srihari")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(Color(UIColor.label))
+                    Text("srihari.scorp@gmail.com")
+                        .font(.system(size: 12))
+                        .foregroundColor(Color(UIColor.tertiaryLabel))
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 12)
+            .padding(.bottom, 10)
+
+            Divider().padding(.horizontal, 8)
+
+            ForEach(["Account", "Settings", "Feedback"], id: \.self) { label in
+                AvatarMenuRow(label: label, action: onClose)
+            }
+
+            Divider().padding(.horizontal, 8)
+
+            // Sign out — same visual weight as other rows, not red
+            AvatarMenuRow(label: "Sign out") {
+                onClose()
+                authManager.signOut()
+            }
         }
-        .frame(width: 180)
-        .modifier(AvatarMenuGlass())
-        .shadow(color: .black.opacity(0.12), radius: 20, x: 0, y: 6)
-        .shadow(color: .black.opacity(0.05), radius: 4,  x: 0, y: 2)
-    }
-}
-
-// MARK: - Avatar menu glass modifier (iOS 26 native / UIKit fallback)
-
-// iOS 26 .glassEffect() doesn't render transparently on light/white backgrounds
-// (luminance threshold bug, no programmatic fix). UIVisualEffectBlur samples the
-// actual rendered screen and works correctly on any background.
-private struct AvatarMenuGlass: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .background(
-                VisualEffectBlur(style: .systemUltraThinMaterial, cornerRadius: 14)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(
+        .frame(width: 210)
+        .background(
+            ZStack {
+                // frosted glass base
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: [Color.white.opacity(0.7), Color.white.opacity(0.2)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 0.6
-                    )
-            )
+                    .fill(.thinMaterial)
+                // white wash so the glass reads clearly on the light plum background
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.white.opacity(0.62))
+            }
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color(UIColor.separator), lineWidth: 0.5)
+        )
+        .shadow(color: .black.opacity(0.14), radius: 20, x: 0, y: 8)
+        .shadow(color: .black.opacity(0.06), radius: 2, x: 0, y: 1)
     }
 }
 
 private struct AvatarMenuRow: View {
-    let icon: String
     let label: String
     let action: () -> Void
     @State private var pressed = false
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 9) {
-                Image(systemName: icon)
-                    .font(.system(size: 12.5, weight: .regular))
-                    .foregroundColor(Color(UIColor.label))
-                    .frame(width: 18, alignment: .center)
-                Text(label)
-                    .font(.system(size: 13.5, weight: .regular))
-                    .foregroundColor(Color(UIColor.label))
-                Spacer()
-            }
-            .padding(.horizontal, 13)
-            .padding(.vertical, 10)
-            .contentShape(Rectangle())
-            .background(pressed ? Color.black.opacity(0.06) : Color.clear)
+            Text(label)
+                .font(.system(size: 14.5, weight: .regular))
+                .foregroundColor(Color(UIColor.label))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 9)
+                .contentShape(Rectangle())
+                .background(pressed ? Color(UIColor.systemGray5) : Color.clear)
         }
         .buttonStyle(.plain)
         .simultaneousGesture(

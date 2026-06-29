@@ -11,8 +11,8 @@ struct ItemDetailRoute: Hashable {
 struct CollectionView: View {
     @StateObject private var vm: CollectionViewModel
     @State private var selectedTab: Tab = .nexus
-    /// Controls presentation of LinkURLSheetView in add-to-collection mode.
-    @State private var showAddSourceSheet = false
+    // Link URL sheet — presented by the + toolbar button on the Sources tab
+    @State private var linkSheetContentType: DetectedContentType? = nil
 
     enum Tab: String, CaseIterable {
         case nexus   = "Nexus"
@@ -44,30 +44,20 @@ struct CollectionView: View {
         }
         .navigationTitle(vm.collection.name)
         .navigationBarTitleDisplayMode(.inline)
-        // '+' toolbar button — only visible when Sources tab is active.
-        // Tapping opens LinkURLSheetView pre-bound to this collection (add mode).
         .toolbar {
+            // "+" button in Sources tab → open link sheet pre-scoped to this collection
             if selectedTab == .sources {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
-                        showAddSourceSheet = true
+                        linkSheetContentType = .website
                     } label: {
                         Image(systemName: "plus")
                             .font(.system(size: 17, weight: .medium))
-                            .foregroundColor(.Nexus.ink)
+                            .foregroundColor(.Nexus.accent)
+                            .frame(width: NexusSpacing.hitTarget, height: NexusSpacing.hitTarget)
                     }
                 }
             }
-        }
-        .sheet(isPresented: $showAddSourceSheet) {
-            LinkURLSheetView(
-                collectionId: vm.collection.id,
-                onDismiss: {
-                    Task { await vm.load() }
-                }
-            )
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
         }
         .task { await vm.load() }
         // Non-fatal delete error: show an alert if the API call fails.
@@ -78,6 +68,20 @@ struct CollectionView: View {
             Button("OK", role: .cancel) { vm.deleteError = nil }
         } message: {
             Text(vm.deleteError?.errorDescription ?? "Please try again.")
+        }
+        // Link sheet pre-scoped to this collection
+        .sheet(item: $linkSheetContentType) { contentType in
+            LinkURLSheetView(
+                initialContentType: contentType,
+                collections: [],
+                preselectedCollectionId: vm.collection.id,
+                onComplete: { _, _ in
+                    // Refresh the sources list so the new item appears.
+                    Task { await vm.load() }
+                }
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.hidden)
         }
     }
 

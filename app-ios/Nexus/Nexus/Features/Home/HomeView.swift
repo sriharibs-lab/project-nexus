@@ -3,8 +3,10 @@ import SwiftUI
 
 struct HomeView: View {
     @StateObject private var vm = HomeViewModel()
+    @ObservedObject private var authManager = AuthManager.shared
 
     @State private var showingNewCollection = false
+    @State private var showingAccount = false
     @State private var navPath = NavigationPath()
 
     var body: some View {
@@ -33,6 +35,14 @@ struct HomeView: View {
                     .navigationTitle("Nexus")
                     .navigationBarTitleDisplayMode(.large)
                     .toolbar {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button {
+                                showingAccount = true
+                            } label: {
+                                AvatarCircle(initials: avatarInitials, size: 30)
+                            }
+                            .frame(width: NexusSpacing.hitTarget, height: NexusSpacing.hitTarget)
+                        }
                         ToolbarItem(placement: .navigationBarTrailing) {
                             Button {
                                 showingNewCollection = true
@@ -43,6 +53,9 @@ struct HomeView: View {
                                     .frame(width: NexusSpacing.hitTarget, height: NexusSpacing.hitTarget)
                             }
                         }
+                    }
+                    .sheet(isPresented: $showingAccount) {
+                        AccountView()
                     }
                     .fullScreenCover(isPresented: $showingNewCollection) {
                         ResearchFlowView { collectionId in
@@ -61,6 +74,19 @@ struct HomeView: View {
             }
         }
         .task { await vm.load() }
+    }
+
+    // MARK: - Avatar initials
+
+    private var avatarInitials: String {
+        if !authManager.displayName.isEmpty {
+            let parts = authManager.displayName.split(separator: " ").prefix(2)
+            return parts.compactMap { $0.first.map { String($0) } }.joined().uppercased()
+        }
+        if let first = authManager.email.first {
+            return String(first).uppercased()
+        }
+        return "N"
     }
 
     // MARK: - Collection list

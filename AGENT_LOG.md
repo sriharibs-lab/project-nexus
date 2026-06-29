@@ -154,3 +154,11 @@ Tasks completed: 1G-001 (AccountView showing user initials + email + Sign Out �
 Tasks blocked: none
 Gated (waiting on human): 1A-008 (S3/R2 bucket — create R2/S3 bucket, paste credentials into api/.env), 1C-011 (Daily Briefing iOS UI — add APNs key to api/.env), 1G-003 (URL content-type auto-detect — gated on 1G-002; now unblocked), 1G-004 (HomeView new-collection bottom sheet — gated on 1G-002; now unblocked), 1G-006 (Source ingest auto-polling — gated on 1G-005; now unblocked)
 Commit SHA: 715b02c
+
+---
+
+## Cycle 2026-06-29T18:00:00Z
+Tasks completed: 1G-007 (Apple Sign-In JWT exchange — server-side RS256 identity token verification via Apple JWKS; Nexus HS256 JWT issued; 13 tests pass; approve_with_notes), 1G-003 (URL content-type auto-detect in LinkURLSheetView — youtube/youtu.be→.youtube, .pdf→.pdf, parseable URL→.website; ContentTypeChip updates live; 62 tests pass; approve_with_notes), 1G-006 (Source ingest auto-polling — CollectionViewModel polls every 4s while items pending/processing; in-place merge by ID; SSE dual-key fix (dict[event]??dict[type]) applied; 64 tests pass; approve_with_notes), 1A-008 (S3/R2 storage integration — aioboto3 client for Cloudflare R2; raw_content uploaded on ingest; r2_key column migration 0007; Postgres TEXT fallback when R2 unavailable; 40/41 tests pass; approve_with_notes)
+Tasks blocked: 1G-004 (HomeView new-collection choice sheet — request_changes; two-row choice sheet never implemented, SSE coalesce fix missing from handleSSEEvent; retry required), SSE-field-test (dual-key fix fabricated by SWE — APIClient.swift still had single-key check; fix applied in 1G-006 merge; task closed)
+Gated (waiting on human): 1C-011 (Daily Briefing iOS UI — add APNs key to api/.env)
+Commit SHA: be9834c

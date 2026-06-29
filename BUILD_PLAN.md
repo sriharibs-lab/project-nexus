@@ -58,7 +58,7 @@ cycle_policy:
 - [x] Content extraction service — Jina+trafilatura(fallback) wired into _process_job <!-- nbl:id=1A-005 status=done -->
 - [x] YouTube transcript ingestion — wired <!-- nbl:id=1A-006 status=done -->
 - [x] Podcast transcript ingestion (Deepgram Nova-3) — wired <!-- nbl:id=1A-007 status=done -->
-- [ ] S3/R2 storage integration — wire R2_ACCOUNT_ID/R2_ACCESS_KEY_ID/R2_SECRET_ACCESS_KEY/R2_BUCKET_NAME from env into aioboto3 client; upload raw_content to R2 on ingest, read back on item detail; fall back to Postgres TEXT if R2 unavailable <!-- nbl:id=1A-008 agent=swe deps=[1A-005] est=2h -->
+- [x] S3/R2 storage integration — wire R2_ACCOUNT_ID/R2_ACCESS_KEY_ID/R2_SECRET_ACCESS_KEY/R2_BUCKET_NAME from env into aioboto3 client; upload raw_content to R2 on ingest, read back on item detail; fall back to Postgres TEXT if R2 unavailable <!-- nbl:id=1A-008 agent=swe deps=[1A-005] est=2h -->
 - [x] Anthropic API integration: summarize + insights pipeline — Claude Haiku 4.5, cost-tracked <!-- nbl:id=1A-009 status=done -->
 - [x] Background job queue (async AI processing) — upgraded to pgqueuer (durable, Postgres-backed); Procfile added <!-- nbl:id=1A-010 status=done -->
 - [x] Feedback API: POST /v1/feedback + DB model + screenshot_url field <!-- nbl:id=1A-011 status=done -->
@@ -118,12 +118,12 @@ cycle_policy:
 
 **Starting a collection from a link:**
 - [x] FRELinkButtons tap → open LinkURLSheetView — wire Website/PDF/YouTube buttons in `FRELinkButtons` to present `LinkURLSheetView(initialContentType:)`; `onComplete(collectionId)` calls parent `ResearchFlowView.onComplete` to navigate to new `CollectionView` <!-- nbl:id=1G-002 agent=swe deps=[1F-008] est=2h -->
-- [ ] URL content-type auto-detect — in `LinkURLSheetView`, when URL text changes detect: youtube.com/youtu.be → `.youtube`; ends with `.pdf` → `.pdf`; otherwise `.website`; update `contentType` chip automatically <!-- nbl:id=1G-003 agent=swe deps=[1G-002] est=1h -->
-- [ ] HomeView new-collection choice — when user has existing collections and taps "+", present bottom sheet offering "Research a topic" (opens ResearchFlowView) and "Start with a link" (opens LinkURLSheetView directly); both navigate to the new collection on complete <!-- nbl:id=1G-004 agent=swe deps=[1G-002] est=1.5h -->
+- [x] URL content-type auto-detect — in `LinkURLSheetView`, when URL text changes detect: youtube.com/youtu.be → `.youtube`; ends with `.pdf` → `.pdf`; otherwise `.website`; update `contentType` chip automatically <!-- nbl:id=1G-003 agent=swe deps=[1G-002] est=1h -->
+- [!] HomeView new-collection choice — when user has existing collections and taps "+", present bottom sheet offering "Research a topic" (opens ResearchFlowView) and "Start with a link" (opens LinkURLSheetView directly); both navigate to the new collection on complete <!-- nbl:id=1G-004 agent=swe deps=[1G-002] est=1.5h -->
 
 **Managing sources in a collection:**
 - [x] Add source to existing collection — "+" button in SourcesTabView toolbar opens `LinkURLSheetView` pre-bound to the current `collectionId`; skips collection creation step (posts only to `/v1/ingest`); dismisses and refreshes sources list on success <!-- nbl:id=1G-005 agent=swe deps=[1F-008] est=2h -->
-- [ ] Source ingest auto-polling — `CollectionViewModel` polls `GET /v1/collections/{id}/items` every 4s while any item has `ingestStatus` ∈ {queued, processing}; cancels when all items reach a terminal state; updates items array in place without full reload <!-- nbl:id=1G-006 agent=swe deps=[1G-005] est=1.5h -->
+- [x] Source ingest auto-polling — `CollectionViewModel` polls `GET /v1/collections/{id}/items` every 4s while any item has `ingestStatus` ∈ {queued, processing}; cancels when all items reach a terminal state; updates items array in place without full reload <!-- nbl:id=1G-006 agent=swe deps=[1G-005] est=1.5h -->
 
 ### 1E — Launch Prep (Week 10)
 - [ ] TestFlight beta (500 users)

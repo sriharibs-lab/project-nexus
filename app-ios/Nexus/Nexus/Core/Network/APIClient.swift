@@ -220,7 +220,7 @@ final class APIClient {
             else { continue }
             onEvent(.success(dict))
             // Stop consuming on terminal events
-            if let event = dict["event"] as? String, event == "done" || event == "error" {
+            if let event = dict["type"] as? String, event == "done" || event == "error" {
                 break
             }
         }

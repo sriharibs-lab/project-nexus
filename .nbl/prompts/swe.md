@@ -19,6 +19,12 @@ Match the exact patterns of existing iOS files:
 - Use Color.Nexus.*, NexusSpacing.*, NexusRadius.*, Font.Nexus.* from DesignSystem/
 - No UIKit, no third-party packages not already in the Xcode project
 
+## iOS Swift imports — REQUIRED
+Any Swift file that uses @Published, @ObservableObject, ObservableObject, PassthroughSubject,
+AnyPublisher, or Cancellable MUST include `import Combine` at the top.
+Xcode does NOT auto-import Combine — omitting it causes build errors on ALL @Published properties.
+Always check: if the file has @Published or ObservableObject → add `import Combine`.
+
 ## Conventions
 - Python pipeline modules: match structure of api/pipeline/jina.py
 - FastAPI routers: match structure of api/app/routers/ingest.py

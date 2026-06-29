@@ -3,62 +3,50 @@ import SwiftUI
 
 // MARK: - Auth screen
 
-/// The real sign-in screen. Replaces AuthPlaceholderView from NexusApp.swift.
-/// Sign in with Apple is the primary action; magic link email is secondary.
-/// Auth state is driven via AuthManager.shared (singleton), not via environment object.
 struct AuthView: View {
     @StateObject private var vm = AuthViewModel()
-
     @State private var appeared = false
+    @State private var emailText = ""
+    @State private var otpText = ""
+    @State private var isSignUp = false
+
+    private var isOTPPhase: Bool {
+        if case .otpEntry = vm.phase { return true }
+        if case .otpVerifying = vm.phase { return true }
+        return false
+    }
+
+    private var emailExpanded: Bool {
+        vm.phase == .emailEntry || vm.phase == .emailSending
+    }
 
     var body: some View {
         ZStack {
             NexusBackground()
-            content
+            if isOTPPhase {
+                otpContent.transition(.opacity)
+            } else {
+                mainContent.transition(.opacity)
+            }
         }
+        .animation(.timingCurve(0.2, 0.8, 0.2, 1.0, duration: NexusDuration.slow), value: isOTPPhase)
         .onAppear { withAnimation { appeared = true } }
-        // When auth completes, AuthManager.isAuthenticated flips → RootView
-        // transitions to HomeView automatically — no manual navigation needed here.
     }
 
-    // MARK: - Content phases
+    // MARK: - Main screen (login + signup share layout)
 
-    @ViewBuilder
-    private var content: some View {
-        switch vm.phase {
-        case .idle, .signingIn:
-            landingContent
-        case .emailEntry, .emailSending:
-            emailEntryContent
-        case .otpEntry, .otpVerifying:
-            otpContent
-        case .error:
-            landingContent   // error inline in landing; user taps retry
-        case .done:
-            // Transition handled by AuthManager — show nothing
-            Color.clear
-        }
-    }
-
-    // MARK: - Landing (Apple + email option)
-
-    private var landingContent: some View {
+    private var mainContent: some View {
         VStack(spacing: 0) {
             Spacer()
-
-            brandMark
-
+            logoSection
             Spacer()
             Spacer()
-
-            ctaStack
-
+            authStack
             Spacer().frame(height: NexusSpacing.safeBottom + NexusSpacing.xxl)
         }
-        .transition(.opacity)
     }
 
-    private var brandMark: some View {
+    private var logoSection: some View {
         VStack(spacing: NexusSpacing.lg) {
             EchoMark(color: Color.Nexus.accent, size: 52)
                 .opacity(appeared ? 1 : 0)
@@ -70,132 +58,148 @@ struct AuthView: View {
                     .font(.Nexus.displayMedium)
                     .foregroundColor(.Nexus.ink)
                     .kerning(NexusKerning.tighter)
-
                 Text("Your AI research companion")
                     .font(.Nexus.bodyMedium)
                     .foregroundColor(.Nexus.muted)
             }
             .opacity(appeared ? 1 : 0)
             .offset(y: appeared ? 0 : 8)
-            .animation(
-                .timingCurve(0.2, 0.8, 0.2, 1.0, duration: NexusDuration.slow).delay(0.1),
-                value: appeared
-            )
+            .animation(.timingCurve(0.2, 0.8, 0.2, 1.0, duration: NexusDuration.slow).delay(0.1), value: appeared)
         }
     }
 
-    private var ctaStack: some View {
+    private var authStack: some View {
         VStack(spacing: NexusSpacing.md) {
+            // Screen heading
+            Text(isSignUp ? "Create your Nexus account" : "Log in to your Nexus account")
+                .font(.Nexus.labelLarge)
+                .foregroundColor(.Nexus.ink)
+                .kerning(NexusKerning.normal)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            // Primary: Sign in with Apple
-            SignInWithAppleButton(.signIn) { req in
-                req.requestedScopes = [.fullName, .email]
-            } onCompletion: { result in
-                vm.handleAppleSignIn(result: result)
-            }
-            .signInWithAppleButtonStyle(.black)
-            .frame(height: NexusSpacing.buttonHeight)
-            .clipShape(RoundedRectangle(cornerRadius: NexusRadius.md, style: .continuous))
-            .disabled(vm.phase == .signingIn)
+            // Apple sign-in (login only, hidden when email is expanded)
+            if !isSignUp && !emailExpanded {
+                ZStack {
+                    // Invisible but functional — Apple requires the official button to be present
+                    SignInWithAppleButton(.signIn) { req in
+                        req.requestedScopes = [.fullName, .email]
+                    } onCompletion: { result in
+                        vm.handleAppleSignIn(result: result)
+                    }
+                    .frame(height: 52)
+                    .opacity(0.011)
+                    .disabled(vm.phase == .signingIn)
 
-            // Separator
-            HStack(spacing: NexusSpacing.md) {
-                Rectangle()
-                    .fill(Color.Nexus.border)
-                    .frame(height: NexusBorder.hair)
-                Text("or")
-                    .font(.Nexus.caption)
-                    .foregroundColor(.Nexus.ghost)
-                Rectangle()
-                    .fill(Color.Nexus.border)
-                    .frame(height: NexusBorder.hair)
-            }
-
-            // Secondary: Sign in with email
-            EmailSignInButton(isLoading: vm.phase == .signingIn) {
-                withAnimation(.timingCurve(0.2, 0.8, 0.2, 1.0, duration: NexusDuration.slow)) {
-                    vm.showEmailEntry()
+                    // Visual layer — matches email button exactly
+                    AuthOptionRow(appleLabel: "Sign in with Apple", isLoading: vm.phase == .signingIn)
+                        .allowsHitTesting(false)
                 }
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
-            // Error message
+            // Email section — button or inline form
+            emailSection
+
+            // Mode toggle (hidden while email is being entered)
+            if !emailExpanded {
+                HStack(spacing: 4) {
+                    Text(isSignUp ? "Already have an account?" : "New user?")
+                        .font(.Nexus.bodySmall)
+                        .foregroundColor(.Nexus.muted)
+                    Button(isSignUp ? "Log in" : "Sign up") {
+                        withAnimation(.spring(response: 0.38, dampingFraction: 0.75)) {
+                            isSignUp.toggle()
+                            if isSignUp {
+                                vm.showEmailEntry()
+                                emailText = ""
+                            } else {
+                                vm.cancelEmailEntry()
+                                emailText = ""
+                            }
+                        }
+                    }
+                    .font(.Nexus.bodySmall)
+                    .fontWeight(.medium)
+                    .foregroundColor(.Nexus.accent)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+                .transition(.opacity)
+            }
+
+            // Error
             if case .error(let msg) = vm.phase {
                 errorBanner(message: msg) { vm.retryFromError() }
             }
 
-            // Dev bypass — debug builds only
             #if DEBUG
-            Button("Continue without account  (dev only)") {
-                vm.devBypass()
-            }
-            .font(.system(size: 12, weight: .medium))
-            .foregroundColor(.Nexus.faint)
-            .padding(.top, NexusSpacing.xs)
+            Button("Continue (dev)") { vm.devBypass() }
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.Nexus.faint)
+                .padding(.top, NexusSpacing.xs)
             #endif
-
         }
         .padding(.horizontal, NexusSpacing.sideGutter + NexusSpacing.sm)
         .opacity(appeared ? 1 : 0)
-        .animation(
-            .timingCurve(0.2, 0.8, 0.2, 1.0, duration: NexusDuration.slow).delay(0.2),
-            value: appeared
-        )
+        .animation(.timingCurve(0.2, 0.8, 0.2, 1.0, duration: NexusDuration.slow).delay(0.2), value: appeared)
     }
 
-    // MARK: - Email entry
+    // Email section: sign up starts with form directly; login has expand button
+    @ViewBuilder
+    private var emailSection: some View {
+        if isSignUp || emailExpanded {
+            VStack(spacing: NexusSpacing.sm) {
+                NexusTextField(
+                    placeholder: "your@email.com",
+                    text: $emailText,
+                    keyboardType: .emailAddress,
+                    submitLabel: .send,
+                    autoFocus: true,
+                    onSubmit: {
+                        vm.email = emailText
+                        vm.sendMagicLink()
+                    }
+                )
 
-    private var emailEntryContent: some View {
-        VStack(spacing: 0) {
-            Spacer()
+                NexusPrimaryButton(
+                    title: isSignUp ? "Create account" : "Continue",
+                    isLoading: vm.phase == .emailSending
+                ) {
+                    vm.email = emailText
+                    vm.sendMagicLink()
+                }
 
-            brandMark
-
-            Spacer()
-            Spacer()
-
-            emailInputStack
-
-            Spacer().frame(height: NexusSpacing.safeBottom + NexusSpacing.xxl)
-        }
-        .transition(.opacity)
-    }
-
-    private var emailInputStack: some View {
-        VStack(alignment: .leading, spacing: NexusSpacing.md) {
-            Text("Sign in with email")
-                .font(.Nexus.labelLarge)
-                .foregroundColor(.Nexus.ink)
-                .kerning(NexusKerning.normal)
-
-            // Email field
-            NexusTextField(
-                placeholder: "your@email.com",
-                text: $vm.email,
-                keyboardType: .emailAddress,
-                submitLabel: .send,
-                onSubmit: { vm.sendMagicLink() }
-            )
-
-            // Send button
-            NexusPrimaryButton(
-                title: "Send magic link",
-                isLoading: vm.phase == .emailSending
-            ) {
-                vm.sendMagicLink()
-            }
-
-            // Cancel
-            Button("Cancel") {
-                withAnimation(.timingCurve(0.2, 0.8, 0.2, 1.0, duration: NexusDuration.moderate)) {
-                    vm.cancelEmailEntry()
+                // Cancel only for login email expand (signup has mode toggle below)
+                if !isSignUp {
+                    Button("Cancel") {
+                        withAnimation(.spring(response: 0.38, dampingFraction: 0.75)) {
+                            vm.cancelEmailEntry()
+                            emailText = ""
+                        }
+                    }
+                    .font(.Nexus.bodySmall)
+                    .foregroundColor(.Nexus.muted)
+                    .frame(maxWidth: .infinity, alignment: .center)
                 }
             }
-            .font(.Nexus.bodySmall)
-            .foregroundColor(.Nexus.muted)
-            .frame(maxWidth: .infinity, alignment: .center)
-
+            .transition(.asymmetric(
+                insertion: .opacity.combined(with: .move(edge: .bottom)),
+                removal: .opacity.combined(with: .move(edge: .bottom))
+            ))
+        } else {
+            // Login idle state: "Continue with email" — same style as Apple button
+            Button {
+                withAnimation(.spring(response: 0.38, dampingFraction: 0.75)) {
+                    vm.showEmailEntry()
+                    emailText = ""
+                }
+            } label: {
+                AuthOptionRow(sfIcon: "envelope", label: "Continue with email",
+                              isLoading: vm.phase == .signingIn)
+            }
+            .buttonStyle(.plain)
+            .disabled(vm.phase == .signingIn)
+            .transition(.opacity)
         }
-        .padding(.horizontal, NexusSpacing.sideGutter + NexusSpacing.sm)
     }
 
     // MARK: - OTP entry
@@ -203,17 +207,12 @@ struct AuthView: View {
     private var otpContent: some View {
         VStack(spacing: 0) {
             Spacer()
-
-            brandMark
-
+            logoSection
             Spacer()
             Spacer()
-
             otpInputStack
-
             Spacer().frame(height: NexusSpacing.safeBottom + NexusSpacing.xxl)
         }
-        .transition(.opacity)
     }
 
     private var otpInputStack: some View {
@@ -225,7 +224,7 @@ struct AuthView: View {
                     .kerning(NexusKerning.normal)
 
                 if case .otpEntry(let sentEmail) = vm.phase {
-                    Text("Enter the 6-digit code sent to \(sentEmail)")
+                    Text("We sent a 6-digit code to \(sentEmail)")
                         .font(.Nexus.bodySmall)
                         .foregroundColor(.Nexus.muted)
                 } else {
@@ -235,51 +234,54 @@ struct AuthView: View {
                 }
             }
 
-            // OTP code field
             NexusTextField(
                 placeholder: "000000",
-                text: $vm.otpCode,
+                text: $otpText,
                 keyboardType: .numberPad,
                 submitLabel: .done,
-                onSubmit: { vm.verifyOTP() }
+                autoFocus: true,
+                onSubmit: {
+                    vm.otpCode = otpText
+                    vm.verifyOTP()
+                }
             )
-            .onChange(of: vm.otpCode) { _, new in
-                // Auto-submit when 6 digits entered
-                let digits = new.filter(\.isNumber)
-                vm.otpCode = String(digits.prefix(6))
-                if vm.otpCode.count == 6 { vm.verifyOTP() }
+            .onChange(of: otpText) { _, new in
+                let digits = String(new.filter(\.isNumber).prefix(6))
+                if digits != otpText { otpText = digits }
+                if digits.count == 6 {
+                    vm.otpCode = digits
+                    vm.verifyOTP()
+                }
             }
 
-            // Verify button
             NexusPrimaryButton(
-                title: "Verify code",
+                title: "Verify",
                 isLoading: vm.phase == .otpVerifying
             ) {
+                vm.otpCode = otpText
                 vm.verifyOTP()
             }
 
-            // Resend + cancel
             HStack {
                 Button("Resend code") { vm.resendOTP() }
                     .font(.Nexus.bodySmall)
                     .foregroundColor(.Nexus.accent)
-
                 Spacer()
-
                 Button("Cancel") {
                     withAnimation {
                         vm.cancelOTPEntry()
+                        otpText = ""
+                        isSignUp = false
                     }
                 }
                 .font(.Nexus.bodySmall)
                 .foregroundColor(.Nexus.muted)
             }
-
         }
         .padding(.horizontal, NexusSpacing.sideGutter + NexusSpacing.sm)
     }
 
-    // MARK: - Shared helpers
+    // MARK: - Error banner
 
     @ViewBuilder
     private func errorBanner(message: String, onDismiss: @escaping () -> Void) -> some View {
@@ -311,52 +313,86 @@ struct AuthView: View {
     }
 }
 
-// MARK: - EmailSignInButton
+// MARK: - AuthOptionRow (Notion-style unified sign-in button)
 
-/// Secondary "Sign in with email" button — hairline border, no fill.
-/// Matches the inline surface pattern from DESIGN_LANGUAGE.md §1.
-private struct EmailSignInButton: View {
-    let isLoading: Bool
-    let action: () -> Void
+private struct AuthOptionRow: View {
+    enum IconKind {
+        case sf(String)
+        case appleLogo
+    }
+    let iconKind: IconKind
+    let label: String
+    var isLoading: Bool = false
+    var isDisabled: Bool = false
 
-    @State private var isPressed = false
+    init(sfIcon: String, label: String, isLoading: Bool = false, isDisabled: Bool = false) {
+        iconKind = .sf(sfIcon)
+        self.label = label
+        self.isLoading = isLoading
+        self.isDisabled = isDisabled
+    }
+
+    init(appleLabel: String, isLoading: Bool = false, isDisabled: Bool = false) {
+        iconKind = .appleLogo
+        self.label = appleLabel
+        self.isLoading = isLoading
+        self.isDisabled = isDisabled
+    }
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: NexusSpacing.sm) {
-                Image(systemName: "envelope")
-                    .font(.system(size: 15, weight: .medium))
-                Text("Continue with email")
-                    .font(.Nexus.bodyMedium)
+        ZStack {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color(UIColor.systemBackground))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(Color(UIColor.separator), lineWidth: 0.5)
+                )
+
+            if isLoading {
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: Color(UIColor.label)))
+                    .scaleEffect(0.85)
+            } else {
+                HStack(spacing: 0) {
+                    Group {
+                        switch iconKind {
+                        case .appleLogo:
+                            Image(systemName: "apple.logo")
+                                .font(.system(size: 18, weight: .regular))
+                                .foregroundColor(Color(UIColor.label))
+                        case .sf(let name):
+                            Image(systemName: name)
+                                .font(.system(size: 16, weight: .regular))
+                                .foregroundColor(Color(UIColor.label))
+                        }
+                    }
+                    .frame(width: 52, alignment: .center)
+
+                    Text(label)
+                        .font(.system(size: 17, weight: .regular))
+                        .foregroundColor(Color(UIColor.label))
+                        .frame(maxWidth: .infinity, alignment: .center)
+
+                    Spacer().frame(width: 52)
+                }
             }
-            .foregroundColor(.Nexus.ink)
-            .frame(maxWidth: .infinity)
-            .frame(height: NexusSpacing.buttonHeight)
-            .background(Color.Nexus.cardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: NexusRadius.md, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: NexusRadius.md, style: .continuous)
-                    .stroke(Color.Nexus.border, lineWidth: NexusBorder.base)
-            )
         }
-        .disabled(isLoading)
-        .scaleEffect(isPressed ? NexusScale.pressLight : 1)
-        .animation(NexusAnimation.press, value: isPressed)
-        .onLongPressGesture(minimumDuration: 0, pressing: { pressing in
-            isPressed = pressing
-        }, perform: {})
+        .frame(height: 52)
+        .opacity(isDisabled ? 0.6 : 1)
     }
 }
 
 // MARK: - NexusTextField
 
-/// Text field for auth screens — solid fill, hairline border.
 private struct NexusTextField: View {
     let placeholder: String
     @Binding var text: String
     var keyboardType: UIKeyboardType = .default
     var submitLabel: SubmitLabel = .done
+    var autoFocus: Bool = false
     var onSubmit: (() -> Void)? = nil
+
+    @FocusState private var focused: Bool
 
     var body: some View {
         TextField(placeholder, text: $text)
@@ -367,25 +403,33 @@ private struct NexusTextField: View {
             .onSubmit { onSubmit?() }
             .font(.Nexus.bodyMedium)
             .foregroundColor(.Nexus.ink)
+            .focused($focused)
             .padding(.horizontal, NexusSpacing.standard)
             .padding(.vertical, NexusSpacing.md)
             .background(Color.Nexus.cardBackground)
             .clipShape(RoundedRectangle(cornerRadius: NexusRadius.md, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: NexusRadius.md, style: .continuous)
-                    .stroke(Color.Nexus.border, lineWidth: NexusBorder.base)
+                    .stroke(
+                        focused ? Color.Nexus.accent.opacity(0.5) : Color.Nexus.border,
+                        lineWidth: NexusBorder.base
+                    )
             )
+            .onAppear {
+                guard autoFocus else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    focused = true
+                }
+            }
     }
 }
 
 // MARK: - NexusPrimaryButton
 
-/// Ink-filled primary action button with optional loading spinner.
 private struct NexusPrimaryButton: View {
     let title: String
     let isLoading: Bool
     let action: () -> Void
-
     @State private var isPressed = false
 
     var body: some View {
@@ -395,7 +439,6 @@ private struct NexusPrimaryButton: View {
                     .font(.Nexus.bodyMedium)
                     .foregroundColor(.white)
                     .opacity(isLoading ? 0 : 1)
-
                 if isLoading {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
@@ -410,8 +453,6 @@ private struct NexusPrimaryButton: View {
         .disabled(isLoading)
         .scaleEffect(isPressed ? NexusScale.pressLight : 1)
         .animation(NexusAnimation.press, value: isPressed)
-        .onLongPressGesture(minimumDuration: 0, pressing: { pressing in
-            isPressed = pressing
-        }, perform: {})
+        .onLongPressGesture(minimumDuration: 0, pressing: { isPressed = $0 }, perform: {})
     }
 }

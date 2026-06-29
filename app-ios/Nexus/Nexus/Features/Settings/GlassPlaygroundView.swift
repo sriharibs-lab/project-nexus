@@ -1,12 +1,17 @@
 import SwiftUI
 
-/// Debug-only screen for iterating on the Liquid Glass avatar menu.
-/// Access: Settings → Glass Playground (DEBUG builds only).
-///
-/// Shows the menu card over a realistic collection-list backdrop so the
-/// frosted-glass effect reads clearly against varied content.
+/// Debug-only screen for iterating on glass effects.
+/// Three styles selectable via segmented control — tap avatar to open menu panel.
 struct GlassPlaygroundView: View {
+
+    enum GlassStyle: String, CaseIterable {
+        case uikit = "UIKit Blur"
+        case ios26 = "iOS 26"
+        case dark = "Dark Material"
+    }
+
     @State private var menuOpen = false
+    @State private var selectedStyle: GlassStyle = .uikit
 
     private let mockCollections: [(String, String, Int)] = [
         ("The attention economy", "12 items · 2h ago", 0),
@@ -19,7 +24,7 @@ struct GlassPlaygroundView: View {
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            // ── Backdrop: realistic collection list ──────────────────
+            // ── Backdrop ─────────────────────────────────────────────
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Collections")
@@ -48,12 +53,12 @@ struct GlassPlaygroundView: View {
                         .padding(.horizontal, NexusSpacing.standard)
                     }
                 }
-                .padding(.bottom, 40)
+                .padding(.bottom, 100)
             }
             .background(NexusBackground().ignoresSafeArea())
             .ignoresSafeArea(edges: .top)
 
-            // ── Scrim ────────────────────────────────────────────────
+            // ── Scrim ─────────────────────────────────────────────────
             if menuOpen {
                 Color.black.opacity(0.35)
                     .ignoresSafeArea()
@@ -61,16 +66,16 @@ struct GlassPlaygroundView: View {
                     .onTapGesture { menuOpen = false }
             }
 
-            // ── Avatar button ────────────────────────────────────────
+            // ── Avatar button ─────────────────────────────────────────
             PlaygroundAvatarButton(active: menuOpen) { menuOpen.toggle() }
                 .padding(.trailing, NexusSpacing.standard)
                 .padding(.top, NexusSpacing.safeTop + 6)
 
-            // ── Glass menu card — grows from button's top-right corner
+            // ── Glass menu card ───────────────────────────────────────
             VStack(spacing: 0) {
                 HStack {
                     Spacer()
-                    PlaygroundMenuCard { menuOpen = false }
+                    PlaygroundMenuCard(style: selectedStyle) { menuOpen = false }
                         .scaleEffect(menuOpen ? 1.0 : 0.72, anchor: .topTrailing)
                         .offset(y: menuOpen ? 0 : -4)
                         .opacity(menuOpen ? 1 : 0)
@@ -82,12 +87,33 @@ struct GlassPlaygroundView: View {
             }
             .padding(.top, NexusSpacing.safeTop + 6)
         }
+        .safeAreaInset(edge: .bottom) {
+            stylePicker
+        }
         .navigationTitle("Glass Playground")
         .navigationBarTitleDisplayMode(.inline)
     }
+
+    private var stylePicker: some View {
+        VStack(spacing: 8) {
+            Text("Glass style")
+                .font(.Nexus.caption)
+                .foregroundColor(.Nexus.ghost)
+
+            Picker("Style", selection: $selectedStyle) {
+                ForEach(GlassStyle.allCases, id: \.self) { style in
+                    Text(style.rawValue).tag(style)
+                }
+            }
+            .pickerStyle(.segmented)
+        }
+        .padding(.horizontal, NexusSpacing.standard)
+        .padding(.vertical, NexusSpacing.md)
+        .background(.regularMaterial)
+    }
 }
 
-// MARK: - Components (mirror of production; edit here, then copy across)
+// MARK: - Avatar button
 
 private struct PlaygroundAvatarButton: View {
     let active: Bool
@@ -100,9 +126,7 @@ private struct PlaygroundAvatarButton: View {
                 Circle()
                     .fill(active ? Color.Nexus.bloom : Color.Nexus.surface2)
                     .frame(width: 32, height: 32)
-                    .overlay(
-                        Circle().stroke(Color(UIColor.separator), lineWidth: NexusBorder.base)
-                    )
+                    .overlay(Circle().stroke(Color(UIColor.separator), lineWidth: NexusBorder.base))
                 Text("S")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(active ? Color.Nexus.accent : .Nexus.muted)
@@ -121,7 +145,10 @@ private struct PlaygroundAvatarButton: View {
     }
 }
 
+// MARK: - Menu card (three glass approaches)
+
 private struct PlaygroundMenuCard: View {
+    let style: GlassPlaygroundView.GlassStyle
     let onClose: () -> Void
 
     private let rows: [(String, String)] = [
@@ -131,6 +158,49 @@ private struct PlaygroundMenuCard: View {
     ]
 
     var body: some View {
+        switch style {
+        case .ios26:
+            if #available(iOS 26, *) {
+                menuContent
+                    .frame(width: 196)
+                    .glassEffect(in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .shadow(color: .black.opacity(0.14), radius: 20, x: 0, y: 8)
+                    .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
+            } else {
+                uikitCard
+            }
+        case .dark:
+            menuContent
+                .frame(width: 196)
+                .background(.regularMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .shadow(color: .black.opacity(0.22), radius: 24, x: 0, y: 8)
+                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+        case .uikit:
+            uikitCard
+        }
+    }
+
+    private var uikitCard: some View {
+        menuContent
+            .frame(width: 196)
+            .background(
+                ZStack {
+                    VisualEffectBlur(style: .systemUltraThinMaterial, cornerRadius: 14)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color.white.opacity(0.42))
+                }
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Color.white.opacity(0.5), lineWidth: 0.5)
+            )
+            .shadow(color: .black.opacity(0.18), radius: 24, x: 0, y: 8)
+            .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
+    }
+
+    private var menuContent: some View {
         VStack(spacing: 0) {
             ForEach(rows, id: \.1) { icon, label in
                 Button(action: onClose) {
@@ -170,20 +240,5 @@ private struct PlaygroundMenuCard: View {
             }
             .buttonStyle(.plain)
         }
-        .frame(width: 196)
-        .background(
-            ZStack {
-                VisualEffectBlur(style: .systemUltraThinMaterial, cornerRadius: 14)
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.white.opacity(0.42))
-            }
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.white.opacity(0.5), lineWidth: 0.5)
-        )
-        .shadow(color: .black.opacity(0.18), radius: 24, x: 0, y: 8)
-        .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
     }
 }

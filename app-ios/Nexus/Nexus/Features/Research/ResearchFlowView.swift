@@ -158,12 +158,16 @@ private struct FREInputScreen: View {
                 .padding(.top, NexusSpacing.safeTop + 6)
             }
 
-            // Scrim — 0.35 creates enough contrast so glass reads over light bg
+            // Invisible tap-catcher — closes menu without dimming the background
             if showAvatarMenu {
-                Color.black.opacity(0.35)
+                Color.clear
                     .ignoresSafeArea()
                     .contentShape(Rectangle())
-                    .onTapGesture { showAvatarMenu = false }
+                    .onTapGesture {
+                        withAnimation(.spring(response: 0.22, dampingFraction: 0.85)) {
+                            showAvatarMenu = false
+                        }
+                    }
             }
 
             // Avatar menu — grows from button's top-right corner (Weather app style)
@@ -193,14 +197,6 @@ private struct FREInputScreen: View {
             }
             .padding(.top, NexusSpacing.safeTop + 6)
         }
-        .simultaneousGesture(
-            TapGesture().onEnded {
-                UIApplication.shared.sendAction(
-                    #selector(UIResponder.resignFirstResponder),
-                    to: nil, from: nil, for: nil
-                )
-            }
-        )
         .sheet(isPresented: $showSettings) {
             SettingsView().environmentObject(authManager)
         }
@@ -345,9 +341,24 @@ private struct TrendingIcon: View {
     var size: CGFloat = 13
 
     var body: some View {
-        Image(systemName: "chart.line.uptrend.xyaxis")
-            .font(.system(size: size, weight: .medium))
-            .foregroundColor(color)
+        Canvas { ctx, sz in
+            let w = sz.width, h = sz.height
+            var line = Path()
+            line.move(to:    CGPoint(x: 0,        y: h * 0.82))
+            line.addLine(to: CGPoint(x: w * 0.30, y: h * 0.38))
+            line.addLine(to: CGPoint(x: w * 0.54, y: h * 0.60))
+            line.addLine(to: CGPoint(x: w,        y: 0))
+            ctx.stroke(line, with: .color(color),
+                       style: StrokeStyle(lineWidth: 1.4, lineCap: .round, lineJoin: .round))
+            var tip = Path()
+            tip.move(to:    CGPoint(x: w,        y: 0))
+            tip.addLine(to: CGPoint(x: w * 0.66, y: 0))
+            tip.move(to:    CGPoint(x: w,        y: 0))
+            tip.addLine(to: CGPoint(x: w,        y: h * 0.34))
+            ctx.stroke(tip, with: .color(color),
+                       style: StrokeStyle(lineWidth: 1.4, lineCap: .round, lineJoin: .round))
+        }
+        .frame(width: size, height: size * 0.82)
     }
 }
 
@@ -431,23 +442,40 @@ private struct FREAvatarButton: View {
     let active: Bool
     let action: () -> Void
 
+    @State private var bounceScale: CGFloat = 1.0
+
     var body: some View {
-        Button(action: action) {
+        Button {
+            // Squish on tap — snaps small instantly, springs back as menu opens
+            bounceScale = 0.72
+            withAnimation(.spring(response: 0.38, dampingFraction: 0.46)) {
+                bounceScale = 1.0
+            }
+            action()
+        } label: {
             ZStack {
                 Circle()
-                    .fill(active ? Color.Nexus.bloom : Color.Nexus.surface2)
+                    .fill(Color.Nexus.surface2)
                     .frame(width: 32, height: 32)
-                    .overlay(Circle().stroke(Color.Nexus.border, lineWidth: NexusBorder.hair))
+                    .overlay(Circle().stroke(Color.Nexus.borderStrong, lineWidth: 1.0))
                 Text(initial)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(active ? Color.Nexus.accent : .Nexus.muted)
+                    .foregroundColor(.Nexus.muted)
             }
         }
         .buttonStyle(.plain)
-        // Bloom-morph: avatar hides when menu opens so it doesn't show through
+        .scaleEffect(bounceScale)
+        // Button hides while menu is open (menu occupies same corner)
         .opacity(active ? 0 : 1)
-        .scaleEffect(active ? 0.88 : 1.0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: active)
+        .animation(.spring(response: 0.26, dampingFraction: 0.72), value: active)
+        .onChange(of: active) { _, newActive in
+            guard !newActive else { return }
+            // Menu dismissed — button springs back in with an overshoot (swallow effect)
+            bounceScale = 1.28
+            withAnimation(.spring(response: 0.48, dampingFraction: 0.38)) {
+                bounceScale = 1.0
+            }
+        }
     }
 }
 
@@ -457,89 +485,59 @@ private struct FREAvatarMenuCard: View {
     let onSettings: () -> Void
     let onFeedback: () -> Void
     let onClose: () -> Void
-    @EnvironmentObject private var authManager: AuthManager
-
-    private var headerName: String {
-        authManager.displayName.isEmpty ? "Nexus User" : authManager.displayName
-    }
-
-    private var headerEmail: String {
-        authManager.email.isEmpty ? "" : authManager.email
-    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header: avatar + name + email
-            HStack(spacing: 10) {
-                ZStack {
-                    Circle()
-                        .fill(Color.Nexus.bloom)
-                        .frame(width: 36, height: 36)
-                    Text(authManager.avatarInitial)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(Color.Nexus.accent)
-                }
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(headerName)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(Color(UIColor.label))
-                        .lineLimit(1)
-                    if !headerEmail.isEmpty {
-                        Text(headerEmail)
-                            .font(.system(size: 12))
-                            .foregroundColor(Color(UIColor.tertiaryLabel))
-                            .lineLimit(1)
-                    }
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 12)
-            .padding(.top, 12)
-            .padding(.bottom, 10)
-
-            Divider().padding(.horizontal, 8)
-
-            // TODO: Account row is a stub — no destination view yet (post-MVP)
-            AvatarMenuRow(label: "Account", action: onClose)
-            AvatarMenuRow(label: "Settings", action: onSettings)
-            AvatarMenuRow(label: "Feedback", action: onFeedback)
-
-            Divider()
-
-            AvatarMenuRow(label: "Sign out") {
-                onClose()
-                authManager.signOut()
-            }
+        VStack(spacing: 0) {
+            AvatarMenuRow(icon: "person.circle", label: "Account", action: onClose)
+            AvatarMenuRow(icon: "gearshape",     label: "Settings",  action: onSettings)
+            AvatarMenuRow(icon: "message",       label: "Feedback",  action: onFeedback)
         }
-        .frame(width: 196)
-        .background(
-            ZStack {
-                // Liquid Glass: frosted base
+        .frame(width: 180)
+        .modifier(AvatarMenuGlass())
+        .shadow(color: .black.opacity(0.12), radius: 20, x: 0, y: 6)
+        .shadow(color: .black.opacity(0.05), radius: 4,  x: 0, y: 2)
+    }
+}
+
+// MARK: - Avatar menu glass modifier (iOS 26 native / UIKit fallback)
+
+// iOS 26 .glassEffect() doesn't render transparently on light/white backgrounds
+// (luminance threshold bug, no programmatic fix). UIVisualEffectBlur samples the
+// actual rendered screen and works correctly on any background.
+private struct AvatarMenuGlass: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .background(
+                VisualEffectBlur(style: .systemUltraThinMaterial, cornerRadius: 14)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(.thinMaterial)
-                // White wash so the glass reads clearly on the light plum background
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.white.opacity(0.62))
-            }
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.white.opacity(0.5), lineWidth: 0.5)
-        )
-        .shadow(color: .black.opacity(0.18), radius: 24, x: 0, y: 8)
-        .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
+                    .stroke(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.7), Color.white.opacity(0.2)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 0.6
+                    )
+            )
     }
 }
 
 private struct AvatarMenuRow: View {
+    let icon: String
     let label: String
     let action: () -> Void
     @State private var pressed = false
 
     var body: some View {
         Button(action: action) {
-            HStack {
+            HStack(spacing: 9) {
+                Image(systemName: icon)
+                    .font(.system(size: 12.5, weight: .regular))
+                    .foregroundColor(Color(UIColor.label))
+                    .frame(width: 18, alignment: .center)
                 Text(label)
                     .font(.system(size: 13.5, weight: .regular))
                     .foregroundColor(Color(UIColor.label))

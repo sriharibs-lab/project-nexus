@@ -74,12 +74,6 @@ struct NexusTabView: View {
                 .padding(.bottom, NexusSpacing.standard)
         }
         .background(NexusBackground())
-        // Dismiss keyboard when the user taps anywhere outside the composer.
-        // .simultaneousGesture lets child buttons (chips, citation links) still
-        // receive their own taps — unlike .onTapGesture which eats child events.
-        .simultaneousGesture(
-            TapGesture().onEnded { composerFocused = false }
-        )
         // Error banner overlay
         .overlay(alignment: .top) {
             if case .error(let msg) = vm.phase {

@@ -25,3 +25,6 @@ trafilatura>=2.0.0
 lxml_html_clean>=0.4.0
 youtube-transcript-api>=1.2.0
 deepgram-sdk>=6.0.0
+
+# Object storage — R2/S3-compatible (1A-008)
+aioboto3>=13.0.0

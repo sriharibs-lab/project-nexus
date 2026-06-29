@@ -25,6 +25,14 @@ class Settings(BaseSettings):
     # Fireworks — required for embedding (nomic-embed-text-v1.5, 768-dim)
     fireworks_api_key: str = ""
 
+    # Cloudflare R2 / S3-compatible object storage (1A-008)
+    # Gate: create the bucket and set these vars before 1E submission.
+    # Fallback: if any of these are empty, raw_content stays in Postgres TEXT.
+    r2_account_id: str = ""
+    r2_access_key_id: str = ""
+    r2_secret_access_key: str = ""
+    r2_bucket_name: str = ""
+
     # App
     environment: str = "development"
     log_level: str = "info"
@@ -56,6 +64,16 @@ class Settings(BaseSettings):
     @property
     def embedding_configured(self) -> bool:
         return bool(self.fireworks_api_key)
+
+    @property
+    def r2_configured(self) -> bool:
+        """True when all four R2 credentials are present. Falls back to Postgres TEXT if False."""
+        return bool(
+            self.r2_account_id
+            and self.r2_access_key_id
+            and self.r2_secret_access_key
+            and self.r2_bucket_name
+        )
 
 
 settings = Settings()

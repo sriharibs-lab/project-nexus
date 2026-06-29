@@ -1,8 +1,8 @@
 ---
 nbl_version: "1"
 cycle_policy:
-  max_tasks_per_run: 3
-  allow_phases: ["0A", "1A", "1B", "1C"]
+  max_tasks_per_run: 6
+  allow_phases: ["0A", "1A", "1B", "1C", "1D", "1F", "1G"]
 ---
 
 # Project Nexus — Build Plan

@@ -39,7 +39,7 @@ struct ResearchFlowView: View {
         GeometryReader { geo in
             ZStack(alignment: .bottom) {
                 // ── Input screen — scales back when the sheet rises ──
-                FREInputScreen(vm: vm)
+                FREInputScreen(vm: vm, onComplete: onComplete)
                     .scaleEffect(sheetVisible ? 0.945 : 1.0)
                     .clipShape(RoundedRectangle(cornerRadius: sheetVisible ? 22 : 0, style: .continuous))
                     .animation(.spring(response: 0.52, dampingFraction: 0.86), value: sheetVisible)
@@ -78,11 +78,16 @@ struct ResearchFlowView: View {
 
 private struct FREInputScreen: View {
     @ObservedObject var vm: ResearchViewModel
+    /// Forwarded from ResearchFlowView — used by the link sheet to navigate to the
+    /// newly created collection without going through the research flow.
+    let onComplete: (UUID) -> Void
     @EnvironmentObject private var authManager: AuthManager
     @State private var showAvatarMenu = false
     @State private var showSettings = false
     @State private var showFeedback = false
     @State private var composerClearTrigger = 0
+    @State private var showLinkSheet = false
+    @State private var linkContentType: LinkContentType = .website
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -138,7 +143,10 @@ private struct FREInputScreen: View {
                     .padding(.bottom, 26)
 
                     // Or start with a link
-                    FRELinkButtons()
+                    FRELinkButtons { contentType in
+                        linkContentType = contentType
+                        showLinkSheet = true
+                    }
                 }
                 .padding(.horizontal, NexusSpacing.sideGutter + 4)
 
@@ -204,6 +212,9 @@ private struct FREInputScreen: View {
             NavigationStack {
                 FeedbackView()
             }
+        }
+        .sheet(isPresented: $showLinkSheet) {
+            LinkURLSheetView(initialContentType: linkContentType, onComplete: onComplete)
         }
     }
 }
@@ -401,11 +412,17 @@ private struct FRETrendingChips: View {
 // MARK: - "Or start with a link" buttons
 
 private struct FRELinkButtons: View {
-    private let options: [(String, String)] = [
-        ("globe", "Website"),
-        ("doc", "PDF"),
-        ("play.rectangle", "YouTube"),
+    /// Called with the tapped content type — opens `LinkURLSheetView` in the parent.
+    let onSelect: (LinkContentType) -> Void
+
+    /// Ordered list of content-type options shown as tappable capsule buttons.
+    private let options: [(icon: String, label: String, type: LinkContentType)] = [
+        ("globe",          "Website", .website),
+        ("doc",            "PDF",     .pdf),
+        ("play.rectangle", "YouTube", .youtube),
     ]
+
+    @State private var pressedType: LinkContentType? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -415,20 +432,32 @@ private struct FRELinkButtons: View {
                 .kerning(-0.1)
 
             HStack(spacing: 7) {
-                ForEach(options, id: \.1) { icon, label in
-                    VStack(spacing: 5) {
-                        Image(systemName: icon)
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(.Nexus.muted)
-                        Text(label)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.Nexus.muted)
+                ForEach(options, id: \.type) { option in
+                    Button {
+                        onSelect(option.type)
+                    } label: {
+                        VStack(spacing: 5) {
+                            Image(systemName: option.icon)
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundColor(.Nexus.muted)
+                            Text(option.label)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.Nexus.muted)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(Color.Nexus.cardBackground)
+                        .clipShape(Capsule())
+                        .overlay(Capsule().stroke(Color.Nexus.border, lineWidth: NexusBorder.base))
+                        .scaleEffect(pressedType == option.type ? NexusScale.pressLight : 1.0)
+                        .animation(NexusAnimation.press, value: pressedType)
                     }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(Color.Nexus.cardBackground)
-                    .clipShape(Capsule())
-                    .overlay(Capsule().stroke(Color.Nexus.border, lineWidth: NexusBorder.base))
+                    .buttonStyle(.plain)
+                    .onLongPressGesture(minimumDuration: 0, pressing: { pressing in
+                        withAnimation(NexusAnimation.press) {
+                            pressedType = pressing ? option.type : nil
+                        }
+                    }, perform: {})
                 }
             }
         }

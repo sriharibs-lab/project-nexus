@@ -16,7 +16,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.queue.ingestion import close_pgq_pool, init_pgq_pool, start_worker
-<<<<<<< HEAD
 from app.routers import auth, briefing, feedback, health, ingest, collections, items, research, search, users, trending
 
 logging.basicConfig(level=settings.log_level.upper())

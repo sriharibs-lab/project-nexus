@@ -1,10 +1,10 @@
 import Foundation
 
 enum Endpoint {
-    // Configured at launch via Info.plist key "API_BASE_URL";
-    // falls back to localhost for simulator runs.
+    // Priority: Info.plist "API_BASE_URL" → Xcode scheme env var → localhost
     static var baseURL: String {
         Bundle.main.object(forInfoDictionaryKey: "API_BASE_URL") as? String
+            ?? ProcessInfo.processInfo.environment["API_BASE_URL"]
             ?? "http://localhost:8000"
     }
 

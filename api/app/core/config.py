@@ -1,4 +1,10 @@
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Populate os.environ from .env so modules that read the environment directly
+# (ai/pipeline.py, pipeline/jina.py, youtube.py, deepgram_extractor.py) see the
+# same keys as pydantic-settings, regardless of how the server was launched.
+load_dotenv()
 
 
 class Settings(BaseSettings):

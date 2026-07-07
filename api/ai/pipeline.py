@@ -16,9 +16,15 @@ from typing import Literal
 import anthropic
 from openai import AsyncOpenAI
 
-_client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+from app.core.config import settings
+
+_client = anthropic.AsyncAnthropic(
+    api_key=os.environ.get("ANTHROPIC_API_KEY") or settings.anthropic_api_key
+)
 _fireworks = AsyncOpenAI(
-    api_key=os.environ.get("FIREWORKS_API_KEY", ""),
+    # Placeholder keeps the client constructible when the key is absent;
+    # embedding calls fail with a clear 401 instead of crashing startup.
+    api_key=os.environ.get("FIREWORKS_API_KEY") or settings.fireworks_api_key or "missing-key",
     base_url="https://api.fireworks.ai/inference/v1",
 )
 

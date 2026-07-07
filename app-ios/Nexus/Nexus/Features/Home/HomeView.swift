@@ -5,7 +5,9 @@ struct HomeView: View {
     @StateObject private var vm = HomeViewModel()
     @ObservedObject private var authManager = AuthManager.shared
 
-    @State private var showingNewCollection = false
+    @State private var showingNewCollectionChoice = false
+    @State private var showingResearchFlow = false
+    @State private var showingLinkSheet = false
     @State private var showingAccount = false
     @State private var navPath = NavigationPath()
 
@@ -45,7 +47,7 @@ struct HomeView: View {
                         }
                         ToolbarItem(placement: .navigationBarTrailing) {
                             Button {
-                                showingNewCollection = true
+                                showingNewCollectionChoice = true
                             } label: {
                                 Image(systemName: "plus")
                                     .font(.system(size: 17, weight: .medium))
@@ -57,8 +59,23 @@ struct HomeView: View {
                     .sheet(isPresented: $showingAccount) {
                         AccountView()
                     }
-                    .fullScreenCover(isPresented: $showingNewCollection) {
+                    .confirmationDialog("New Collection", isPresented: $showingNewCollectionChoice, titleVisibility: .hidden) {
+                        Button("Research a topic") { showingResearchFlow = true }
+                        Button("Start with a link") { showingLinkSheet = true }
+                        Button("Cancel", role: .cancel) {}
+                    }
+                    .fullScreenCover(isPresented: $showingResearchFlow) {
                         ResearchFlowView { collectionId in
+                            Task {
+                                await vm.load()
+                                if let found = vm.collections.first(where: { $0.id == collectionId }) {
+                                    navPath.append(found)
+                                }
+                            }
+                        }
+                    }
+                    .sheet(isPresented: $showingLinkSheet) {
+                        LinkURLSheetView { collectionId in
                             Task {
                                 await vm.load()
                                 if let found = vm.collections.first(where: { $0.id == collectionId }) {

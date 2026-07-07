@@ -119,7 +119,7 @@ cycle_policy:
 **Starting a collection from a link:**
 - [x] FRELinkButtons tap → open LinkURLSheetView — wire Website/PDF/YouTube buttons in `FRELinkButtons` to present `LinkURLSheetView(initialContentType:)`; `onComplete(collectionId)` calls parent `ResearchFlowView.onComplete` to navigate to new `CollectionView` <!-- nbl:id=1G-002 agent=swe deps=[1F-008] est=2h -->
 - [x] URL content-type auto-detect — in `LinkURLSheetView`, when URL text changes detect: youtube.com/youtu.be → `.youtube`; ends with `.pdf` → `.pdf`; otherwise `.website`; update `contentType` chip automatically <!-- nbl:id=1G-003 agent=swe deps=[1G-002] est=1h -->
-- [!] HomeView new-collection choice — when user has existing collections and taps "+", present bottom sheet offering "Research a topic" (opens ResearchFlowView) and "Start with a link" (opens LinkURLSheetView directly); both navigate to the new collection on complete <!-- nbl:id=1G-004 agent=swe deps=[1G-002] est=1.5h -->
+- [x] HomeView new-collection choice — when user has existing collections and taps "+", present bottom sheet offering "Research a topic" (opens ResearchFlowView) and "Start with a link" (opens LinkURLSheetView directly); both navigate to the new collection on complete <!-- nbl:id=1G-004 status=done -->
 
 **Managing sources in a collection:**
 - [x] Add source to existing collection — "+" button in SourcesTabView toolbar opens `LinkURLSheetView` pre-bound to the current `collectionId`; skips collection creation step (posts only to `/v1/ingest`); dismisses and refreshes sources list on success <!-- nbl:id=1G-005 agent=swe deps=[1F-008] est=2h -->

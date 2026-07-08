@@ -72,6 +72,20 @@ class MagicLinkResponse(BaseModel):
     message: str
 
 
+class OTPVerifyRequest(BaseModel):
+    email: EmailStr
+    token: str  # the 6-digit code from the magic-link email
+
+
+class OTPVerifyResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    expires_in: int
+    token_type: str
+    user_id: str  # Nexus user UUID
+    is_new: bool
+
+
 class TokenRefreshRequest(BaseModel):
     refresh_token: str
 
@@ -469,6 +483,79 @@ async def send_magic_link(payload: MagicLinkRequest) -> MagicLinkResponse:
             ) from exc
 
     return MagicLinkResponse(message="Magic link sent — check your email")
+
+
+@router.post(
+    "/verify-otp",
+    response_model=OTPVerifyResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def verify_otp(
+    payload: OTPVerifyRequest,
+    db: AsyncSession = Depends(get_db),
+) -> OTPVerifyResponse:
+    """
+    Verify the 6-digit OTP from the magic-link email and mint a session.
+
+    The iOS client has called this endpoint since 1B-002, but it was never
+    implemented server-side — magic-link sign-in silently 404'd after the
+    code was entered.
+
+    Supabase endpoint: POST /auth/v1/verify  {type: "email", email, token}
+    On success, upserts the Nexus user row and returns Supabase tokens plus
+    the Nexus user UUID.
+    """
+    url = f"{settings.supabase_url}/auth/v1/verify"
+    headers = {
+        "apikey": settings.supabase_publishable_key,
+        "Content-Type": "application/json",
+    }
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+            resp = await client.post(
+                url,
+                json={"type": "email", "email": payload.email, "token": payload.token},
+                headers=headers,
+            )
+            if resp.status_code != 200:
+                body = resp.json() if resp.content else {}
+                logger.warning(
+                    "Supabase OTP verify failed status=%s body=%s",
+                    resp.status_code,
+                    body,
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid or expired code — request a new one",
+                )
+            data = resp.json()
+        except httpx.RequestError as exc:
+            logger.error("Supabase OTP verify network error: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Could not reach auth service — please try again",
+            ) from exc
+
+    supabase_user = data.get("user") or {}
+    supabase_id = supabase_user.get("id")
+    if not supabase_id:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Auth service returned an unexpected response",
+        )
+
+    user, is_new = await _upsert_user(db, supabase_id=supabase_id, email=payload.email)
+    await db.commit()
+
+    return OTPVerifyResponse(
+        access_token=data["access_token"],
+        refresh_token=data["refresh_token"],
+        expires_in=data.get("expires_in", 3600),
+        token_type=data.get("token_type", "bearer"),
+        user_id=str(user.id),
+        is_new=is_new,
+    )
 
 
 @router.post("/refresh", response_model=TokenRefreshResponse, status_code=status.HTTP_200_OK)

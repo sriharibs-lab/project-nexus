@@ -2,20 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Legacy aliases — existing pages reference these short names.
+ * They map 1:1 onto the canonical --nx-* tokens (src/styles/tokens.css).
+ * New code should use --nx-* directly (or the ts adapter in src/lib/tokens.ts).
+ */
 :root {
-  --plum: #7054AB;
-  --bloom: #E7DCF4;
-  --ink: #130E1A;
-  --muted: #68607A;
-  --faint: #9A93AC;
-  --ghost: #B7B1C4;
-  --surface: #FFFFFF;
-  --surface2: #F4F2F9;
-  --surface3: #FBFAFD;
-  --border: #E9E5F2;
-  --border-strong: #DCD7EA;
-  --hair: #EEEBF5;
-  --page: radial-gradient(135% 60% at 50% -8%, #E7DCF4 0%, #F9F8FC 50%);
+  --plum: var(--nx-color-brand-plum);
+  --bloom: var(--nx-color-brand-bloom);
+  --ink: var(--nx-color-text-primary);
+  --muted: var(--nx-color-text-secondary);
+  --faint: var(--nx-color-text-tertiary);
+  --ghost: var(--nx-color-text-disabled);
+  --surface: var(--nx-color-bg-primary);
+  --surface2: var(--nx-color-bg-secondary);
+  --surface3: var(--nx-color-bg-elevated);
+  --border: var(--nx-color-border-default);
+  --border-strong: var(--nx-color-border-strong);
+  --hair: var(--nx-color-border-subtle);
+  --page: var(--nx-color-page);
 }
 
 * {
@@ -30,9 +35,52 @@ html, body {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'Inter', sans-serif;
-  background: var(--surface3);
-  color: var(--ink);
+  font-family: var(--nx-font-ui);
+  background: var(--nx-color-bg-elevated);
+  color: var(--nx-color-text-primary);
+  overscroll-behavior-y: none;
+}
+
+/* ─── Shared keyframes (ported from design-handoff mocks) ─── */
+
+@keyframes nxShimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes nxSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes nxFadeRise {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes nxFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes nxEcho {
+  0%   { transform: scale(0.45); opacity: 0.9; }
+  100% { transform: scale(1.45); opacity: 0; }
+}
+
+@keyframes nxNodeBreathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(0.82); }
+}
+
+@keyframes nxPop {
+  0%   { transform: scale(0.84); }
+  55%  { transform: scale(1.13); }
+  100% { transform: scale(1); }
+}
+
+@keyframes nxBlink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.25; }
 }
 
 @layer utilities {

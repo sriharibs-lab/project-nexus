@@ -53,11 +53,17 @@
   --nx-color-status-error:   #DC2626;
   --nx-color-status-info:    #7054AB;
 
+  /* ─── Color › Semantic › Loading / Chrome ─── */
+  --nx-color-shimmer-a: #EDEAF5;
+  --nx-color-shimmer-b: #F5F3FB;
+  --nx-color-canvas-desktop: #EDEBE6; /* warm gray behind the desktop phone mockup */
+
   /* ─── Typography › Font Family ─── */
+  /* Fidelity contract: system stack ONLY — iPhone Safari renders SF Pro,
+     the same glyphs the native app uses. Geist removed 2026-07-08. */
   --nx-font-ui:      -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
-  /* --font-geist is injected by Next.js localFont() in layout.tsx */
-  --nx-font-display: var(--font-geist, "Geist"), -apple-system, sans-serif;
-  --nx-font-mono:    "SF Mono", "Fira Code", monospace;
+  --nx-font-display: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  --nx-font-mono:    "SF Mono", ui-monospace, monospace;
 
   /* ─── Typography › Font Size ─── */
   --nx-text-xs:   10px;

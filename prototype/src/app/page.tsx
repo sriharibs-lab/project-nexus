@@ -38,7 +38,7 @@ function NexusLockup() {
       <EchoMark size={32} color="#7054AB" />
       <span
         style={{
-          fontFamily: "var(--font-geist-sans), -apple-system, 'Helvetica Neue', sans-serif",
+          fontFamily: "var(--nx-font-display)",
           fontSize: 22,
           fontWeight: 600,
           letterSpacing: "-0.04em",
@@ -105,7 +105,7 @@ export default function LandingPage() {
         justifyContent: "center",
         padding: "24px 20px",
         fontFamily:
-          "var(--font-geist-sans), -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif",
+          "var(--nx-font-display)",
         WebkitFontSmoothing: "antialiased",
       }}
     >

@@ -75,7 +75,10 @@ struct HomeView: View {
                         }
                     }
                     .sheet(isPresented: $showingLinkSheet) {
-                        LinkURLSheetView { collectionId in
+                        LinkURLSheetView(
+                            initialContentType: .website,
+                            collections: vm.collections
+                        ) { _, collectionId in
                             Task {
                                 await vm.load()
                                 if let found = vm.collections.first(where: { $0.id == collectionId }) {
@@ -83,6 +86,8 @@ struct HomeView: View {
                                 }
                             }
                         }
+                        .presentationDetents([.large])
+                        .presentationDragIndicator(.hidden)
                     }
                     .navigationDestination(for: NexusCollection.self) { collection in
                         CollectionView(collection: collection)

@@ -1,535 +1,275 @@
 "use client";
 
 /**
- * Login flow — 3 design variants, one shared state machine.
- *   A — iOS AuthView today: Notion-style bordered option rows, inline email expand
- *   B — Composer-style: FRE visual language, one big email field, plum CTA
- *   C — Minimal: mark + two quiet buttons, maximal whitespace
+ * Login flow — LOCKED DIRECTION (2026-07-08): Claude iOS auth, adapted to Nexus.
  *
- * Variant pill floats at the top; ?v=a|b|c is kept in the URL so
- * "I like B" is a copyable link. Apple button is visual-only.
- * MOCK mode: any 6-digit code works. LIVE mode: real OTP email via backend.
+ * Spec (from Claude iOS reference screenshots):
+ *  - Flat, calm page. Minimal brand color — ink pill buttons, plum only for links.
+ *  - Lockup top-center; hero mark + display tagline in the upper half.
+ *  - Fully-rounded (pill) shapes for ALL buttons and inputs.
+ *  - "Continue with email" is a TEXT BOX, not a button — you type right there.
+ *  - Send affordance: dark circle appears when the email is valid; becomes a
+ *    spinner while the code email is being prepared (inline loading).
+ *  - Code screen: bordered card, gray inner panel with the email + envelope-
+ *    with-seal graphic + pill code field, "Change email address" link below.
+ *  - Terms/Privacy disclaimer on every screen (stub links — see PARKING_LOT.md).
+ *
+ * MOCK mode: any 6-digit code. LIVE mode: real OTP via FastAPI + Supabase.
  */
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import { getClient } from "../../../lib/api";
 import { Icon } from "../../../lib/icons";
 import { EchoMark } from "../../../lib/logo";
-import { Pressable, Screen, Segmented, Spinner, StatusBar } from "../../../lib/primitives";
+import { Pressable, Screen, Spinner, StatusBar } from "../../../lib/primitives";
 import { t, tokens } from "../../../lib/tokens";
 
-type Phase =
-  | { k: "idle" }
-  | { k: "email" }
-  | { k: "sending" }
-  | { k: "otp"; email: string }
-  | { k: "verifying"; email: string }
-  | { k: "done" }
-  | { k: "error"; message: string; back: Phase };
-
-type VariantKey = "A" | "B" | "C";
+type Phase = "idle" | "sending" | "otp" | "verifying" | "done";
 
 export default function LoginFlow() {
-  const [variant, setVariant] = useState<VariantKey>("A");
-  const [phase, setPhase] = useState<Phase>({ k: "idle" });
+  const [phase, setPhase] = useState<Phase>("idle");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
-  // ?v= sync (copyable variant links) without useSearchParams/Suspense
-  useEffect(() => {
-    const v = new URLSearchParams(window.location.search).get("v")?.toUpperCase();
-    if (v === "A" || v === "B" || v === "C") setVariant(v);
-  }, []);
-  const pickVariant = (v: string) => {
-    const key = v as VariantKey;
-    setVariant(key);
-    const url = new URL(window.location.href);
-    url.searchParams.set("v", key.toLowerCase());
-    window.history.replaceState(null, "", url.toString());
-    // variant switch resets the walkthrough
-    setPhase({ k: "idle" });
-    setEmail("");
-    setCode("");
-  };
+  const emailValid = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email.trim());
 
-  const submitEmail = async (value: string) => {
-    const trimmed = value.trim();
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(trimmed)) {
-      setPhase({ k: "error", message: "Enter a valid email address.", back: { k: "email" } });
-      return;
-    }
-    setPhase({ k: "sending" });
+  const submitEmail = async () => {
+    if (!emailValid || phase === "sending") return;
+    setError(null);
+    setPhase("sending");
     try {
-      await getClient().requestOtp(trimmed);
+      await getClient().requestOtp(email.trim());
       setCode("");
-      setPhase({ k: "otp", email: trimmed });
+      setPhase("otp");
     } catch (err) {
-      setPhase({ k: "error", message: (err as Error).message, back: { k: "email" } });
+      setError((err as Error).message);
+      setPhase("idle");
     }
   };
 
   const submitCode = async (value: string) => {
-    const em = phase.k === "otp" || phase.k === "verifying" ? phase.email : email;
-    setPhase({ k: "verifying", email: em });
+    setError(null);
+    setPhase("verifying");
     try {
-      await getClient().verifyOtp(em, value.trim());
-      setPhase({ k: "done" });
+      await getClient().verifyOtp(email.trim(), value.trim());
+      setPhase("done");
     } catch (err) {
-      setPhase({ k: "error", message: (err as Error).message, back: { k: "otp", email: em } });
+      setError((err as Error).message);
+      setPhase("otp");
     }
   };
 
-  const shared = { phase, setPhase, email, setEmail, submitEmail };
-
   return (
-    <Screen>
+    <Screen style={{ background: t.surface3 }}>
       <StatusBar />
 
-      {/* variant switcher */}
-      <div style={{ display: "flex", justifyContent: "center", padding: "6px 0 0", flexShrink: 0 }}>
-        <Segmented compact items={["A", "B", "C"]} value={variant} onChange={pickVariant} />
+      {/* lockup — top center, always */}
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 8, padding: "10px 0 0", flexShrink: 0 }}>
+        <EchoMark size={24} />
+        <span style={{ fontSize: 21, fontWeight: 600, letterSpacing: -0.5, color: t.text, fontFamily: tokens.font.display }}>
+          Nexus
+        </span>
       </div>
 
-      {phase.k === "otp" || phase.k === "verifying" ? (
-        <OTPScreen
-          email={phase.email}
+      {phase === "otp" || phase === "verifying" ? (
+        <CodeScreen
+          email={email}
           code={code}
           setCode={setCode}
-          verifying={phase.k === "verifying"}
+          verifying={phase === "verifying"}
+          error={error}
           onSubmit={submitCode}
-          onCancel={() => {
-            setPhase({ k: "idle" });
+          onChangeEmail={() => {
+            setPhase("idle");
+            setCode("");
+            setError(null);
+          }}
+        />
+      ) : phase === "done" ? (
+        <DoneScreen
+          onReset={() => {
+            setPhase("idle");
+            setEmail("");
             setCode("");
           }}
-          onResend={() => submitEmail(phase.email)}
         />
-      ) : phase.k === "done" ? (
-        <DoneScreen onReset={() => { setPhase({ k: "idle" }); setEmail(""); setCode(""); }} />
-      ) : variant === "A" ? (
-        <VariantA {...shared} />
-      ) : variant === "B" ? (
-        <VariantB {...shared} />
       ) : (
-        <VariantC {...shared} />
-      )}
-
-      {/* error banner */}
-      {phase.k === "error" && (
-        <div
-          style={{
-            position: "absolute",
-            left: 20,
-            right: 20,
-            bottom: "max(env(safe-area-inset-bottom), 24px)",
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            padding: "12px 14px",
-            background: t.surface,
-            border: `1px solid ${tokens.color.error}`,
-            borderRadius: tokens.radius.base,
-            boxShadow: tokens.shadow.md,
-            zIndex: 100,
-          }}
-        >
-          <span style={{ fontSize: 13, color: tokens.color.error, flex: 1, letterSpacing: -0.1 }}>
-            {phase.message}
-          </span>
-          <Pressable onClick={() => setPhase(phase.back)} style={{ borderRadius: 0 }}>
-            <Icon name="x" size={14} color={t.faint} />
-          </Pressable>
-        </div>
+        <LandingScreen
+          email={email}
+          setEmail={setEmail}
+          emailValid={emailValid}
+          sending={phase === "sending"}
+          error={error}
+          onSubmit={submitEmail}
+        />
       )}
     </Screen>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Shared pieces
+// Landing — hero + Apple pill + email text box with inline send/loading
 // ─────────────────────────────────────────────────────────────────────────
 
-interface VariantProps {
-  phase: Phase;
-  setPhase: (p: Phase) => void;
+function LandingScreen({
+  email,
+  setEmail,
+  emailValid,
+  sending,
+  error,
+  onSubmit,
+}: {
   email: string;
   setEmail: (v: string) => void;
-  submitEmail: (v: string) => void;
-}
-
-function LogoBlock({ tagline = true, size = 52 }: { tagline?: boolean; size?: number }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
-      <EchoMark size={size} />
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-        <span style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.6, color: t.text, fontFamily: tokens.font.display }}>
-          Nexus
-        </span>
-        {tagline && (
-          <span style={{ fontSize: 14.5, color: t.muted, letterSpacing: -0.1 }}>Your AI research companion</span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/** Notion-style bordered option row — 52pt, icon in fixed left slot, centered label. */
-function AuthOptionRow({
-  icon,
-  label,
-  loading = false,
-  onClick,
-}: {
-  icon: "apple" | "envelope";
-  label: string;
-  loading?: boolean;
-  onClick?: () => void;
-}) {
-  return (
-    <Pressable
-      scale={0.97}
-      onClick={onClick}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        width: "100%",
-        height: 52,
-        background: t.surface,
-        border: `1px solid ${t.borderStrong}`,
-        borderRadius: 12,
-      }}
-    >
-      {loading ? (
-        <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
-          <Spinner color={t.ink} />
-        </div>
-      ) : (
-        <>
-          <div style={{ width: 52, display: "flex", justifyContent: "center", flexShrink: 0 }}>
-            <Icon name={icon} size={icon === "apple" ? 20 : 17} color={t.ink} />
-          </div>
-          <span style={{ flex: 1, textAlign: "center", fontSize: 16.5, fontWeight: 400, letterSpacing: -0.2, color: t.text }}>
-            {label}
-          </span>
-          <div style={{ width: 52, flexShrink: 0 }} />
-        </>
-      )}
-    </Pressable>
-  );
-}
-
-function EmailInput({
-  value,
-  onChange,
-  onSubmit,
-  autoFocus = true,
-  placeholder = "your@email.com",
-}: {
-  value: string;
-  onChange: (v: string) => void;
+  emailValid: boolean;
+  sending: boolean;
+  error: string | null;
   onSubmit: () => void;
-  autoFocus?: boolean;
-  placeholder?: string;
-}) {
-  const [focused, setFocused] = useState(false);
-  return (
-    <input
-      type="email"
-      inputMode="email"
-      autoCapitalize="none"
-      autoCorrect="off"
-      autoFocus={autoFocus}
-      placeholder={placeholder}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
-      onKeyDown={(e) => e.key === "Enter" && onSubmit()}
-      style={{
-        width: "100%",
-        height: 52,
-        padding: "0 16px",
-        fontSize: 16.5,
-        letterSpacing: -0.2,
-        color: t.text,
-        background: t.surface,
-        border: `1px solid ${focused ? t.plum : t.borderStrong}`,
-        borderRadius: 12,
-        outline: "none",
-        fontFamily: tokens.font.ui,
-        boxShadow: focused ? tokens.shadow.focus : "none",
-        transition: "border-color .15s, box-shadow .15s",
-      }}
-    />
-  );
-}
-
-function PrimaryButton({
-  label,
-  loading = false,
-  onClick,
-  background = t.ink,
-}: {
-  label: string;
-  loading?: boolean;
-  onClick?: () => void;
-  background?: string;
 }) {
   return (
-    <Pressable
-      scale={0.97}
-      onClick={onClick}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: "100%",
-        height: 52,
-        background,
-        borderRadius: 12,
-      }}
-    >
-      {loading ? (
-        <Spinner color={tokens.color.white} />
-      ) : (
-        <span style={{ fontSize: 16.5, fontWeight: 500, letterSpacing: -0.2, color: tokens.color.white }}>{label}</span>
-      )}
-    </Pressable>
-  );
-}
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 20px" }}>
+      <div style={{ flex: 1.1 }} />
 
-// ─────────────────────────────────────────────────────────────────────────
-// Variant A — iOS AuthView today (Notion-style rows, inline email expand)
-// ─────────────────────────────────────────────────────────────────────────
-
-function VariantA({ phase, setPhase, email, setEmail, submitEmail }: VariantProps) {
-  const emailOpen = phase.k === "email" || phase.k === "sending";
-  return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 26px" }}>
-      <div style={{ flex: 1.2 }} />
-      <LogoBlock />
-      <div style={{ flex: 2 }} />
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <span style={{ fontSize: 14.5, fontWeight: 600, letterSpacing: -0.2, color: t.text }}>
-          Log in to your Nexus account
-        </span>
-
-        {!emailOpen && <AuthOptionRow icon="apple" label="Sign in with Apple" onClick={() => {}} />}
-
-        {emailOpen ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, animation: "nxFadeRise .3s ease both" }}>
-            <EmailInput value={email} onChange={setEmail} onSubmit={() => submitEmail(email)} />
-            <PrimaryButton label="Continue" loading={phase.k === "sending"} onClick={() => submitEmail(email)} />
-            <Pressable
-              onClick={() => setPhase({ k: "idle" })}
-              style={{ alignSelf: "center", padding: "4px 10px", borderRadius: 0 }}
-            >
-              <span style={{ fontSize: 13.5, color: t.muted }}>Cancel</span>
-            </Pressable>
-          </div>
-        ) : (
-          <AuthOptionRow icon="envelope" label="Continue with email" onClick={() => setPhase({ k: "email" })} />
-        )}
-
-        {!emailOpen && (
-          <div style={{ display: "flex", justifyContent: "center", gap: 4, paddingTop: 2 }}>
-            <span style={{ fontSize: 13.5, color: t.muted }}>New user?</span>
-            <span style={{ fontSize: 13.5, fontWeight: 500, color: t.plum, cursor: "pointer" }} onClick={() => setPhase({ k: "email" })}>
-              Sign up
-            </span>
-          </div>
-        )}
-      </div>
-      <div style={{ height: "max(env(safe-area-inset-bottom), 24px)", flexShrink: 0 }} />
-      <div style={{ height: 24, flexShrink: 0 }} />
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// Variant B — composer-style: FRE language, one field is the hero
-// ─────────────────────────────────────────────────────────────────────────
-
-function VariantB({ phase, email, setEmail, submitEmail }: VariantProps) {
-  const sending = phase.k === "sending";
-  return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 24px" }}>
-      <div style={{ flex: 1 }} />
-      <EchoMark size={44} />
-      <div style={{ height: 22 }} />
-      <div style={{ fontSize: 30, fontWeight: 700, letterSpacing: -0.8, color: t.text, lineHeight: 1.15 }}>
-        Think, don&apos;t
-        <br />
-        just save.
-      </div>
-      <div style={{ fontSize: 15, color: t.muted, letterSpacing: -0.1, marginTop: 10, lineHeight: 1.45 }}>
-        Enter your email — we&apos;ll send a code.
-        <br />
-        No passwords, ever.
-      </div>
-
-      <div style={{ height: 28 }} />
-
-      {/* composer-style card */}
-      <div
-        style={{
-          background: t.surface,
-          borderRadius: 22,
-          border: `1px solid ${t.borderStrong}`,
-          boxShadow: `0 0 0 3px ${t.surface2}`,
-          padding: "6px 6px 6px 16px",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-        }}
-      >
-        <input
-          type="email"
-          inputMode="email"
-          autoCapitalize="none"
-          autoCorrect="off"
-          placeholder="your@email.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && submitEmail(email)}
+      {/* hero */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 30 }}>
+        <EchoMark size={116} />
+        <div
           style={{
-            flex: 1,
-            minWidth: 0,
-            border: "none",
-            outline: "none",
-            fontSize: 16.5,
-            letterSpacing: -0.2,
+            fontSize: 28,
+            fontWeight: 600,
+            letterSpacing: -0.6,
             color: t.text,
-            background: "transparent",
-            fontFamily: tokens.font.ui,
-            height: 44,
+            fontFamily: tokens.font.display,
+            textAlign: "center",
           }}
-        />
+        >
+          Think, don&apos;t just save.
+        </div>
+      </div>
+
+      <div style={{ flex: 1.3 }} />
+
+      {/* auth stack */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {/* Apple — ink pill, icon left of centered label */}
         <Pressable
-          scale={0.9}
-          onClick={() => submitEmail(email)}
+          scale={0.97}
+          onClick={() => {}}
           style={{
-            width: 40,
-            height: 40,
-            borderRadius: tokens.radius.full,
-            background: email.trim() ? t.plum : t.surface2,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            flexShrink: 0,
-            transition: "background .2s",
+            gap: 9,
+            width: "100%",
+            height: 56,
+            background: t.ink,
+            borderRadius: tokens.radius.full,
           }}
         >
-          {sending ? (
-            <Spinner size={15} color={tokens.color.white} />
-          ) : (
-            <Icon name="arrowUp" size={19} color={email.trim() ? tokens.color.white : t.faint} stroke={2} />
-          )}
+          <Icon name="apple" size={19} color={tokens.color.white} />
+          <span style={{ fontSize: 16.5, fontWeight: 600, letterSpacing: -0.2, color: tokens.color.white }}>
+            Continue with Apple
+          </span>
         </Pressable>
-      </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 22 }}>
-        <div style={{ flex: 1, height: 1, background: t.hair }} />
-        <span style={{ fontSize: 11.5, color: t.ghost, letterSpacing: 0.3 }}>OR</span>
-        <div style={{ flex: 1, height: 1, background: t.hair }} />
-      </div>
-
-      <Pressable
-        scale={0.97}
-        onClick={() => {}}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 8,
-          height: 46,
-          marginTop: 16,
-          borderRadius: 12,
-          background: "transparent",
-          border: `1px solid ${t.border}`,
-        }}
-      >
-        <Icon name="apple" size={17} color={t.text} />
-        <span style={{ fontSize: 15, fontWeight: 500, letterSpacing: -0.2, color: t.text }}>Sign in with Apple</span>
-      </Pressable>
-
-      <div style={{ flex: 1.4 }} />
-      <div style={{ height: "max(env(safe-area-inset-bottom), 20px)", flexShrink: 0 }} />
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// Variant C — minimal: mark + two quiet buttons, maximal whitespace
-// ─────────────────────────────────────────────────────────────────────────
-
-function VariantC({ phase, setPhase, email, setEmail, submitEmail }: VariantProps) {
-  const emailOpen = phase.k === "email" || phase.k === "sending";
-  return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "0 40px" }}>
-      <div style={{ flex: 1.6 }} />
-      <LogoBlock tagline={false} size={60} />
-      <div style={{ flex: 1 }} />
-
-      {emailOpen ? (
-        <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 10, animation: "nxFadeRise .3s ease both" }}>
-          <EmailInput value={email} onChange={setEmail} onSubmit={() => submitEmail(email)} />
-          <PrimaryButton label="Send code" loading={phase.k === "sending"} onClick={() => submitEmail(email)} background={t.plum} />
-          <Pressable onClick={() => setPhase({ k: "idle" })} style={{ alignSelf: "center", padding: "6px 10px", borderRadius: 0 }}>
-            <span style={{ fontSize: 13.5, color: t.muted }}>Back</span>
-          </Pressable>
-        </div>
-      ) : (
-        <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
-          <PrimaryButton label=" Continue with Apple" onClick={() => {}} />
-          <Pressable
-            scale={0.97}
-            onClick={() => setPhase({ k: "email" })}
+        {/* Email — a text box, not a button; send circle appears when valid */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            width: "100%",
+            height: 56,
+            background: sending ? t.surface2 : t.surface,
+            border: `1px solid ${sending ? t.surface2 : t.border}`,
+            borderRadius: tokens.radius.full,
+            padding: "0 6px 0 22px",
+            transition: "background .2s, border-color .2s",
+          }}
+        >
+          <input
+            type="email"
+            inputMode="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            placeholder="Personal or work email"
+            value={email}
+            disabled={sending}
+            onChange={(e) => setEmail(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && onSubmit()}
             style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: "100%",
-              height: 52,
+              flex: 1,
+              minWidth: 0,
+              border: "none",
+              outline: "none",
               background: "transparent",
-              border: `1px solid ${t.borderStrong}`,
-              borderRadius: 12,
+              fontSize: 16.5,
+              letterSpacing: -0.2,
+              color: t.text,
+              fontFamily: tokens.font.ui,
+              textAlign: email || sending ? "left" : "center",
             }}
-          >
-            <span style={{ fontSize: 16.5, fontWeight: 500, letterSpacing: -0.2, color: t.text }}>Continue with email</span>
-          </Pressable>
+          />
+          {(emailValid || sending) && (
+            <Pressable
+              scale={0.9}
+              onClick={onSubmit}
+              aria-label="Send code"
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: tokens.radius.full,
+                background: t.ink,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                animation: "nxFade .2s ease both",
+              }}
+            >
+              {sending ? (
+                <Spinner size={16} color={tokens.color.white} />
+              ) : (
+                <Icon name="arrowUp" size={20} color={tokens.color.white} stroke={2} />
+              )}
+            </Pressable>
+          )}
         </div>
-      )}
 
-      <div style={{ flex: 1.6 }} />
-      <span style={{ fontSize: 12, color: t.ghost, letterSpacing: -0.1, paddingBottom: 12 }}>
-        Privacy-first. No ads, ever.
-      </span>
-      <div style={{ height: "max(env(safe-area-inset-bottom), 16px)", flexShrink: 0 }} />
+        {error && (
+          <div style={{ fontSize: 13, color: tokens.color.error, textAlign: "center", letterSpacing: -0.1 }}>
+            {error}
+          </div>
+        )}
+      </div>
+
+      <div style={{ height: 18 }} />
+      <Disclaimer />
+      <div style={{ height: "max(env(safe-area-inset-bottom), 18px)", flexShrink: 0 }} />
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// OTP entry — shared across variants (post-choice, one design)
+// Code entry — bordered card, gray panel, envelope + seal, change email
 // ─────────────────────────────────────────────────────────────────────────
 
-function OTPScreen({
+function CodeScreen({
   email,
   code,
   setCode,
   verifying,
+  error,
   onSubmit,
-  onCancel,
-  onResend,
+  onChangeEmail,
 }: {
   email: string;
   code: string;
   setCode: (v: string) => void;
   verifying: boolean;
+  error: string | null;
   onSubmit: (code: string) => void;
-  onCancel: () => void;
-  onResend: () => void;
+  onChangeEmail: () => void;
 }) {
   const submitted = useRef(false);
   const handleChange = (raw: string) => {
@@ -541,70 +281,150 @@ function OTPScreen({
       setTimeout(() => (submitted.current = false), 1500);
     }
   };
+
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 26px" }}>
-      <div style={{ flex: 1 }} />
-      <LogoBlock tagline={false} size={44} />
-      <div style={{ flex: 0.8 }} />
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 20px" }}>
+      <div style={{ flex: 0.55 }} />
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <span style={{ fontSize: 17, fontWeight: 600, letterSpacing: -0.3, color: t.text }}>Check your email</span>
-        <span style={{ fontSize: 13.5, color: t.muted, letterSpacing: -0.1 }}>
-          We sent a 6-digit code to {email}
-        </span>
-      </div>
-
-      <div style={{ height: 18 }} />
-
-      <input
-        type="text"
-        inputMode="numeric"
-        autoComplete="one-time-code"
-        autoFocus
-        placeholder="000000"
-        value={code}
-        onChange={(e) => handleChange(e.target.value)}
+      {/* the card */}
+      <div
         style={{
-          width: "100%",
-          height: 58,
-          padding: "0 16px",
-          fontSize: 26,
-          fontWeight: 600,
-          letterSpacing: 10,
-          textAlign: "center",
-          color: t.text,
           background: t.surface,
-          border: `1px solid ${t.borderStrong}`,
-          borderRadius: 12,
-          outline: "none",
-          fontFamily: tokens.font.ui,
+          border: `1px solid ${t.border}`,
+          borderRadius: 20,
+          padding: "26px 18px 22px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 18,
+          animation: "nxFadeRise .3s ease both",
         }}
-      />
+      >
+        <div
+          style={{
+            fontSize: 21,
+            fontWeight: 600,
+            letterSpacing: -0.4,
+            color: t.text,
+            textAlign: "center",
+            fontFamily: tokens.font.display,
+          }}
+        >
+          Check your email to finish signing in
+        </div>
 
-      <div style={{ height: 12 }} />
-      <PrimaryButton label="Verify" loading={verifying} onClick={() => onSubmit(code)} />
+        {/* gray inner panel */}
+        <div
+          style={{
+            background: t.surface2,
+            borderRadius: 16,
+            padding: "18px 16px 0",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 4,
+            overflow: "hidden",
+          }}
+        >
+          <span style={{ fontSize: 14.5, color: t.muted, letterSpacing: -0.1 }}>We sent an email to</span>
+          <span style={{ fontSize: 16, fontWeight: 600, letterSpacing: -0.2, color: t.text }}>{email}</span>
 
-      <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 16 }}>
-        <span style={{ fontSize: 13.5, fontWeight: 500, color: t.plum, cursor: "pointer" }} onClick={onResend}>
-          Resend code
-        </span>
-        <span style={{ fontSize: 13.5, color: t.muted, cursor: "pointer" }} onClick={onCancel}>
-          Cancel
-        </span>
+          {/* code field */}
+          <input
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            autoFocus
+            placeholder="Code"
+            value={code}
+            disabled={verifying}
+            onChange={(e) => handleChange(e.target.value)}
+            style={{
+              width: "100%",
+              height: 52,
+              margin: "12px 0 0",
+              padding: "0 20px",
+              fontSize: 17,
+              letterSpacing: code ? 6 : -0.2,
+              color: t.text,
+              background: t.surface,
+              border: `1px solid ${t.border}`,
+              borderRadius: tokens.radius.full,
+              outline: "none",
+              fontFamily: tokens.font.ui,
+            }}
+          />
+
+          {verifying && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 10 }}>
+              <Spinner size={13} />
+              <span style={{ fontSize: 12.5, color: t.muted }}>Verifying…</span>
+            </div>
+          )}
+
+          {/* envelope with seal — bottom-cropped like the reference */}
+          <EnvelopeSeal style={{ marginTop: 14, marginBottom: -26 }} />
+        </div>
+
+        {error && (
+          <div style={{ fontSize: 13, color: tokens.color.error, textAlign: "center", letterSpacing: -0.1 }}>
+            {error}
+          </div>
+        )}
+
+        <Pressable onClick={onChangeEmail} style={{ alignSelf: "center", padding: "2px 10px", borderRadius: 0 }}>
+          <span style={{ fontSize: 16, fontWeight: 600, letterSpacing: -0.2, color: t.plum }}>
+            Change email address
+          </span>
+        </Pressable>
       </div>
 
-      <div style={{ flex: 2 }} />
+      <div style={{ flex: 1 }} />
+      <Disclaimer />
+      <div style={{ height: "max(env(safe-area-inset-bottom), 18px)", flexShrink: 0 }} />
     </div>
   );
 }
 
+// ── Envelope with wax seal (plum) — the reference's nice touch ──
+
+function EnvelopeSeal({ style }: { style?: React.CSSProperties }) {
+  return (
+    <svg width="150" height="104" viewBox="0 0 150 104" style={style}>
+      {/* body */}
+      <rect x="15" y="26" width="120" height="78" rx="7" fill={tokens.color.white} stroke={t.border} strokeWidth="1.5" />
+      {/* open flap */}
+      <path d="M15 33 L75 74 L135 33" fill="none" stroke={t.border} strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M17 28 L75 3 L133 28 L75 70 Z" fill={tokens.color.white} stroke={t.border} strokeWidth="1.5" strokeLinejoin="round" />
+      {/* wax seal */}
+      <circle cx="75" cy="62" r="13" fill={t.plum} opacity="0.9" />
+      <circle cx="75" cy="62" r="13" fill="none" stroke={t.plum} strokeWidth="1" opacity="0.5" />
+      {/* seal emboss: mini echo arcs */}
+      <g stroke={tokens.color.white} strokeWidth="1.6" strokeLinecap="round" fill="none" opacity="0.85">
+        <path d="M71.5 57.5 A6 6 0 0 0 71.5 66.5" />
+        <path d="M78.5 57.5 A6 6 0 0 1 78.5 66.5" />
+      </g>
+      <circle cx="75" cy="62" r="2" fill={tokens.color.white} opacity="0.9" />
+    </svg>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────
-// Done — sign-in success confirmation
+// Done + shared disclaimer
 // ─────────────────────────────────────────────────────────────────────────
 
 function DoneScreen({ onReset }: { onReset: () => void }) {
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: 40 }}>
+    <div
+      style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 16,
+        padding: 40,
+      }}
+    >
       <div
         style={{
           width: 64,
@@ -626,6 +446,32 @@ function DoneScreen({ onReset }: { onReset: () => void }) {
       <Pressable onClick={onReset} style={{ padding: "8px 14px", borderRadius: 0 }}>
         <span style={{ fontSize: 13.5, fontWeight: 500, color: t.plum }}>Restart flow</span>
       </Pressable>
+    </div>
+  );
+}
+
+// Stub links — real Terms/Privacy pages tracked in PARKING_LOT.md
+function Disclaimer() {
+  const link: React.CSSProperties = {
+    color: t.muted,
+    textDecoration: "underline",
+    textUnderlineOffset: 2,
+  };
+  return (
+    <div
+      style={{
+        fontSize: 12.5,
+        color: t.faint,
+        letterSpacing: -0.1,
+        lineHeight: 1.5,
+        textAlign: "center",
+        padding: "0 14px",
+        flexShrink: 0,
+      }}
+    >
+      By continuing, you agree to Nexus&apos;s <a href="#" style={link}>Consumer Terms</a> and{" "}
+      <a href="#" style={link}>Usage Policy</a>, and acknowledge their{" "}
+      <a href="#" style={link}>Privacy Policy</a>.
     </div>
   );
 }

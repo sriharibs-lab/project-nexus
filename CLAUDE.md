@@ -39,6 +39,19 @@ Core thesis: The entire product is an AI harness — tools, skills, and memory b
 - Brand mark: **Echo** (SVG in `logo.jsx`). Palette: soft plum bloom bg, ink text, plum `#7054AB` accent
 - Material model: inline = solid + hairline; floating = Liquid Glass (menus, tab capsule)
 
+## Working Model (locked 2026-07-08) — Browser-first design
+- **All UX design iteration happens in `/prototype` (Next.js), never directly in SwiftUI.** Srihari reviews on his **iPhone in Safari** (never desktop) — no Xcode in the design loop.
+- Prototype is semi-hooked to the real FastAPI backend (real login/OTP, real research streaming, real chat) so latency/streaming are judged as design material.
+- Prototype is a **design tool, not a product** — shipping app is native iOS. Locked designs port to SwiftUI in flow-batches; each batch gets a device fidelity pass.
+- **Phases:** 1) Full app UX in browser (semi-live) → 2) Port to SwiftUI + full E2E → 3) Q&A quality (headless harness, runs in parallel from the start).
+- **NBL restriction:** mechanical work only (backend, wiring, tests, porting locked specs). Never UI/design judgment.
+
+### Fidelity contract (fixes past browser→app drift)
+- Past failure: HTML designs never translated 1:1 to SwiftUI. Root causes: wrong fonts in browser, untokenized values, effects with no SwiftUI equivalent (glass), motion physics mismatch.
+- Rules: prototype uses **system font stack** (renders SF Pro on iPhone Safari — same glyphs as the app); **every value from tokens** (no raw hex/px), same JSON feeds both CSS and Swift; **constrained vocabulary** — only primitives with a known-exact SwiftUI mapping are allowed in the prototype.
+- **Device-final list** (designed directly in SwiftUI, only roughed-in in browser): Liquid Glass/materials, spring physics, haptics, native sheets/keyboard behavior.
+- Every port batch ends with a **side-by-side screenshot diff** (prototype vs simulator) before the flow is called done.
+
 ## Autonomous Build System (NBL — designed, not yet built)
 - 6-agent loop: Architect → Planner → SWE → Test → Review → ALM
 - **Architect** is the strategic CTO agent — steers direction, weighs alternatives, flags risks
@@ -48,6 +61,7 @@ Core thesis: The entire product is an AI harness — tools, skills, and memory b
 ## Key Files
 - [SPEC.md](SPEC.md) — Full product specification
 - [BUILD_PLAN.md](BUILD_PLAN.md) — Running build plan, updated continuously
+- [PARKING_LOT.md](PARKING_LOT.md) — Accumulated follow-ups (stub links, deferred decisions); review before TestFlight. Add items here whenever something is stubbed or deferred.
 - [nexus-design-system-extracted/design_handoff_nexus_ios/DESIGN_LANGUAGE.md](nexus-design-system-extracted/design_handoff_nexus_ios/DESIGN_LANGUAGE.md) — Design system canonical
 - GitHub: https://github.com/sriharibs-lab/project-nexus
 

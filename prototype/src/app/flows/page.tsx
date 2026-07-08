@@ -21,7 +21,7 @@ const FLOWS: Array<{
   icon: IconName;
   status: FlowStatus;
 }> = [
-  { slug: "login", title: "Login", detail: "Email + code · Apple · sign-up — 3 variants", icon: "envelope", status: "in review" },
+  { slug: "login", title: "Login", detail: "Claude-style locked direction — email box · Apple · code card", icon: "envelope", status: "in review" },
   { slug: "onboarding", title: "FRE / Onboarding", detail: "Welcome → topics → first collection", icon: "sparkle", status: "draft" },
   { slug: "create", title: "Collection creation", detail: "Research a topic · start with a link", icon: "plus", status: "draft" },
   { slug: "home", title: "Home", detail: "Collection list · avatar bloom menu", icon: "layers", status: "draft" },

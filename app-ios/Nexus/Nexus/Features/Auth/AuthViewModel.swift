@@ -34,6 +34,9 @@ final class AuthViewModel: ObservableObject {
     @Published private(set) var phase: AuthPhase = .idle
     @Published var email: String = ""
     @Published var otpCode: String = ""
+    /// Locked design (2026-07-09): errors show inline on the current screen,
+    /// they never replace it. `.error` phase is retained in the enum but unused.
+    @Published var inlineError: String?
 
     // MARK: - Email / magic link
 
@@ -50,9 +53,10 @@ final class AuthViewModel: ObservableObject {
     func sendMagicLink() {
         let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
         guard isValidEmail(trimmed) else {
-            phase = .error("Enter a valid email address.")
+            inlineError = "Enter a valid email address."
             return
         }
+        inlineError = nil
         phase = .emailSending
 
         Task {
@@ -61,7 +65,8 @@ final class AuthViewModel: ObservableObject {
                 phase = .otpEntry(email: trimmed)
                 otpCode = ""
             } catch {
-                phase = .error(friendlyError(error))
+                inlineError = friendlyError(error)
+                phase = .idle
             }
         }
     }
@@ -70,9 +75,10 @@ final class AuthViewModel: ObservableObject {
         guard case .otpEntry(let sentEmail) = phase else { return }
         let code = otpCode.trimmingCharacters(in: .whitespacesAndNewlines)
         guard code.count == 6 else {
-            phase = .error("Enter the 6-digit code from your email.")
+            inlineError = "Enter the 6-digit code from your email."
             return
         }
+        inlineError = nil
         phase = .otpVerifying
 
         Task {
@@ -84,7 +90,8 @@ final class AuthViewModel: ObservableObject {
                     userId: tokenResp.userUUID
                 )
             } catch {
-                phase = .error(friendlyError(error))
+                inlineError = friendlyError(error)
+                phase = .otpEntry(email: sentEmail)
             }
         }
     }
@@ -110,9 +117,10 @@ final class AuthViewModel: ObservableObject {
                   let tokenData = cred.identityToken,
                   let identityToken = String(data: tokenData, encoding: .utf8)
             else {
-                phase = .error("Apple sign-in failed. Please try again.")
+                inlineError = "Apple sign-in failed. Please try again."
                 return
             }
+            inlineError = nil
             phase = .signingIn
             Task {
                 do {
@@ -123,14 +131,15 @@ final class AuthViewModel: ObservableObject {
                         userId: resp.userUUID
                     )
                 } catch {
-                    phase = .error(friendlyError(error))
+                    inlineError = friendlyError(error)
+                    phase = .idle
                 }
             }
 
         case .failure(let err):
             // ASAuthorizationError.canceled (1001) — user dismissed the sheet; don't show error
             if (err as NSError).code == ASAuthorizationError.canceled.rawValue { return }
-            phase = .error(err.localizedDescription)
+            inlineError = err.localizedDescription
         }
     }
 
@@ -139,6 +148,14 @@ final class AuthViewModel: ObservableObject {
     func retryFromError() {
         phase = .idle
         otpCode = ""
+        inlineError = nil
+    }
+
+    /// "Change email address" on the code screen — back to landing, email kept.
+    func changeEmail() {
+        phase = .idle
+        otpCode = ""
+        inlineError = nil
     }
 
     // MARK: - Dev bypass (debug builds only)

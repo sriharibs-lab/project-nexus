@@ -130,14 +130,14 @@ function LandingScreen({
     <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 20px" }}>
       <div style={{ flex: 0.9 }} />
 
-      {/* hero — Notion structure: mark → bold tagline → grey account line */}
+      {/* hero — mark → "Nexus" → tagline; both text rows same font/size/weight */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
         <EchoMark size={64} />
         <div
           style={{
-            fontSize: 28,
-            fontWeight: 700,
-            letterSpacing: -0.7,
+            fontSize: 27,
+            fontWeight: 600,
+            letterSpacing: -0.6,
             color: t.text,
             fontFamily: tokens.font.display,
             textAlign: "center",
@@ -145,20 +145,21 @@ function LandingScreen({
             lineHeight: 1.25,
           }}
         >
-          Your AI research companion.
+          Nexus
         </div>
         <div
           style={{
             fontSize: 27,
-            fontWeight: 400,
+            fontWeight: 600,
             letterSpacing: -0.6,
             color: t.faint,
+            fontFamily: tokens.font.display,
             textAlign: "center",
             lineHeight: 1.25,
-            marginTop: 2,
+            marginTop: 10,
           }}
         >
-          Log in to your Nexus account
+          Your AI research companion.
         </div>
       </div>
 

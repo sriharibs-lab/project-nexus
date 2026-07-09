@@ -36,6 +36,10 @@ struct AuthView: View {
                 landingScreen.transition(.opacity)
             }
         }
+        // Keyboard overlays the screen — no full-layout reflow on focus.
+        // (Keyboard-driven relayout of the Spacer stack caused a multi-second
+        // hang on first tap of the email field.)
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         .animation(.timingCurve(0.2, 0.8, 0.2, 1.0, duration: NexusDuration.slow), value: isCodePhase)
     }
 
@@ -46,19 +50,19 @@ struct AuthView: View {
             Spacer().frame(minHeight: 20)
             Spacer()
 
-            // Hero — Notion structure: mark → bold tagline → grey account line
+            // Hero — mark → "Nexus" → tagline; both text rows same font/size/weight
             VStack(spacing: 0) {
                 EchoMark(color: Color.Nexus.accent, size: 64)
-                Text("Your AI research companion.")
-                    .font(.system(size: 28, weight: .bold))
-                    .kerning(-0.7)
+                Text("Nexus")
+                    .font(.system(size: 27, weight: .semibold))
+                    .kerning(-0.6)
                     .foregroundColor(.Nexus.ink)
                     .padding(.top, 26)
-                Text("Log in to your Nexus account")
-                    .font(.system(size: 27, weight: .regular))
+                Text("Your AI research companion.")
+                    .font(.system(size: 27, weight: .semibold))
                     .kerning(-0.6)
                     .foregroundColor(.Nexus.faint)
-                    .padding(.top, 2)
+                    .padding(.top, 10)
             }
             .multilineTextAlignment(.center)
             .minimumScaleFactor(0.8)
@@ -97,7 +101,6 @@ struct AuthView: View {
 
             Spacer().frame(height: NexusSpacing.safeBottom)
         }
-        .animation(.easeInOut(duration: 0.2), value: vm.inlineError)
     }
 
     // Ink pill with the official (invisible) Apple button underneath for the
@@ -293,15 +296,22 @@ struct AuthView: View {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .stroke(Color.Nexus.border, lineWidth: NexusBorder.base)
         )
-        .animation(.easeInOut(duration: 0.2), value: vm.inlineError)
     }
 
     private var codeField: some View {
-        CodeTextField(text: $otpText) { digits in
-            vm.otpCode = digits
-            vm.verifyOTP()
-        }
-        .disabled(vm.phase == .otpVerifying)
+        OTPField(
+            text: $otpText,
+            isEnabled: vm.phase != .otpVerifying,
+            onComplete: { digits in
+                vm.otpCode = digits
+                vm.verifyOTP()
+            }
+        )
+        .frame(height: 52)
+        .frame(maxWidth: .infinity)
+        .background(Color.Nexus.cardBackground)
+        .clipShape(Capsule())
+        .overlay(Capsule().stroke(Color.Nexus.border, lineWidth: NexusBorder.base))
     }
 
     // MARK: - Disclaimer (stub links — PARKING_LOT.md)
@@ -317,42 +327,69 @@ struct AuthView: View {
     }
 }
 
-// MARK: - Code entry field
+// MARK: - Code entry field (UIKit-backed)
 //
-// Pill field, centered text, auto-focus, OTP autofill, auto-submit at 6 digits.
+// UITextField via UIViewRepresentable: SwiftUI's TextField drops QuickType
+// one-time-code autofill taps (suggestion tapped → binding never populated).
+// UIKit's .oneTimeCode path is reliable. Centered, kerned, auto-focus,
+// auto-submit at 6 digits.
 
-private struct CodeTextField: View {
+private struct OTPField: UIViewRepresentable {
     @Binding var text: String
+    var isEnabled: Bool
     let onComplete: (String) -> Void
 
-    @FocusState private var focused: Bool
-    @State private var submitted = false
+    func makeUIView(context: Context) -> UITextField {
+        let field = UITextField()
+        field.keyboardType = .numberPad
+        field.textContentType = .oneTimeCode
+        field.textAlignment = .center
+        field.font = .systemFont(ofSize: 17)
+        field.textColor = UIColor(Color.Nexus.ink)
+        field.tintColor = UIColor(Color.Nexus.accent)
+        field.defaultTextAttributes[.kern] = 6
+        field.attributedPlaceholder = NSAttributedString(
+            string: "Code",
+            attributes: [
+                .foregroundColor: UIColor(Color.Nexus.ghost),
+                .font: UIFont.systemFont(ofSize: 17),
+                .kern: 0,
+            ]
+        )
+        field.delegate = context.coordinator
+        field.addTarget(context.coordinator, action: #selector(Coordinator.editingChanged(_:)), for: .editingChanged)
+        field.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            field.becomeFirstResponder()
+        }
+        return field
+    }
 
-    var body: some View {
-        TextField("", text: $text, prompt: Text("Code").foregroundColor(.Nexus.ghost))
-            .keyboardType(.numberPad)
-            .textContentType(.oneTimeCode)
-            .multilineTextAlignment(.center)
-            .font(.system(size: 17))
-            .kerning(text.isEmpty ? -0.2 : 6)
-            .foregroundColor(.Nexus.ink)
-            .focused($focused)
-            .frame(height: 52)
-            .frame(maxWidth: .infinity)
-            .background(Color.Nexus.cardBackground)
-            .clipShape(Capsule())
-            .overlay(Capsule().stroke(Color.Nexus.border, lineWidth: NexusBorder.base))
-            .onAppear {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { focused = true }
-            }
-            .onChange(of: text) { _, new in
-                let digits = String(new.filter(\.isNumber).prefix(6))
-                if digits != new { text = digits }
-                if digits.count == 6, !submitted {
-                    submitted = true
-                    onComplete(digits)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { submitted = false }
+    func updateUIView(_ field: UITextField, context: Context) {
+        if field.text != text { field.text = text }
+        field.isEnabled = isEnabled
+        context.coordinator.parent = self
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
+
+    final class Coordinator: NSObject, UITextFieldDelegate {
+        var parent: OTPField
+        private var submitted = false
+
+        init(parent: OTPField) { self.parent = parent }
+
+        @objc func editingChanged(_ field: UITextField) {
+            let digits = String((field.text ?? "").filter(\.isNumber).prefix(6))
+            if field.text != digits { field.text = digits }
+            parent.text = digits
+            if digits.count == 6, !submitted {
+                submitted = true
+                parent.onComplete(digits)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                    self?.submitted = false
                 }
             }
+        }
     }
 }

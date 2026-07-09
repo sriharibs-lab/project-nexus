@@ -64,12 +64,9 @@ export default function LoginFlow() {
     <Screen style={{ background: t.surface3 }}>
       <StatusBar />
 
-      {/* lockup — top center, always */}
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 8, padding: "10px 0 0", flexShrink: 0 }}>
-        <EchoMark size={24} />
-        <span style={{ fontSize: 21, fontWeight: 600, letterSpacing: -0.5, color: t.text, fontFamily: tokens.font.display }}>
-          Nexus
-        </span>
+      {/* mark only — top center (wordmark lives in the hero) */}
+      <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 0", flexShrink: 0 }}>
+        <EchoMark size={26} />
       </div>
 
       {phase === "otp" || phase === "verifying" ? (
@@ -112,6 +109,15 @@ export default function LoginFlow() {
 // Landing — hero + Apple pill + email text box with inline send/loading
 // ─────────────────────────────────────────────────────────────────────────
 
+// Caption options under the wordmark — tap the caption on-device to cycle.
+const CAPTIONS = [
+  "Think, don't just save.",
+  "Your AI research companion.",
+  "Save anything. Understand everything.",
+  "Make sense of everything you save.",
+  "Where saved things become knowledge.",
+];
+
 function LandingScreen({
   email,
   setEmail,
@@ -127,24 +133,40 @@ function LandingScreen({
   error: string | null;
   onSubmit: () => void;
 }) {
+  const [captionIdx, setCaptionIdx] = useState(0);
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 20px" }}>
       <div style={{ flex: 1.1 }} />
 
-      {/* hero */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 30 }}>
-        <EchoMark size={116} />
+      {/* hero — wordmark + grey caption (tap caption to cycle options) */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
         <div
           style={{
-            fontSize: 28,
-            fontWeight: 600,
-            letterSpacing: -0.6,
+            fontSize: 44,
+            fontWeight: 700,
+            letterSpacing: -1.2,
             color: t.text,
             fontFamily: tokens.font.display,
-            textAlign: "center",
           }}
         >
-          Think, don&apos;t just save.
+          Nexus
+        </div>
+        <div
+          onClick={() => setCaptionIdx((i) => (i + 1) % CAPTIONS.length)}
+          style={{
+            fontSize: 15.5,
+            color: t.muted,
+            letterSpacing: -0.1,
+            textAlign: "center",
+            cursor: "pointer",
+            WebkitTapHighlightColor: "transparent",
+            userSelect: "none",
+          }}
+        >
+          {CAPTIONS[captionIdx]}
+          <span style={{ fontSize: 9.5, color: t.ghost, display: "block", marginTop: 6 }}>
+            tap to cycle · {captionIdx + 1}/{CAPTIONS.length}
+          </span>
         </div>
       </div>
 
@@ -192,7 +214,7 @@ function LandingScreen({
             inputMode="email"
             autoCapitalize="none"
             autoCorrect="off"
-            placeholder="Personal or work email"
+            placeholder="Continue with email"
             value={email}
             disabled={sending}
             onChange={(e) => setEmail(e.target.value)}

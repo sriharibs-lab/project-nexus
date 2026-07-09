@@ -64,10 +64,12 @@ export default function LoginFlow() {
     <Screen style={{ background: t.surface3 }}>
       <StatusBar />
 
-      {/* mark only — top center (wordmark lives in the hero) */}
-      <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 0", flexShrink: 0 }}>
-        <EchoMark size={26} />
-      </div>
+      {/* small mark top-center on secondary screens only — landing has the hero mark */}
+      {(phase === "otp" || phase === "verifying" || phase === "done") && (
+        <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 0", flexShrink: 0 }}>
+          <EchoMark size={26} />
+        </div>
+      )}
 
       {phase === "otp" || phase === "verifying" ? (
         <CodeScreen
@@ -109,15 +111,6 @@ export default function LoginFlow() {
 // Landing — hero + Apple pill + email text box with inline send/loading
 // ─────────────────────────────────────────────────────────────────────────
 
-// Caption options under the wordmark — tap the caption on-device to cycle.
-const CAPTIONS = [
-  "Think, don't just save.",
-  "Your AI research companion.",
-  "Save anything. Understand everything.",
-  "Make sense of everything you save.",
-  "Where saved things become knowledge.",
-];
-
 function LandingScreen({
   email,
   setEmail,
@@ -133,44 +126,43 @@ function LandingScreen({
   error: string | null;
   onSubmit: () => void;
 }) {
-  const [captionIdx, setCaptionIdx] = useState(0);
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 20px" }}>
-      <div style={{ flex: 1.1 }} />
+      <div style={{ flex: 0.9 }} />
 
-      {/* hero — wordmark + grey caption (tap caption to cycle options) */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+      {/* hero — Notion structure: mark → bold tagline → grey account line */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <EchoMark size={64} />
         <div
           style={{
-            fontSize: 44,
+            fontSize: 28,
             fontWeight: 700,
-            letterSpacing: -1.2,
+            letterSpacing: -0.7,
             color: t.text,
             fontFamily: tokens.font.display,
+            textAlign: "center",
+            marginTop: 26,
+            lineHeight: 1.25,
           }}
         >
-          Nexus
+          Your AI research companion.
         </div>
         <div
-          onClick={() => setCaptionIdx((i) => (i + 1) % CAPTIONS.length)}
           style={{
-            fontSize: 15.5,
-            color: t.muted,
-            letterSpacing: -0.1,
+            fontSize: 27,
+            fontWeight: 400,
+            letterSpacing: -0.6,
+            color: t.faint,
             textAlign: "center",
-            cursor: "pointer",
-            WebkitTapHighlightColor: "transparent",
-            userSelect: "none",
+            lineHeight: 1.25,
+            marginTop: 2,
           }}
         >
-          {CAPTIONS[captionIdx]}
-          <span style={{ fontSize: 9.5, color: t.ghost, display: "block", marginTop: 6 }}>
-            tap to cycle · {captionIdx + 1}/{CAPTIONS.length}
-          </span>
+          Log in to your Nexus account
         </div>
       </div>
 
-      <div style={{ flex: 1.3 }} />
+      <div style={{ flex: 1.4 }} />
 
       {/* auth stack */}
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

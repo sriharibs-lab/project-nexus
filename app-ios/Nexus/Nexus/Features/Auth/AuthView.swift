@@ -119,6 +119,13 @@ struct AuthView: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.Nexus.ghost)
                     .padding(.top, 10)
+                // Build stamp — answers "am I running the new build?" at a
+                // glance during device testing. Set by the pre-build script;
+                // falls back to compile date.
+                Text("build \(BuildStamp.short)")
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundColor(.Nexus.ghost.opacity(0.7))
+                    .padding(.top, 4)
                 #endif
 
                 Spacer().frame(height: NexusSpacing.safeBottom)

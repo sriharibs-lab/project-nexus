@@ -466,35 +466,30 @@ private struct OTPField: UIViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
 
+    // Supabase is configured to send 8-digit codes for this project
+    // (dashboard → Auth → Email → OTP length). Update if that changes.
+    private static let otpLength = 8
+
     final class Coordinator: NSObject, UITextFieldDelegate {
         var parent: OTPField
         private var submitted = false
-        private var pendingSubmit: DispatchWorkItem?
 
         init(parent: OTPField) { self.parent = parent }
 
-        // Supabase OTP length is configurable (this project sends 8 digits;
-        // default is 6). Accept up to 10 and auto-submit after a short pause
-        // once ≥6 digits are present — hard-capping at 6 truncated real codes
-        // and auto-submitted the wrong value.
+        // Auto-submit ONLY at the exact expected length — a timer-based
+        // debounce fired between slow keystrokes, submitting partial codes;
+        // each failed attempt invalidated the real code server-side.
         @objc func editingChanged(_ field: UITextField) {
-            let digits = String((field.text ?? "").filter(\.isNumber).prefix(10))
+            let digits = String((field.text ?? "").filter(\.isNumber).prefix(OTPField.otpLength))
             if field.text != digits { field.text = digits }
             parent.text = digits
 
-            pendingSubmit?.cancel()
-            guard digits.count >= 6 else { return }
-            let work = DispatchWorkItem { [weak self] in self?.submit(digits) }
-            pendingSubmit = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.55, execute: work)
-        }
-
-        private func submit(_ digits: String) {
-            guard !submitted else { return }
-            submitted = true
-            parent.onComplete(digits)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-                self?.submitted = false
+            if digits.count == OTPField.otpLength, !submitted {
+                submitted = true
+                parent.onComplete(digits)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                    self?.submitted = false
+                }
             }
         }
     }

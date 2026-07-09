@@ -20,6 +20,9 @@ struct AuthView: View {
     @StateObject private var vm = AuthViewModel()
     @State private var otpText = ""
     @State private var emailFocused = false
+    #if DEBUG
+    @State private var otpDebugTrace: [String] = []
+    #endif
 
     private var isCodePhase: Bool {
         if case .otpEntry = vm.phase { return true }
@@ -251,19 +254,39 @@ struct AuthView: View {
     }
 
     private var codeField: some View {
-        OTPField(
-            text: $otpText,
-            isEnabled: vm.phase != .otpVerifying,
-            onComplete: { digits in
-                vm.otpCode = digits
-                vm.verifyOTP()
+        VStack(spacing: 6) {
+            OTPField(
+                text: $otpText,
+                isEnabled: vm.phase != .otpVerifying,
+                onComplete: { digits in
+                    vm.otpCode = digits
+                    vm.verifyOTP()
+                },
+                onDebug: { event in
+                    #if DEBUG
+                    otpDebugTrace.append(event)
+                    if otpDebugTrace.count > 4 { otpDebugTrace.removeFirst() }
+                    #endif
+                }
+            )
+            .frame(height: 52)
+            .frame(maxWidth: .infinity)
+            .background(Color.Nexus.cardBackground)
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(Color.Nexus.border, lineWidth: NexusBorder.base))
+
+            #if DEBUG
+            // AutoFill diagnostics — shows the last input events the field
+            // received. Read this after tapping the code suggestion chip.
+            if !otpDebugTrace.isEmpty {
+                Text(otpDebugTrace.joined(separator: "  ·  "))
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundColor(.Nexus.faint)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
             }
-        )
-        .frame(height: 52)
-        .frame(maxWidth: .infinity)
-        .background(Color.Nexus.cardBackground)
-        .clipShape(Capsule())
-        .overlay(Capsule().stroke(Color.Nexus.border, lineWidth: NexusBorder.base))
+            #endif
+        }
     }
 
     // Background-tap keyboard dismissal. A plain gesture on the background
@@ -423,6 +446,7 @@ private struct OTPField: UIViewRepresentable {
     @Binding var text: String
     var isEnabled: Bool
     let onComplete: (String) -> Void
+    var onDebug: (String) -> Void = { _ in }
 
     // Supabase is configured to send 8-digit codes for this project
     // (dashboard → Auth → Email → OTP length). Update if that changes.
@@ -487,17 +511,29 @@ private struct OTPField: UIViewRepresentable {
             shouldChangeCharactersIn range: NSRange,
             replacementString string: String
         ) -> Bool {
-            if string.isEmpty { return true } // deletions always allowed
-            guard string.allSatisfy({ $0.isNumber || $0.isWhitespace }) else { return false }
+            if string.isEmpty {
+                parent.onDebug("del@\(range.location),\(range.length)")
+                return true
+            }
+            guard string.allSatisfy({ $0.isNumber || $0.isWhitespace }) else {
+                parent.onDebug("ask'\(string)'→REJECT(chars)")
+                return false
+            }
             let current = (textField.text ?? "") as NSString
             let result = current.replacingCharacters(in: range, with: string)
-            return result.filter(\.isNumber).count <= OTPField.otpLength
+            let allowed = result.filter(\.isNumber).count <= OTPField.otpLength
+            parent.onDebug("ask'\(string)'→\(allowed ? "ok" : "REJECT(len)")")
+            return allowed
         }
 
-        @objc func editingChanged(_ field: UITextField) { handleChange(field) }
+        @objc func editingChanged(_ field: UITextField) {
+            parent.onDebug("chg'\(field.text ?? "")'")
+            handleChange(field)
+        }
 
         @objc func textDidChange(_ notification: Notification) {
             guard let field = notification.object as? UITextField else { return }
+            parent.onDebug("ntf'\(field.text ?? "")'")
             handleChange(field)
         }
 

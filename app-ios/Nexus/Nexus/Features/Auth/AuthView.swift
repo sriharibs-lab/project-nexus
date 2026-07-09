@@ -458,7 +458,10 @@ private struct CodeField: View {
 
     var body: some View {
         TextField("", text: $text, prompt: Text("Code").foregroundColor(.Nexus.ghost))
-            .keyboardType(.numberPad)
+            // .numberPad has reports of silently dropping oneTimeCode
+            // suggestion taps on some iOS versions; asciiCapableNumberPad
+            // uses a different input path.
+            .keyboardType(.asciiCapableNumberPad)
             .textContentType(.oneTimeCode)
             .multilineTextAlignment(.center)
             .font(.system(size: 20, weight: .medium))

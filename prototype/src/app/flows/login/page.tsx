@@ -127,11 +127,22 @@ function LandingScreen({
   onSubmit: () => void;
 }) {
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 20px" }}>
-      <div style={{ flex: 0.9 }} />
-
-      {/* hero — mark → "Nexus" → tagline; both text rows same font/size/weight */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 20px", position: "relative" }}>
+      {/* hero — dead-center of the screen; mark → "Nexus" → tagline,
+          both text rows same font/size/weight */}
+      <div
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: 0,
+          right: 0,
+          transform: "translateY(-50%)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          pointerEvents: "none",
+        }}
+      >
         <EchoMark size={64} />
         <div
           style={{
@@ -163,7 +174,7 @@ function LandingScreen({
         </div>
       </div>
 
-      <div style={{ flex: 1.4 }} />
+      <div style={{ flex: 1 }} />
 
       {/* auth stack */}
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

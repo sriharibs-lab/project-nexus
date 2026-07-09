@@ -36,20 +36,20 @@ struct AuthView: View {
                 landingScreen.transition(.opacity)
             }
         }
-        // Keyboard overlays the screen — no full-layout reflow on focus.
-        // (Keyboard-driven relayout of the Spacer stack caused a multi-second
-        // hang on first tap of the email field.)
-        .ignoresSafeArea(.keyboard, edges: .bottom)
         .animation(.timingCurve(0.2, 0.8, 0.2, 1.0, duration: NexusDuration.slow), value: isCodePhase)
+        .onAppear { prewarmKeyboard() }
     }
 
     // MARK: - Landing
+    //
+    // Two independent layers:
+    //  • Hero — dead-center of the screen (vertically + horizontally), pinned:
+    //    it ignores the keyboard so focusing the email field never reflows it.
+    //  • Auth stack — bottom-anchored; the ONLY layer that keyboard-avoids,
+    //    so the email field rises above the keyboard.
 
     private var landingScreen: some View {
-        VStack(spacing: 0) {
-            Spacer().frame(minHeight: 20)
-            Spacer()
-
+        ZStack {
             // Hero — mark → "Nexus" → tagline; both text rows same font/size/weight
             VStack(spacing: 0) {
                 EchoMark(color: Color.Nexus.accent, size: 64)
@@ -68,39 +68,57 @@ struct AuthView: View {
             .minimumScaleFactor(0.8)
             .lineLimit(1)
             .padding(.horizontal, 20)
+            .ignoresSafeArea(.keyboard, edges: .bottom)
 
-            Spacer()
-            Spacer()
+            // Auth stack — bottom-anchored, keyboard-avoiding
+            VStack(spacing: 0) {
+                Spacer()
 
-            // Auth stack
-            VStack(spacing: 12) {
-                appleButton
-                emailBox
+                VStack(spacing: 12) {
+                    appleButton
+                    emailBox
 
-                if let error = vm.inlineError {
-                    Text(error)
-                        .font(.system(size: 13))
-                        .kerning(-0.1)
-                        .foregroundColor(.Nexus.destructive)
-                        .multilineTextAlignment(.center)
-                        .transition(.opacity)
+                    if let error = vm.inlineError {
+                        Text(error)
+                            .font(.system(size: 13))
+                            .kerning(-0.1)
+                            .foregroundColor(.Nexus.destructive)
+                            .multilineTextAlignment(.center)
+                            .transition(.opacity)
+                    }
                 }
+                .padding(.horizontal, 20)
+
+                disclaimer
+                    .padding(.top, 18)
+                    .padding(.horizontal, 34)
+
+                #if DEBUG
+                Button("Continue (dev)") { vm.devBypass() }
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.Nexus.ghost)
+                    .padding(.top, 10)
+                #endif
+
+                Spacer().frame(height: NexusSpacing.safeBottom)
             }
-            .padding(.horizontal, 20)
-
-            disclaimer
-                .padding(.top, 18)
-                .padding(.horizontal, 34)
-
-            #if DEBUG
-            Button("Continue (dev)") { vm.devBypass() }
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.Nexus.ghost)
-                .padding(.top, 10)
-            #endif
-
-            Spacer().frame(height: NexusSpacing.safeBottom)
         }
+    }
+
+    // Debug builds stall 1–3s spinning up the keyboard process on the first
+    // focus of a session. Warm it invisibly at screen appear so the user's
+    // first tap is instant.
+    private func prewarmKeyboard() {
+        guard let window = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .first(where: { $0.activationState == .foregroundActive })?
+            .windows.first
+        else { return }
+        let field = UITextField()
+        window.addSubview(field)
+        field.becomeFirstResponder()
+        field.resignFirstResponder()
+        field.removeFromSuperview()
     }
 
     // Ink pill with the official (invisible) Apple button underneath for the

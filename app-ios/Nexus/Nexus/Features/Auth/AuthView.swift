@@ -279,13 +279,29 @@ struct AuthView: View {
     // MARK: - Disclaimer (stub links — PARKING_LOT.md)
 
     private var disclaimer: some View {
-        Text("By continuing, you agree to Nexus's [Consumer Terms](https://nexus.app/terms) and [Usage Policy](https://nexus.app/usage), and acknowledge their [Privacy Policy](https://nexus.app/privacy).")
+        Text(disclaimerText)
             .font(.system(size: 12.5))
             .kerning(-0.1)
             .foregroundColor(.Nexus.faint)
-            .tint(.Nexus.muted)
             .multilineTextAlignment(.center)
             .lineSpacing(3)
+    }
+
+    private var disclaimerText: AttributedString {
+        var string = AttributedString(
+            "By continuing, you agree to Nexus's Terms and Conditions and acknowledge the Privacy Policy."
+        )
+        for (phrase, url) in [
+            ("Terms and Conditions", "https://nexus.app/terms"),
+            ("Privacy Policy", "https://nexus.app/privacy"),
+        ] {
+            if let range = string.range(of: phrase) {
+                string[range].link = URL(string: url)
+                string[range].underlineStyle = .single
+                string[range].foregroundColor = .Nexus.muted
+            }
+        }
+        return string
     }
 }
 

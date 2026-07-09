@@ -1,11 +1,25 @@
 import Foundation
 
 enum Endpoint {
-    // Priority: Info.plist "API_BASE_URL" → Xcode scheme env var → localhost
+    // Priority: Info.plist "API_BASE_URL" → Xcode scheme env var → debug LAN
+    // fallback → localhost.
+    //
+    // The scheme env var only exists when launched FROM Xcode — apps opened
+    // from the home screen don't get it, so debug builds fall back to the
+    // dev Mac's LAN address (phone and Mac on the same WiFi).
     static var baseURL: String {
-        Bundle.main.object(forInfoDictionaryKey: "API_BASE_URL") as? String
-            ?? ProcessInfo.processInfo.environment["API_BASE_URL"]
-            ?? "http://localhost:8000"
+        if let plist = Bundle.main.object(forInfoDictionaryKey: "API_BASE_URL") as? String {
+            return plist
+        }
+        if let env = ProcessInfo.processInfo.environment["API_BASE_URL"] {
+            return env
+        }
+        #if DEBUG
+        // Srihari's dev Mac — update if the Mac's IP changes (ipconfig getifaddr en0)
+        return "http://10.0.0.31:8000"
+        #else
+        return "http://localhost:8000"
+        #endif
     }
 
     // Auth

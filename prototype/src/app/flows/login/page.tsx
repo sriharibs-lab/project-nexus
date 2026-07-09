@@ -483,9 +483,8 @@ function Disclaimer() {
         flexShrink: 0,
       }}
     >
-      By continuing, you agree to Nexus&apos;s <a href="#" style={link}>Consumer Terms</a> and{" "}
-      <a href="#" style={link}>Usage Policy</a>, and acknowledge their{" "}
-      <a href="#" style={link}>Privacy Policy</a>.
+      By continuing, you agree to Nexus&apos;s <a href="#" style={link}>Terms and Conditions</a> and
+      acknowledge the <a href="#" style={link}>Privacy Policy</a>.
     </div>
   );
 }

@@ -432,13 +432,15 @@ private struct OTPField: UIViewRepresentable {
         field.font = .systemFont(ofSize: 17)
         field.textColor = UIColor(Color.Nexus.ink)
         field.tintColor = UIColor(Color.Nexus.accent)
-        field.defaultTextAttributes[.kern] = 6
+        // DO NOT set defaultTextAttributes/typingAttributes here (e.g. for
+        // kerning): doing so silently breaks .oneTimeCode AutoFill — tapping
+        // the QuickType code suggestion inserts nothing. Known UIKit bug.
+        // Kerning is applied post-change in Coordinator.editingChanged.
         field.attributedPlaceholder = NSAttributedString(
             string: "Code",
             attributes: [
                 .foregroundColor: UIColor(Color.Nexus.ghost),
                 .font: UIFont.systemFont(ofSize: 17),
-                .kern: 0,
             ]
         )
         field.delegate = context.coordinator
@@ -481,7 +483,18 @@ private struct OTPField: UIViewRepresentable {
         // each failed attempt invalidated the real code server-side.
         @objc func editingChanged(_ field: UITextField) {
             let digits = String((field.text ?? "").filter(\.isNumber).prefix(OTPField.otpLength))
-            if field.text != digits { field.text = digits }
+
+            // Apply kerning AFTER the change lands (programmatic sets don't
+            // re-fire editingChanged). Never via defaultTextAttributes — that
+            // breaks one-time-code AutoFill insertion entirely.
+            field.attributedText = NSAttributedString(
+                string: digits,
+                attributes: [
+                    .kern: 6,
+                    .font: UIFont.systemFont(ofSize: 17),
+                    .foregroundColor: UIColor(Color.Nexus.ink),
+                ]
+            )
             parent.text = digits
 
             if digits.count == OTPField.otpLength, !submitted {

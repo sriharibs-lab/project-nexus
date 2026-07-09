@@ -255,9 +255,9 @@ struct AuthView: View {
 
     private var codeField: some View {
         VStack(spacing: 6) {
-            OTPField(
+            CodeField(
                 text: $otpText,
-                isEnabled: vm.phase != .otpVerifying,
+                disabled: vm.phase == .otpVerifying,
                 onComplete: { digits in
                     vm.otpCode = digits
                     vm.verifyOTP()
@@ -269,14 +269,9 @@ struct AuthView: View {
                     #endif
                 }
             )
-            .frame(height: 52)
-            .frame(maxWidth: .infinity)
-            .background(Color.Nexus.cardBackground)
-            .clipShape(Capsule())
-            .overlay(Capsule().stroke(Color.Nexus.border, lineWidth: NexusBorder.base))
 
             #if DEBUG
-            // AutoFill diagnostics — shows the last input events the field
+            // AutoFill diagnostics — shows the last text changes the field
             // received. Read this after tapping the code suggestion chip.
             if !otpDebugTrace.isEmpty {
                 Text(otpDebugTrace.joined(separator: "  ·  "))
@@ -435,119 +430,58 @@ private struct ArcSpinner: View {
     }
 }
 
-// MARK: - Code entry field (UIKit-backed)
+// MARK: - Code entry field (pure SwiftUI, zero manipulation)
 //
-// UITextField via UIViewRepresentable: SwiftUI's TextField drops QuickType
-// one-time-code autofill taps (suggestion tapped → binding never populated).
-// UIKit's .oneTimeCode path is reliable. Centered, kerned, auto-focus,
-// auto-submit at 6 digits.
+// AutoFill history (all failed, in order):
+//  1. SwiftUI TextField with onChange text-rewriting  → chip tap dropped
+//  2. UIKit field, kern via defaultTextAttributes     → chip tap dropped
+//  3. UIKit field, kern via attributedText post-change → chip tap dropped
+//  4. UIKit field, textbook-plain, dual listeners      → trace showed iOS
+//     asks a no-op delete then never delivers the code into the UIKit-
+//     wrapped field at all.
+// Current approach: the SIMPLEST possible SwiftUI TextField — no writes to
+// the binding, no rewriting, no capping mid-flight. Filtering happens only
+// at submit. If this also drops the tap, the failure is system-side
+// (numberPad+oneTimeCode routing) and the next lever is keyboard type.
 
-private struct OTPField: UIViewRepresentable {
+private struct CodeField: View {
     @Binding var text: String
-    var isEnabled: Bool
+    let disabled: Bool
     let onComplete: (String) -> Void
     var onDebug: (String) -> Void = { _ in }
 
-    // Supabase is configured to send 8-digit codes for this project
-    // (dashboard → Auth → Email → OTP length). Update if that changes.
+    // Supabase sends 8-digit codes for this project (dashboard-configurable).
     private static let otpLength = 8
 
-    // AUTOFILL RULES (learned across three broken attempts):
-    //  1. NEVER write into the field from our code — no field.text, no
-    //     attributedText, no defaultTextAttributes/typingAttributes. Any
-    //     programmatic write can cancel or clobber the AutoFill insertion.
-    //     Input is gated up-front in shouldChangeCharactersIn instead.
-    //  2. No kerning — monospaced-digit font provides the code look.
-    //  3. Listen on BOTH .editingChanged and textDidChangeNotification —
-    //     some iOS builds insert AutoFill text without firing the control
-    //     event; the notification always fires.
-    func makeUIView(context: Context) -> UITextField {
-        let field = UITextField()
-        field.keyboardType = .numberPad
-        field.textContentType = .oneTimeCode
-        field.textAlignment = .center
-        field.font = .monospacedDigitSystemFont(ofSize: 20, weight: .medium)
-        field.textColor = UIColor(Color.Nexus.ink)
-        field.tintColor = UIColor(Color.Nexus.accent)
-        field.attributedPlaceholder = NSAttributedString(
-            string: "Code",
-            attributes: [
-                .foregroundColor: UIColor(Color.Nexus.ghost),
-                .font: UIFont.systemFont(ofSize: 17),
-            ]
-        )
-        field.delegate = context.coordinator
-        field.addTarget(context.coordinator, action: #selector(Coordinator.editingChanged(_:)), for: .editingChanged)
-        NotificationCenter.default.addObserver(
-            context.coordinator,
-            selector: #selector(Coordinator.textDidChange(_:)),
-            name: UITextField.textDidChangeNotification,
-            object: field
-        )
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            field.becomeFirstResponder()
-        }
-        return field
-    }
+    @FocusState private var focused: Bool
+    @State private var submitted = false
 
-    func updateUIView(_ field: UITextField, context: Context) {
-        field.isEnabled = isEnabled
-        context.coordinator.parent = self
-    }
-
-    func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
-
-    final class Coordinator: NSObject, UITextFieldDelegate {
-        var parent: OTPField
-        private var submitted = false
-
-        init(parent: OTPField) { self.parent = parent }
-        deinit { NotificationCenter.default.removeObserver(self) }
-
-        // Gate input instead of rewriting it afterwards: digits (plus
-        // whitespace some AutoFill codes carry) and never beyond max length.
-        func textField(
-            _ textField: UITextField,
-            shouldChangeCharactersIn range: NSRange,
-            replacementString string: String
-        ) -> Bool {
-            if string.isEmpty {
-                parent.onDebug("del@\(range.location),\(range.length)")
-                return true
+    var body: some View {
+        TextField("", text: $text, prompt: Text("Code").foregroundColor(.Nexus.ghost))
+            .keyboardType(.numberPad)
+            .textContentType(.oneTimeCode)
+            .multilineTextAlignment(.center)
+            .font(.system(size: 20, weight: .medium))
+            .monospacedDigit()
+            .foregroundColor(.Nexus.ink)
+            .focused($focused)
+            .disabled(disabled)
+            .frame(height: 52)
+            .frame(maxWidth: .infinity)
+            .background(Color.Nexus.cardBackground)
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(Color.Nexus.border, lineWidth: NexusBorder.base))
+            .onAppear {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { focused = true }
             }
-            guard string.allSatisfy({ $0.isNumber || $0.isWhitespace }) else {
-                parent.onDebug("ask'\(string)'→REJECT(chars)")
-                return false
-            }
-            let current = (textField.text ?? "") as NSString
-            let result = current.replacingCharacters(in: range, with: string)
-            let allowed = result.filter(\.isNumber).count <= OTPField.otpLength
-            parent.onDebug("ask'\(string)'→\(allowed ? "ok" : "REJECT(len)")")
-            return allowed
-        }
-
-        @objc func editingChanged(_ field: UITextField) {
-            parent.onDebug("chg'\(field.text ?? "")'")
-            handleChange(field)
-        }
-
-        @objc func textDidChange(_ notification: Notification) {
-            guard let field = notification.object as? UITextField else { return }
-            parent.onDebug("ntf'\(field.text ?? "")'")
-            handleChange(field)
-        }
-
-        // Fires from both listeners — idempotent by design.
-        private func handleChange(_ field: UITextField) {
-            let digits = (field.text ?? "").filter(\.isNumber)
-            if parent.text != digits { parent.text = digits }
-            if digits.count == OTPField.otpLength, !submitted {
-                submitted = true
-                parent.onComplete(digits)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-                    self?.submitted = false
+            .onChange(of: text) { _, new in
+                onDebug("chg'\(new)'")
+                let digits = new.filter(\.isNumber)
+                if digits.count >= Self.otpLength, !submitted {
+                    submitted = true
+                    onComplete(String(digits.prefix(Self.otpLength)))
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { submitted = false }
                 }
             }
-        }
     }
 }

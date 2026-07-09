@@ -315,28 +315,28 @@ function CodeScreen({
       >
         <div
           style={{
-            fontSize: 21,
+            fontSize: 18.5,
             fontWeight: 600,
             letterSpacing: -0.4,
             color: t.text,
             textAlign: "center",
+            whiteSpace: "nowrap",
             fontFamily: tokens.font.display,
           }}
         >
           Check your email to finish signing in
         </div>
 
-        {/* gray inner panel */}
+        {/* light purple panel */}
         <div
           style={{
-            background: t.surface2,
+            background: `color-mix(in srgb, ${tokens.color.bloom} 55%, ${tokens.color.white})`,
             borderRadius: 16,
-            padding: "18px 16px 0",
+            padding: "18px 16px",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
             gap: 4,
-            overflow: "hidden",
           }}
         >
           <span style={{ fontSize: 14.5, color: t.muted, letterSpacing: -0.1 }}>We sent an email to</span>
@@ -359,6 +359,7 @@ function CodeScreen({
               padding: "0 20px",
               fontSize: 17,
               letterSpacing: code ? 6 : -0.2,
+              textAlign: "center",
               color: t.text,
               background: t.surface,
               border: `1px solid ${t.border}`,
@@ -374,9 +375,6 @@ function CodeScreen({
               <span style={{ fontSize: 12.5, color: t.muted }}>Verifying…</span>
             </div>
           )}
-
-          {/* envelope with seal — bottom-cropped like the reference */}
-          <EnvelopeSeal style={{ marginTop: 14, marginBottom: -26 }} />
         </div>
 
         {error && (
@@ -396,29 +394,6 @@ function CodeScreen({
       <Disclaimer />
       <div style={{ height: "max(env(safe-area-inset-bottom), 18px)", flexShrink: 0 }} />
     </div>
-  );
-}
-
-// ── Envelope with wax seal (plum) — the reference's nice touch ──
-
-function EnvelopeSeal({ style }: { style?: React.CSSProperties }) {
-  return (
-    <svg width="150" height="104" viewBox="0 0 150 104" style={style}>
-      {/* body */}
-      <rect x="15" y="26" width="120" height="78" rx="7" fill={tokens.color.white} stroke={t.border} strokeWidth="1.5" />
-      {/* open flap */}
-      <path d="M15 33 L75 74 L135 33" fill="none" stroke={t.border} strokeWidth="1.5" strokeLinejoin="round" />
-      <path d="M17 28 L75 3 L133 28 L75 70 Z" fill={tokens.color.white} stroke={t.border} strokeWidth="1.5" strokeLinejoin="round" />
-      {/* wax seal */}
-      <circle cx="75" cy="62" r="13" fill={t.plum} opacity="0.9" />
-      <circle cx="75" cy="62" r="13" fill="none" stroke={t.plum} strokeWidth="1" opacity="0.5" />
-      {/* seal emboss: mini echo arcs */}
-      <g stroke={tokens.color.white} strokeWidth="1.6" strokeLinecap="round" fill="none" opacity="0.85">
-        <path d="M71.5 57.5 A6 6 0 0 0 71.5 66.5" />
-        <path d="M78.5 57.5 A6 6 0 0 1 78.5 66.5" />
-      </g>
-      <circle cx="75" cy="62" r="2" fill={tokens.color.white} opacity="0.9" />
-    </svg>
   );
 }
 

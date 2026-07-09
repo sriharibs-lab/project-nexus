@@ -29,7 +29,12 @@ struct AuthView: View {
 
     var body: some View {
         ZStack {
-            Color.Nexus.surface3.ignoresSafeArea()
+            // Background is the tap-outside-to-dismiss catcher. Controls sit
+            // above it and receive their own taps — no simultaneous gestures.
+            Color.Nexus.surface3
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture { hideKeyboard() }
             if isCodePhase {
                 codeScreen.transition(.opacity)
             } else {
@@ -50,8 +55,8 @@ struct AuthView: View {
     private var landingScreen: some View {
         ZStack {
             // Hero — mark → "Nexus" → tagline; both text rows same font/size/weight.
-            // Fades out while the email field is focused so the rising auth
-            // stack never overlaps it.
+            // Dead-center when idle; glides to the top (slightly smaller) while
+            // the email field is focused, staying visible above the risen stack.
             VStack(spacing: 0) {
                 EchoMark(color: Color.Nexus.accent, size: 64)
                 Text("Nexus")
@@ -69,8 +74,11 @@ struct AuthView: View {
             .minimumScaleFactor(0.8)
             .lineLimit(1)
             .padding(.horizontal, 20)
-            .opacity(emailFocused ? 0 : 1)
-            .animation(.easeOut(duration: 0.22), value: emailFocused)
+            .scaleEffect(emailFocused ? 0.82 : 1)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: emailFocused ? .top : .center)
+            .padding(.top, emailFocused ? 24 : 0)
+            .animation(.timingCurve(0.2, 0.8, 0.2, 1.0, duration: 0.32), value: emailFocused)
+            .allowsHitTesting(false)
             .ignoresSafeArea(.keyboard, edges: .bottom)
 
             // Auth stack — bottom-anchored, keyboard-avoiding
@@ -256,6 +264,16 @@ struct AuthView: View {
         .background(Color.Nexus.cardBackground)
         .clipShape(Capsule())
         .overlay(Capsule().stroke(Color.Nexus.border, lineWidth: NexusBorder.base))
+    }
+
+    // Background-tap keyboard dismissal. A plain gesture on the background
+    // layer only — NOT a simultaneousGesture over the whole screen (that
+    // pattern stole taps from the text fields and froze focus; see 1F-004).
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil, from: nil, for: nil
+        )
     }
 
     // MARK: - Disclaimer (stub links — PARKING_LOT.md)

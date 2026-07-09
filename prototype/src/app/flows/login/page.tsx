@@ -128,23 +128,30 @@ function LandingScreen({
 }) {
   const [emailFocused, setEmailFocused] = useState(false);
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 20px", position: "relative" }}>
-      {/* hero — dead-center of the screen; mark → "Nexus" → tagline,
-          both text rows same font/size/weight; fades while email is focused
-          so the keyboard-risen auth stack never overlaps it */}
+    <div
+      style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 20px", position: "relative" }}
+      onClick={(e) => {
+        // tap outside any control dismisses the keyboard
+        if (!(e.target as HTMLElement).closest("input,button,a")) {
+          (document.activeElement as HTMLElement | null)?.blur();
+        }
+      }}
+    >
+      {/* hero — dead-center when idle; glides to the top (slightly smaller)
+          while the email field is focused, staying visible above the stack */}
       <div
         style={{
           position: "absolute",
-          top: "50%",
+          top: emailFocused ? "24px" : "50%",
           left: 0,
           right: 0,
-          transform: "translateY(-50%)",
+          transform: emailFocused ? "translateY(0) scale(0.82)" : "translateY(-50%) scale(1)",
+          transformOrigin: "50% 0",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           pointerEvents: "none",
-          opacity: emailFocused ? 0 : 1,
-          transition: "opacity .22s ease",
+          transition: "top .32s cubic-bezier(.2,.8,.2,1), transform .32s cubic-bezier(.2,.8,.2,1)",
         }}
       >
         <EchoMark size={64} />

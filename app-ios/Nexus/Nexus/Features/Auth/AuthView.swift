@@ -18,8 +18,8 @@ import SwiftUI
 
 struct AuthView: View {
     @StateObject private var vm = AuthViewModel()
-    @State private var emailText = ""
     @State private var otpText = ""
+    @State private var emailFocused = false
 
     private var isCodePhase: Bool {
         if case .otpEntry = vm.phase { return true }
@@ -37,7 +37,6 @@ struct AuthView: View {
             }
         }
         .animation(.timingCurve(0.2, 0.8, 0.2, 1.0, duration: NexusDuration.slow), value: isCodePhase)
-        .onAppear { prewarmKeyboard() }
     }
 
     // MARK: - Landing
@@ -50,7 +49,9 @@ struct AuthView: View {
 
     private var landingScreen: some View {
         ZStack {
-            // Hero — mark → "Nexus" → tagline; both text rows same font/size/weight
+            // Hero — mark → "Nexus" → tagline; both text rows same font/size/weight.
+            // Fades out while the email field is focused so the rising auth
+            // stack never overlaps it.
             VStack(spacing: 0) {
                 EchoMark(color: Color.Nexus.accent, size: 64)
                 Text("Nexus")
@@ -68,6 +69,8 @@ struct AuthView: View {
             .minimumScaleFactor(0.8)
             .lineLimit(1)
             .padding(.horizontal, 20)
+            .opacity(emailFocused ? 0 : 1)
+            .animation(.easeOut(duration: 0.22), value: emailFocused)
             .ignoresSafeArea(.keyboard, edges: .bottom)
 
             // Auth stack — bottom-anchored, keyboard-avoiding
@@ -76,7 +79,14 @@ struct AuthView: View {
 
                 VStack(spacing: 12) {
                     appleButton
-                    emailBox
+                    EmailBox(
+                        sending: vm.phase == .emailSending,
+                        onFocusChange: { emailFocused = $0 },
+                        onSubmit: { address in
+                            vm.email = address
+                            vm.sendMagicLink()
+                        }
+                    )
 
                     if let error = vm.inlineError {
                         Text(error)
@@ -103,22 +113,6 @@ struct AuthView: View {
                 Spacer().frame(height: NexusSpacing.safeBottom)
             }
         }
-    }
-
-    // Debug builds stall 1–3s spinning up the keyboard process on the first
-    // focus of a session. Warm it invisibly at screen appear so the user's
-    // first tap is instant.
-    private func prewarmKeyboard() {
-        guard let window = UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene })
-            .first(where: { $0.activationState == .foregroundActive })?
-            .windows.first
-        else { return }
-        let field = UITextField()
-        window.addSubview(field)
-        field.becomeFirstResponder()
-        field.resignFirstResponder()
-        field.removeFromSuperview()
     }
 
     // Ink pill with the official (invisible) Apple button underneath for the
@@ -154,74 +148,6 @@ struct AuthView: View {
             .clipShape(Capsule())
             .allowsHitTesting(false)
         }
-    }
-
-    // The email text box — a field, not a button. Send circle appears on a
-    // valid address; becomes a spinner while the code email is prepared.
-    private var emailBox: some View {
-        let sending = vm.phase == .emailSending
-        let valid = isValidEmailShape(emailText)
-        return HStack(spacing: 6) {
-            TextField("", text: $emailText, prompt: emailPrompt)
-                .keyboardType(.emailAddress)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .submitLabel(.send)
-                .onSubmit { submitEmail() }
-                .font(.system(size: 16.5))
-                .kerning(-0.2)
-                .foregroundColor(.Nexus.ink)
-                .multilineTextAlignment(emailText.isEmpty ? .center : .leading)
-                .disabled(sending)
-                .padding(.leading, 22)
-
-            if valid || sending {
-                Button(action: submitEmail) {
-                    ZStack {
-                        Circle().fill(Color.Nexus.ink).frame(width: 44, height: 44)
-                        if sending {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                .scaleEffect(0.8)
-                        } else {
-                            Image(systemName: "arrow.up")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(.white)
-                        }
-                    }
-                }
-                .buttonStyle(.plain)
-                .padding(.trailing, 6)
-                .transition(.opacity.combined(with: .scale(scale: 0.8)))
-            }
-        }
-        .frame(height: 56)
-        .background(sending ? Color.Nexus.surface2 : Color.Nexus.cardBackground)
-        .clipShape(Capsule())
-        .overlay(
-            Capsule().stroke(sending ? Color.Nexus.surface2 : Color.Nexus.border, lineWidth: NexusBorder.base)
-        )
-        .animation(.easeInOut(duration: 0.2), value: valid || sending)
-    }
-
-    private var emailPrompt: Text {
-        Text("Continue with email")
-            .font(.system(size: 16.5))
-            .foregroundColor(.Nexus.ghost)
-    }
-
-    private func submitEmail() {
-        vm.email = emailText
-        vm.sendMagicLink()
-    }
-
-    // Light structural check only — the VM validates properly on submit.
-    private func isValidEmailShape(_ value: String) -> Bool {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        let parts = trimmed.split(separator: "@", maxSplits: 1)
-        guard parts.count == 2, !parts[0].isEmpty else { return false }
-        let domain = String(parts[1])
-        return domain.contains(".") && domain.count > 3 && !domain.hasSuffix(".")
     }
 
     // MARK: - Code screen
@@ -345,6 +271,89 @@ struct AuthView: View {
     }
 }
 
+// MARK: - Email box (isolated subview)
+//
+// A field, not a button. Send circle appears on a valid address; becomes a
+// spinner while the code email is prepared. Text is LOCAL @State so each
+// keystroke re-renders only this small view — not the whole auth screen
+// (whole-screen re-render per keystroke caused visible typing lag).
+
+private struct EmailBox: View {
+    let sending: Bool
+    let onFocusChange: (Bool) -> Void
+    let onSubmit: (String) -> Void
+
+    @State private var text = ""
+    @FocusState private var focused: Bool
+
+    private var valid: Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let parts = trimmed.split(separator: "@", maxSplits: 1)
+        guard parts.count == 2, !parts[0].isEmpty else { return false }
+        let domain = String(parts[1])
+        return domain.contains(".") && domain.count > 3 && !domain.hasSuffix(".")
+    }
+
+    var body: some View {
+        HStack(spacing: 6) {
+            TextField(
+                "",
+                text: $text,
+                prompt: Text("Continue with email")
+                    .font(.system(size: 16.5))
+                    .foregroundColor(.Nexus.ghost)
+            )
+            .keyboardType(.emailAddress)
+            .textContentType(.emailAddress)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .submitLabel(.send)
+            .focused($focused)
+            .onSubmit { submit() }
+            .font(.system(size: 16.5))
+            .foregroundColor(.Nexus.ink)
+            .multilineTextAlignment(text.isEmpty ? .center : .leading)
+            .disabled(sending)
+            .padding(.leading, 22)
+
+            if valid || sending {
+                Button(action: submit) {
+                    ZStack {
+                        Circle().fill(Color.Nexus.ink).frame(width: 44, height: 44)
+                        if sending {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(0.8)
+                        } else {
+                            Image(systemName: "arrow.up")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.white)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 6)
+                .transition(.opacity.combined(with: .scale(scale: 0.8)))
+            }
+        }
+        .frame(height: 56)
+        .background(sending ? Color.Nexus.surface2 : Color.Nexus.cardBackground)
+        .clipShape(Capsule())
+        .overlay(
+            Capsule().stroke(sending ? Color.Nexus.surface2 : Color.Nexus.border, lineWidth: NexusBorder.base)
+        )
+        .animation(.easeInOut(duration: 0.2), value: valid || sending)
+        .onChange(of: focused) { _, isFocused in
+            onFocusChange(isFocused)
+        }
+    }
+
+    private func submit() {
+        guard valid, !sending else { return }
+        onSubmit(text)
+    }
+}
+
 // MARK: - Code entry field (UIKit-backed)
 //
 // UITextField via UIViewRepresentable: SwiftUI's TextField drops QuickType
@@ -384,7 +393,15 @@ private struct OTPField: UIViewRepresentable {
     }
 
     func updateUIView(_ field: UITextField, context: Context) {
-        if field.text != text { field.text = text }
+        // NEVER write into the field while it's first responder: SwiftUI's
+        // update pass can run between the autofill insertion and the
+        // editingChanged callback, and a downward sync of the stale binding
+        // would wipe the just-inserted code (the "tapping the suggestion
+        // does nothing" bug). Downward sync only when idle (e.g. clearing
+        // after "Change email address").
+        if !field.isFirstResponder, field.text != text {
+            field.text = text
+        }
         field.isEnabled = isEnabled
         context.coordinator.parent = self
     }

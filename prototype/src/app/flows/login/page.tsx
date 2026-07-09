@@ -126,10 +126,12 @@ function LandingScreen({
   error: string | null;
   onSubmit: () => void;
 }) {
+  const [emailFocused, setEmailFocused] = useState(false);
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 20px", position: "relative" }}>
       {/* hero — dead-center of the screen; mark → "Nexus" → tagline,
-          both text rows same font/size/weight */}
+          both text rows same font/size/weight; fades while email is focused
+          so the keyboard-risen auth stack never overlaps it */}
       <div
         style={{
           position: "absolute",
@@ -141,6 +143,8 @@ function LandingScreen({
           flexDirection: "column",
           alignItems: "center",
           pointerEvents: "none",
+          opacity: emailFocused ? 0 : 1,
+          transition: "opacity .22s ease",
         }}
       >
         <EchoMark size={64} />
@@ -222,6 +226,8 @@ function LandingScreen({
             value={email}
             disabled={sending}
             onChange={(e) => setEmail(e.target.value)}
+            onFocus={() => setEmailFocused(true)}
+            onBlur={() => setEmailFocused(false)}
             onKeyDown={(e) => e.key === "Enter" && onSubmit()}
             style={{
               flex: 1,

@@ -12,7 +12,7 @@ import { EchoMark } from "../../lib/logo";
 import { Pressable, Screen, StatusBar } from "../../lib/primitives";
 import { t, tokens } from "../../lib/tokens";
 
-type FlowStatus = "in review" | "draft" | "parked";
+type FlowStatus = "locked" | "in review" | "draft" | "parked";
 
 const FLOWS: Array<{
   slug: string;
@@ -21,17 +21,18 @@ const FLOWS: Array<{
   icon: IconName;
   status: FlowStatus;
 }> = [
-  { slug: "login", title: "Login", detail: "Claude-style locked direction — email box · Apple · code card", icon: "envelope", status: "in review" },
+  { slug: "login", title: "Login", detail: "LOCKED — Claude-style; shipped to iOS", icon: "envelope", status: "locked" },
   { slug: "onboarding", title: "FRE / Onboarding", detail: "Welcome → topics → first collection", icon: "sparkle", status: "draft" },
   { slug: "create", title: "Collection creation", detail: "Research a topic · start with a link", icon: "plus", status: "draft" },
   { slug: "home", title: "Home", detail: "Collection list · avatar bloom menu", icon: "layers", status: "draft" },
-  { slug: "qa", title: "Q&A — Nexus tab", detail: "Chat · citations · Echo pulse · composer", icon: "nexus", status: "draft" },
+  { slug: "qa", title: "Q&A — Nexus tab", detail: "Chat · citations · Echo pulse · composer · live SSE", icon: "nexus", status: "in review" },
   { slug: "sources", title: "Sources + Reader", detail: "Source list · add sheet · reader variants", icon: "book", status: "draft" },
   { slug: "settings", title: "Settings & account", detail: "Settings · account · feedback — variants", icon: "sliders", status: "draft" },
   { slug: "search", title: "Search", detail: "Parked until core flows lock", icon: "search", status: "parked" },
 ];
 
 const STATUS_COLOR: Record<FlowStatus, string> = {
+  locked: tokens.color.success,
   "in review": t.plum,
   draft: t.faint,
   parked: t.ghost,

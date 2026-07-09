@@ -32,6 +32,8 @@ html, body {
   padding: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Force light rendering (form controls, scrollbars) while dark palette is unreviewed */
+  color-scheme: light;
 }
 
 body {

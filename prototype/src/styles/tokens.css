@@ -209,8 +209,11 @@
   --nx-scale-tab-squash-y: 0.87;
 }
 
-/* ─── Dark Mode Overrides ─── */
-@media (prefers-color-scheme: dark) {
+/* ─── Dark Mode Overrides ───
+   TEMPORARILY DISABLED (2026-07-09): dark palette is undesigned/unreviewed —
+   prototype forces light so device reviews aren't derailed by dark-mode bugs.
+   Re-enable by restoring the prefers-color-scheme query. See PARKING_LOT.md. */
+@media (prefers-color-scheme: none-disabled) {
   :root {
     --nx-color-bg-primary:   #0F0D13;
     --nx-color-bg-secondary: #1A1720;

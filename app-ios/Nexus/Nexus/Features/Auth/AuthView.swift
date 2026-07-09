@@ -424,18 +424,27 @@ private struct OTPField: UIViewRepresentable {
     var isEnabled: Bool
     let onComplete: (String) -> Void
 
+    // Supabase is configured to send 8-digit codes for this project
+    // (dashboard → Auth → Email → OTP length). Update if that changes.
+    private static let otpLength = 8
+
+    // AUTOFILL RULES (learned across three broken attempts):
+    //  1. NEVER write into the field from our code — no field.text, no
+    //     attributedText, no defaultTextAttributes/typingAttributes. Any
+    //     programmatic write can cancel or clobber the AutoFill insertion.
+    //     Input is gated up-front in shouldChangeCharactersIn instead.
+    //  2. No kerning — monospaced-digit font provides the code look.
+    //  3. Listen on BOTH .editingChanged and textDidChangeNotification —
+    //     some iOS builds insert AutoFill text without firing the control
+    //     event; the notification always fires.
     func makeUIView(context: Context) -> UITextField {
         let field = UITextField()
         field.keyboardType = .numberPad
         field.textContentType = .oneTimeCode
         field.textAlignment = .center
-        field.font = .systemFont(ofSize: 17)
+        field.font = .monospacedDigitSystemFont(ofSize: 20, weight: .medium)
         field.textColor = UIColor(Color.Nexus.ink)
         field.tintColor = UIColor(Color.Nexus.accent)
-        // DO NOT set defaultTextAttributes/typingAttributes here (e.g. for
-        // kerning): doing so silently breaks .oneTimeCode AutoFill — tapping
-        // the QuickType code suggestion inserts nothing. Known UIKit bug.
-        // Kerning is applied post-change in Coordinator.editingChanged.
         field.attributedPlaceholder = NSAttributedString(
             string: "Code",
             attributes: [
@@ -445,7 +454,12 @@ private struct OTPField: UIViewRepresentable {
         )
         field.delegate = context.coordinator
         field.addTarget(context.coordinator, action: #selector(Coordinator.editingChanged(_:)), for: .editingChanged)
-        field.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        NotificationCenter.default.addObserver(
+            context.coordinator,
+            selector: #selector(Coordinator.textDidChange(_:)),
+            name: UITextField.textDidChangeNotification,
+            object: field
+        )
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
             field.becomeFirstResponder()
         }
@@ -453,50 +467,44 @@ private struct OTPField: UIViewRepresentable {
     }
 
     func updateUIView(_ field: UITextField, context: Context) {
-        // NEVER write into the field while it's first responder: SwiftUI's
-        // update pass can run between the autofill insertion and the
-        // editingChanged callback, and a downward sync of the stale binding
-        // would wipe the just-inserted code (the "tapping the suggestion
-        // does nothing" bug). Downward sync only when idle (e.g. clearing
-        // after "Change email address").
-        if !field.isFirstResponder, field.text != text {
-            field.text = text
-        }
         field.isEnabled = isEnabled
         context.coordinator.parent = self
     }
 
     func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
 
-    // Supabase is configured to send 8-digit codes for this project
-    // (dashboard → Auth → Email → OTP length). Update if that changes.
-    private static let otpLength = 8
-
     final class Coordinator: NSObject, UITextFieldDelegate {
         var parent: OTPField
         private var submitted = false
 
         init(parent: OTPField) { self.parent = parent }
+        deinit { NotificationCenter.default.removeObserver(self) }
 
-        // Auto-submit ONLY at the exact expected length — a timer-based
-        // debounce fired between slow keystrokes, submitting partial codes;
-        // each failed attempt invalidated the real code server-side.
-        @objc func editingChanged(_ field: UITextField) {
-            let digits = String((field.text ?? "").filter(\.isNumber).prefix(OTPField.otpLength))
+        // Gate input instead of rewriting it afterwards: digits (plus
+        // whitespace some AutoFill codes carry) and never beyond max length.
+        func textField(
+            _ textField: UITextField,
+            shouldChangeCharactersIn range: NSRange,
+            replacementString string: String
+        ) -> Bool {
+            if string.isEmpty { return true } // deletions always allowed
+            guard string.allSatisfy({ $0.isNumber || $0.isWhitespace }) else { return false }
+            let current = (textField.text ?? "") as NSString
+            let result = current.replacingCharacters(in: range, with: string)
+            return result.filter(\.isNumber).count <= OTPField.otpLength
+        }
 
-            // Apply kerning AFTER the change lands (programmatic sets don't
-            // re-fire editingChanged). Never via defaultTextAttributes — that
-            // breaks one-time-code AutoFill insertion entirely.
-            field.attributedText = NSAttributedString(
-                string: digits,
-                attributes: [
-                    .kern: 6,
-                    .font: UIFont.systemFont(ofSize: 17),
-                    .foregroundColor: UIColor(Color.Nexus.ink),
-                ]
-            )
-            parent.text = digits
+        @objc func editingChanged(_ field: UITextField) { handleChange(field) }
 
+        @objc func textDidChange(_ notification: Notification) {
+            guard let field = notification.object as? UITextField else { return }
+            handleChange(field)
+        }
+
+        // Fires from both listeners — idempotent by design.
+        private func handleChange(_ field: UITextField) {
+            let digits = (field.text ?? "").filter(\.isNumber)
+            if parent.text != digits { parent.text = digits }
             if digits.count == OTPField.otpLength, !submitted {
                 submitted = true
                 parent.onComplete(digits)

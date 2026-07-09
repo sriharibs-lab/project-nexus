@@ -311,13 +311,19 @@ function CodeScreen({
   onChangeEmail: () => void;
 }) {
   const submitted = useRef(false);
+  const pending = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Supabase OTP length is configurable (6–10; this project sends 8):
+  // accept up to 10, auto-submit after a short pause once ≥6 are present.
   const handleChange = (raw: string) => {
-    const digits = raw.replace(/\D/g, "").slice(0, 6);
+    const digits = raw.replace(/\D/g, "").slice(0, 10);
     setCode(digits);
-    if (digits.length === 6 && !submitted.current) {
-      submitted.current = true;
-      onSubmit(digits);
-      setTimeout(() => (submitted.current = false), 1500);
+    if (pending.current) clearTimeout(pending.current);
+    if (digits.length >= 6 && !submitted.current) {
+      pending.current = setTimeout(() => {
+        submitted.current = true;
+        onSubmit(digits);
+        setTimeout(() => (submitted.current = false), 1500);
+      }, 550);
     }
   };
 

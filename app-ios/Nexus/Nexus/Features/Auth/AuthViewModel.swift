@@ -74,8 +74,9 @@ final class AuthViewModel: ObservableObject {
     func verifyOTP() {
         guard case .otpEntry(let sentEmail) = phase else { return }
         let code = otpCode.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard code.count == 6 else {
-            inlineError = "Enter the 6-digit code from your email."
+        // Supabase OTP length is configurable (6–10; this project sends 8)
+        guard (6...10).contains(code.count) else {
+            inlineError = "Enter the code from your email."
             return
         }
         inlineError = nil

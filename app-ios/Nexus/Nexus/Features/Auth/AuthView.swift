@@ -355,9 +355,10 @@ private struct EmailBox: View {
                     ZStack {
                         Circle().fill(Color.Nexus.ink).frame(width: 44, height: 44)
                         if sending {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                .scaleEffect(0.8)
+                            // Custom arc spinner — system ProgressView renders a
+                            // static grey glyph for its first moments, which read
+                            // as a frozen button.
+                            ArcSpinner()
                         } else {
                             Image(systemName: "arrow.up")
                                 .font(.system(size: 18, weight: .semibold))
@@ -385,6 +386,29 @@ private struct EmailBox: View {
     private func submit() {
         guard valid, !sending else { return }
         onSubmit(text)
+    }
+}
+
+// MARK: - Arc spinner
+//
+// Deterministic replacement for ProgressView, which renders as a static grey
+// glyph while UIActivityIndicatorView spins up.
+
+private struct ArcSpinner: View {
+    var color: Color = .white
+    var lineWidth: CGFloat = 2
+    var size: CGFloat = 18
+
+    @State private var spinning = false
+
+    var body: some View {
+        Circle()
+            .trim(from: 0, to: 0.72)
+            .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+            .frame(width: size, height: size)
+            .rotationEffect(.degrees(spinning ? 360 : 0))
+            .animation(.linear(duration: 0.75).repeatForever(autoreverses: false), value: spinning)
+            .onAppear { spinning = true }
     }
 }
 
@@ -445,19 +469,32 @@ private struct OTPField: UIViewRepresentable {
     final class Coordinator: NSObject, UITextFieldDelegate {
         var parent: OTPField
         private var submitted = false
+        private var pendingSubmit: DispatchWorkItem?
 
         init(parent: OTPField) { self.parent = parent }
 
+        // Supabase OTP length is configurable (this project sends 8 digits;
+        // default is 6). Accept up to 10 and auto-submit after a short pause
+        // once ≥6 digits are present — hard-capping at 6 truncated real codes
+        // and auto-submitted the wrong value.
         @objc func editingChanged(_ field: UITextField) {
-            let digits = String((field.text ?? "").filter(\.isNumber).prefix(6))
+            let digits = String((field.text ?? "").filter(\.isNumber).prefix(10))
             if field.text != digits { field.text = digits }
             parent.text = digits
-            if digits.count == 6, !submitted {
-                submitted = true
-                parent.onComplete(digits)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-                    self?.submitted = false
-                }
+
+            pendingSubmit?.cancel()
+            guard digits.count >= 6 else { return }
+            let work = DispatchWorkItem { [weak self] in self?.submit(digits) }
+            pendingSubmit = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.55, execute: work)
+        }
+
+        private func submit(_ digits: String) {
+            guard !submitted else { return }
+            submitted = true
+            parent.onComplete(digits)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                self?.submitted = false
             }
         }
     }

@@ -84,6 +84,12 @@ final class ResearchViewModel: ObservableObject {
     func startResearch() {
         let trimmed = topic.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
+        // Reentrancy guard: composer return-key + send button (or a double
+        // tap) fired startResearch twice, opening two parallel SSE streams —
+        // two collections created server-side, state reset mid-flight.
+        if case .searching = phase { return }
+        if case .reviewing = phase { return }
+        if case .confirming = phase { return }
 
         phase = .searching
         sources = []
@@ -151,11 +157,14 @@ final class ResearchViewModel: ObservableObject {
         do {
             try await APIClient.shared.streamSSE(.research, body: body) { [weak self] result in
                 guard let self else { return }
-                switch result {
-                case .success(let dict):
-                    self.handleSSEEvent(dict)
-                case .failure(let error):
-                    Task { @MainActor in
+                // The SSE loop runs off-main. @Published writes MUST hop to
+                // the main actor — background publishes made SwiftUI drop
+                // phase updates (sheet collapsed mid-review, 2026-07-11).
+                Task { @MainActor in
+                    switch result {
+                    case .success(let dict):
+                        self.handleSSEEvent(dict)
+                    case .failure(let error):
                         self.phase = .error(error.localizedDescription)
                     }
                 }

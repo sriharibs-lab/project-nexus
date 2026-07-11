@@ -548,11 +548,19 @@ async def verify_otp(
     user, is_new = await _upsert_user(db, supabase_id=supabase_id, email=payload.email)
     await db.commit()
 
+    # ONE token regime (matches the Apple path): issue a Nexus-signed HS256
+    # JWT instead of passing through Supabase's access token. Supabase signs
+    # its own tokens with asymmetric keys (ES256) on this project, which
+    # get_current_user() cannot validate — passing them through caused 401s
+    # on every authenticated call after email sign-in. The Nexus JWT also
+    # lasts 30 days vs Supabase's 1 hour, so no refresh flow needed for beta.
+    access_token, expires_in = _issue_nexus_jwt(user.id, supabase_id)
+
     return OTPVerifyResponse(
-        access_token=data["access_token"],
-        refresh_token=data["refresh_token"],
-        expires_in=data.get("expires_in", 3600),
-        token_type=data.get("token_type", "bearer"),
+        access_token=access_token,
+        refresh_token=data.get("refresh_token", ""),
+        expires_in=expires_in,
+        token_type="bearer",
         user_id=str(user.id),
         is_new=is_new,
     )

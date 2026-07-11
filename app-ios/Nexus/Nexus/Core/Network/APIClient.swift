@@ -84,6 +84,13 @@ final class APIClient {
         return try await post(.authVerifyOTP, body: body)
     }
 
+    #if DEBUG
+    /// One-tap dev session — dev backend only (endpoint 404s in production).
+    func devLogin() async throws -> AuthTokenResponse {
+        try await post(.authDevLogin, body: EmptyRequest())
+    }
+    #endif
+
     /// Exchange an Apple identity token for Nexus session tokens.
     func signInWithApple(identityToken: String) async throws -> AuthTokenResponse {
         let body = AppleSignInRequest(identityToken: identityToken)

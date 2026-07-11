@@ -26,6 +26,7 @@ enum Endpoint {
     case authMagicLink          // POST /v1/auth/magic-link — request OTP email
     case authVerifyOTP          // POST /v1/auth/verify-otp — verify OTP, get tokens
     case authApple              // POST /v1/auth/apple — exchange Apple identity token
+    case authDevLogin           // POST /v1/auth/dev-login — DEBUG one-tap session (dev backend only)
     case authProvision          // POST /v1/auth/provision — upsert user after sign-in
     case authRefresh            // POST /v1/auth/refresh — refresh access token
     case authMe                 // GET  /v1/auth/me — current user profile
@@ -48,6 +49,7 @@ enum Endpoint {
         case .authMagicLink:    return "/v1/auth/magic-link"
         case .authVerifyOTP:    return "/v1/auth/verify-otp"
         case .authApple:        return "/v1/auth/apple"
+        case .authDevLogin:     return "/v1/auth/dev-login"
         case .authProvision:    return "/v1/auth/provision"
         case .authRefresh:      return "/v1/auth/refresh"
         case .authMe:           return "/v1/auth/me"

@@ -615,6 +615,33 @@ async def refresh_token(payload: TokenRefreshRequest) -> TokenRefreshResponse:
     )
 
 
+@router.post("/dev-login", response_model=OTPVerifyResponse, status_code=status.HTTP_200_OK)
+async def dev_login(db: AsyncSession = Depends(get_db)) -> OTPVerifyResponse:
+    """
+    DEVELOPMENT-ONLY one-tap login for the iOS "Continue (dev)" button.
+    Upserts a fixed dev user and returns a real Nexus JWT so dev sessions
+    hit the API as a genuine authenticated user (no more orphan users from
+    random UUIDs, no OTP round-trip while testing).
+
+    Refuses to run outside environment=development.
+    """
+    if settings.is_production or settings.environment != "development":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
+    user, is_new = await _upsert_user(db, supabase_id="dev-fixed-user", email="dev@nexus.test")
+    await db.commit()
+
+    access_token, expires_in = _issue_nexus_jwt(user.id, "dev-fixed-user")
+    return OTPVerifyResponse(
+        access_token=access_token,
+        refresh_token="",
+        expires_in=expires_in,
+        token_type="bearer",
+        user_id=str(user.id),
+        is_new=is_new,
+    )
+
+
 @router.get("/me", response_model=UserProfile, status_code=status.HTTP_200_OK)
 async def get_me(
     current_user: dict = Depends(get_current_user),

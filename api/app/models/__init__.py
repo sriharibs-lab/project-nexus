@@ -1,3 +1,4 @@
+from app.models.ai_telemetry import AiTelemetry
 from app.models.collection import Collection, CollectionCreatedBy
 from app.models.daily_briefing import DailyBriefing
 from app.models.embedding import Embedding
@@ -7,6 +8,7 @@ from app.models.user import User
 from app.models.user_interest_profile import UserInterestProfile
 
 __all__ = [
+    "AiTelemetry",
     "User",
     "Collection",
     "CollectionCreatedBy",

@@ -46,7 +46,15 @@ class Collection(Base):
     description: Mapped[str | None] = mapped_column(Text)
     framing_paragraph: Mapped[str | None] = mapped_column(Text)
     created_by: Mapped[CollectionCreatedBy] = mapped_column(
-        Enum(CollectionCreatedBy, values_callable=lambda e: [m.value for m in e], create_type=False),
+        # native_enum=False: the DB column is VARCHAR(10), not a Postgres enum
+        # type — without it asyncpg casts $n::collectioncreatedby and fails
+        # with UndefinedObjectError on INSERT (found 2026-07-11).
+        Enum(
+            CollectionCreatedBy,
+            values_callable=lambda e: [m.value for m in e],
+            create_type=False,
+            native_enum=False,
+        ),
         nullable=False,
         default=CollectionCreatedBy.user,
         server_default=CollectionCreatedBy.user.value,

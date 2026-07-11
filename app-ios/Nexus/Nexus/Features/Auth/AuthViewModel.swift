@@ -162,12 +162,24 @@ final class AuthViewModel: ObservableObject {
     // MARK: - Dev bypass (debug builds only)
 
     #if DEBUG
+    /// One-tap REAL session against the dev backend (fixed dev@nexus.test
+    /// user). The old fake-token version created orphan users and 401'd on
+    /// every API call — dev sessions must exercise the real auth path.
     func devBypass() {
-        AuthManager.shared.setSession(
-            accessToken: "dev",
-            refreshToken: "dev-refresh",
-            userId: UUID()
-        )
+        inlineError = nil
+        Task {
+            do {
+                let resp = try await APIClient.shared.devLogin()
+                AuthManager.shared.setSession(
+                    accessToken: resp.accessToken,
+                    refreshToken: resp.refreshToken,
+                    userId: resp.userUUID,
+                    email: "dev@nexus.test"
+                )
+            } catch {
+                inlineError = "Dev login failed — is the local backend running?"
+            }
+        }
     }
     #endif
 

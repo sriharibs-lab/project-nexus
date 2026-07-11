@@ -169,6 +169,12 @@ async def _stream_research(
                 source_count=0,
             )
             db.add(collection)
+            # Flush BEFORE adding telemetry: AiTelemetry has a plain FK column
+            # (no relationship()) to collections, and SQLAlchemy's unit of work
+            # only orders inserts across mappers linked by relationship() — the
+            # telemetry INSERT was emitted first and hit the FK constraint,
+            # rolling back the whole collection (empirically reproduced 2026-07-11).
+            await db.flush()
 
             db.add(AiTelemetry(
                 id=uuid.uuid4(),

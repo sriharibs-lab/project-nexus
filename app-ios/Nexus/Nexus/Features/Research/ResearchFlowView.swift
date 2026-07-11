@@ -64,7 +64,22 @@ struct ResearchFlowView: View {
                     .shadow(color: .black.opacity(0.20), radius: 40, x: 0, y: -12)
                     .offset(y: sheetVisible ? 0 : geo.size.height + 40)
                     .animation(.spring(response: 0.48, dampingFraction: 0.86), value: sheetVisible)
+
+                // ── Error banner — errors were previously INVISIBLE: the sheet
+                // slid away with no feedback and looked like a phantom dismissal
+                // (2026-07-11, three stacked backend persist bugs).
+                if case .error(let message) = vm.phase {
+                    VStack {
+                        FREErrorBanner(message: message) { vm.retry() }
+                            .padding(.horizontal, NexusSpacing.sideGutter)
+                            .padding(.top, NexusSpacing.safeTop + 8)
+                        Spacer()
+                    }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .zIndex(2)
+                }
             }
+            .animation(.spring(response: 0.4, dampingFraction: 0.85), value: sheetVisible)
             // Prevent keyboard appearance from changing geo.size, which would
             // cascade re-renders through FREInputScreen while the user types.
             .ignoresSafeArea(.keyboard)
@@ -219,6 +234,39 @@ private struct FREInputScreen: View {
             .presentationDetents([.large])
             .presentationDragIndicator(.hidden) // custom grabber rendered in the sheet
         }
+    }
+}
+
+// MARK: - Error banner
+
+private struct FREErrorBanner: View {
+    let message: String
+    let onRetry: () -> Void
+
+    var body: some View {
+        HStack(spacing: NexusSpacing.sm) {
+            Image(systemName: "exclamationmark.circle.fill")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundColor(.Nexus.destructive)
+            Text(message)
+                .font(.system(size: 13.5))
+                .kerning(-0.1)
+                .foregroundColor(.Nexus.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+            Button("Retry", action: onRetry)
+                .font(.system(size: 13.5, weight: .semibold))
+                .foregroundColor(.Nexus.accent)
+        }
+        .padding(.horizontal, NexusSpacing.md)
+        .padding(.vertical, 11)
+        .background(Color.Nexus.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.Nexus.destructive.opacity(0.35), lineWidth: NexusBorder.base)
+        )
+        .shadow(color: .black.opacity(0.10), radius: 14, x: 0, y: 5)
     }
 }
 

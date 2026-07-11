@@ -123,9 +123,11 @@ const CREATE: Array<{ q: string; label: string; kind: ArtifactKind; icon: IconNa
 
 export default function QAFlow() {
   const router = useRouter();
-  const [tab, setTab] = useState("nexus");
+  const [tab, setTab] = useState("ask");
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [busy, setBusy] = useState(false);
+  const [artifacts, setArtifacts] = useState<ArtifactKind[]>([]);
+  const [creating, setCreating] = useState<ArtifactKind | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<(() => void) | null>(null);
   const timers = useRef<Array<ReturnType<typeof setTimeout>>>([]);
@@ -230,8 +232,19 @@ export default function QAFlow() {
     }
   };
 
+  const makeArtifact = (kind: ArtifactKind) => {
+    if (creating) return;
+    setCreating(kind);
+    timers.current.push(
+      setTimeout(() => {
+        setArtifacts((a) => [kind, ...a]);
+        setCreating(null);
+      }, 1500)
+    );
+  };
+
   const asked = new Set(msgs.filter((m) => m.role === "user").map((m) => m.text));
-  const remaining = [...CREATE, ...starterList].filter((s) => !asked.has(s.q));
+  const remaining = starterList.filter((s) => !asked.has(s.q));
   const empty = msgs.length === 0;
 
   return (
@@ -268,7 +281,76 @@ export default function QAFlow() {
         </div>
       </div>
 
-      {/* thread */}
+      {/* ── Create tab — the artifact studio ── */}
+      {tab === "create" && (
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "12px 18px 8px" }}>
+          <div style={{ paddingTop: 16, animation: "nxFade .32s ease" }}>
+            <Icon name="sparkle" size={27} color={t.text} />
+            <div
+              style={{
+                fontSize: 16.5,
+                fontWeight: 500,
+                lineHeight: 1.55,
+                letterSpacing: -0.25,
+                color: t.text,
+                marginTop: 14,
+              }}
+            >
+              Turn this collection into something new — every creation is built only from your
+              {" "}{collection.sources.length} sources.
+            </div>
+
+            <SectionCaption style={{ marginTop: 28 }}>Create</SectionCaption>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 12 }}>
+              {CREATE.map((item) => (
+                <Pressable
+                  key={item.q}
+                  scale={0.95}
+                  onClick={() => makeArtifact(item.kind)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    background: t.surface,
+                    border: `1px solid ${t.border}`,
+                    borderRadius: 14,
+                    padding: 13,
+                    textAlign: "left",
+                    opacity: creating && creating !== item.kind ? 0.5 : 1,
+                  }}
+                >
+                  <Icon name={item.icon} size={19} color={t.plum} stroke={1.8} />
+                  <span style={{ fontSize: 13.5, fontWeight: 600, letterSpacing: -0.2, color: t.text }}>
+                    {item.label}
+                  </span>
+                </Pressable>
+              ))}
+            </div>
+
+            {creating && (
+              <div style={{ display: "flex", justifyContent: "center", paddingTop: 8 }}>
+                <EchoPulse />
+              </div>
+            )}
+
+            {artifacts.length > 0 && (
+              <>
+                <SectionCaption style={{ marginTop: 24 }}>Your creations</SectionCaption>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+                  {artifacts.map((kind, i) => (
+                    <div key={`${kind}-${i}`} style={{ animation: "nxFadeRise .34s ease" }}>
+                      <Artifact kind={kind} sources={collection.sources} title={collection.name} />
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Ask tab — the chat ── */}
+      {tab === "ask" && (
       <div ref={scrollRef} style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "12px 18px 8px" }}>
         {empty ? (
           <div style={{ paddingTop: 16, animation: "nxFade .32s ease" }}>
@@ -286,33 +368,7 @@ export default function QAFlow() {
               {collection.ai_framing}
             </div>
 
-            <SectionCaption style={{ marginTop: 28 }}>Create</SectionCaption>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 12 }}>
-              {CREATE.map((item) => (
-                <Pressable
-                  key={item.q}
-                  scale={0.95}
-                  onClick={() => ask(item.q, item.blocks, item.kind)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    background: t.surface,
-                    border: `1px solid ${t.border}`,
-                    borderRadius: 14,
-                    padding: 13,
-                    textAlign: "left",
-                  }}
-                >
-                  <Icon name={item.icon} size={19} color={t.plum} stroke={1.8} />
-                  <span style={{ fontSize: 13.5, fontWeight: 600, letterSpacing: -0.2, color: t.text }}>
-                    {item.label}
-                  </span>
-                </Pressable>
-              ))}
-            </div>
-
-            <SectionCaption style={{ marginTop: 24 }}>Or ask</SectionCaption>
+            <SectionCaption style={{ marginTop: 28 }}>Ask</SectionCaption>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
               {starterList.map((s) => (
                 <StarterChip key={s.q} q={s.q} onClick={() => ask(s.q, s.blocks)} />
@@ -356,9 +412,10 @@ export default function QAFlow() {
           </div>
         )}
       </div>
+      )}
 
-      {/* suggestion carousel after first exchange */}
-      {!empty && remaining.length > 0 && (
+      {/* suggestion carousel after first exchange (Ask tab only) */}
+      {tab === "ask" && !empty && remaining.length > 0 && (
         <div
           style={{
             flexShrink: 0,
@@ -370,28 +427,24 @@ export default function QAFlow() {
           }}
         >
           {remaining.slice(0, 3).map((s) => (
-            <StarterChip
-              key={s.q}
-              q={s.q}
-              nowrap
-              onClick={() =>
-                ask(s.q, s.blocks, "kind" in s ? (s as (typeof CREATE)[number]).kind : undefined)
-              }
-            />
+            <StarterChip key={s.q} q={s.q} nowrap onClick={() => ask(s.q, s.blocks)} />
           ))}
         </div>
       )}
 
-      {/* composer */}
-      <div style={{ flexShrink: 0, padding: "6px 16px 6px" }}>
-        <AskComposer disabled={busy} onSend={(q) => ask(q)} />
-      </div>
+      {/* composer (Ask tab only) */}
+      {tab === "ask" && (
+        <div style={{ flexShrink: 0, padding: "6px 16px 6px" }}>
+          <AskComposer disabled={busy} onSend={(q) => ask(q)} />
+        </div>
+      )}
 
-      {/* tab capsule */}
+      {/* tab capsule — Ask · Create · Sources */}
       <div style={{ flexShrink: 0, display: "flex", justifyContent: "center", padding: "6px 0 24px" }}>
         <TabCapsule
           tabs={[
-            { key: "nexus", label: "Nexus", icon: "nexus", iconSelected: "nexusFill" },
+            { key: "ask", label: "Ask", icon: "nexus", iconSelected: "nexusFill" },
+            { key: "create", label: "Create", icon: "sparkle", iconSelected: "sparkle" },
             { key: "sources", label: "Sources", icon: "layers", iconSelected: "layersFill" },
           ]}
           active={tab}

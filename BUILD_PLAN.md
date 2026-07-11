@@ -180,6 +180,7 @@ cycle_policy:
 | 2026-06-12 | Apple Developer Program enrolled | Srihari's existing Apple ID enrolled at $99/year; unblocks Xcode provisioning and App Store distribution |
 | 2026-06-13 | Items ↔ Collections: many-to-many | A link can appear in multiple collections; replace items.collection_id FK with collection_items join table before any iOS work depends on the API shape |
 | 2026-06-13 | Dark mode page background | Deferred — Srihari to check Claude design system for reference before deciding |
+| 2026-07-10 | Collection tabs: Ask · Create · Sources (was Nexus · Sources) | From first Q&A prototype review — chat and artifact creation are distinct jobs; Create gets its own surface instead of cards inside chat |
 
 ---
 

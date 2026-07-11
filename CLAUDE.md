@@ -26,9 +26,9 @@ Core thesis: The entire product is an AI harness — tools, skills, and memory b
 - Never propose generic UI. Always go for opinionated, modern, unique.
 - **Always render visuals.** At every design step, produce an actual HTML file or React component the user can open in a browser. Never describe colors, fonts, or layouts in text or tables alone — user must see, not read.
 
-## App IA (locked)
+## App IA (locked; tabs revised 2026-07-10)
 - Collections are the root. No global library.
-- Each Collection has two tabs: **Nexus** (AI agent, default landing) + **Sources** (links)
+- Each Collection has three tabs: **Ask** (AI chat, default landing) + **Create** (artifact studio: audio summary, infographic, quiz, paper) + **Sources** (links)
 - Creation: "Research a topic" (AI-seeded) | "Start with a link" (manual)
 - Saving a link always prompts to assign to a collection — no inbox
 - Full terminology table: SPEC.md §5a

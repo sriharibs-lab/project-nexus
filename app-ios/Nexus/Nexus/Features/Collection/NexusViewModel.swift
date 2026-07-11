@@ -206,13 +206,11 @@ final class NexusViewModel: ObservableObject {
 
 extension NexusViewModel {
     /// Default prompts shown before the user types anything.
+    /// 3 chips max in the empty state (design review 2026-07-10: 5+ was too many).
     static let defaultStarterPrompts: [String] = [
         "What are the key ideas across these sources?",
         "What should I read first?",
         "Summarize this collection in 3 bullet points",
-        "What questions does this collection raise?",
-        "Are there any contradictions between sources?",
-        "What's missing from this collection?",
     ]
 
     /// Contextual prompts shown after the first message.

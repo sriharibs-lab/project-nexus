@@ -370,7 +370,9 @@ export default function QAFlow() {
 
             <SectionCaption style={{ marginTop: 28 }}>Ask</SectionCaption>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-              {starterList.map((s) => (
+              {/* 3 chips max in the empty state (review 2026-07-10: 5 was too many);
+                  the full set still feeds the post-answer suggestion carousel */}
+              {starterList.slice(0, 3).map((s) => (
                 <StarterChip key={s.q} q={s.q} onClick={() => ask(s.q, s.blocks)} />
               ))}
             </div>

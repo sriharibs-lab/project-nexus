@@ -10,43 +10,42 @@ struct ItemDetailRoute: Hashable {
 
 struct CollectionView: View {
     @StateObject private var vm: CollectionViewModel
-    @State private var selectedTab: Tab = .nexus
+    // IA revision 2026-07-10 (prototype review): three tabs — Ask · Create · Sources
+    @State private var selectedTab: String = "ask"
     // Link URL sheet — presented by the + toolbar button on the Sources tab
     @State private var linkSheetContentType: DetectedContentType? = nil
 
-    enum Tab: String, CaseIterable {
-        case nexus   = "Nexus"
-        case sources = "Sources"
-    }
+    private static let tabs: [GlassTabItem] = [
+        GlassTabItem(key: "ask",     label: "Ask",     icon: "echo",             iconSelected: "echo"),
+        GlassTabItem(key: "create",  label: "Create",  icon: "square.and.pencil", iconSelected: "square.and.pencil"),
+        GlassTabItem(key: "sources", label: "Sources", icon: "rectangle.stack",  iconSelected: "rectangle.stack.fill"),
+    ]
 
-    init(collection: NexusCollection) {
+    init(collection: NexusCollection, initialTab: String = "ask") {
         _vm = StateObject(wrappedValue: CollectionViewModel(collection: collection))
+        _selectedTab = State(initialValue: initialTab)
     }
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .bottom) {
             NexusBackground()
 
-            VStack(spacing: 0) {
-                // Liquid Glass floating tab capsule (DESIGN_LANGUAGE §3 + §8)
-                // Floats above content — uses backdrop blur material, spring thumb.
-                LiquidGlassTabCapsule(selectedTab: $selectedTab)
-                    .padding(.horizontal, NexusSpacing.sideGutter)
-                    .padding(.top, NexusSpacing.sm)
-                    .padding(.bottom, NexusSpacing.xs)
+            tabContent
+                // Capsule zone is unsafe area — composers/lists float above it
+                .safeAreaInset(edge: .bottom) {
+                    Color.clear.frame(height: 84)
+                }
 
-                Rectangle()
-                    .fill(Color.Nexus.hair)
-                    .frame(height: NexusBorder.hair)
-
-                tabContent
-            }
+            // Bottom floating glass capsule (DESIGN_LANGUAGE §3 + §8):
+            // 24pt above the home indicator, content scrolls underneath.
+            GlassTabBar(tabs: Self.tabs, selection: $selectedTab)
+                .padding(.bottom, 24)
         }
         .navigationTitle(vm.collection.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             // "+" button in Sources tab → open link sheet pre-scoped to this collection
-            if selectedTab == .sources {
+            if selectedTab == "sources" {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         linkSheetContentType = .website
@@ -90,10 +89,13 @@ struct CollectionView: View {
     @ViewBuilder
     private var tabContent: some View {
         switch selectedTab {
-        case .nexus:
+        case "ask":
             NexusTabView(collection: vm.collection)
                 .transition(.opacity)
-        case .sources:
+        case "create":
+            CreateTabView(collection: vm.collection, items: vm.items)
+                .transition(.opacity)
+        default:
             SourcesTabView(
                 items: vm.items,
                 isLoading: vm.isLoading,

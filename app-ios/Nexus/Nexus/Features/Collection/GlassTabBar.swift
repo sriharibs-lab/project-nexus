@@ -2,12 +2,15 @@ import SwiftUI
 
 // MARK: - Bottom floating glass tab bar
 //
-// Ported from prototype /flows/qa TabCapsule (locked 2026-07-10):
-//  • WhatsApp-height capsule: 23pt icon + 10.5pt label, tight padding.
-//  • Liquid Glass material with chromatic hairline (DESIGN_LANGUAGE §3).
-//  • Traveling thumb: glides between tabs on a spring AND squashes like a
-//    water bubble mid-flight (scale 1.13×0.87 → 0.95×1.05 → settle).
-//  • Selected tab: plum tint + filled icon variant where available.
+// iOS 26+: NATIVE Liquid Glass (same system material as WhatsApp's tab bar).
+//   • Track:  .glassEffect(.regular, in: .capsule) — no background fills, no
+//     hand-drawn rims. An explicit .background() DEFEATS the glass material
+//     entirely (that was v1's flat look).
+//   • Thumb:  its own tinted interactive glass capsule inside the shared
+//     GlassEffectContainer with a stable glassEffectID — moving it between
+//     tabs morphs the glass liquidly (the WhatsApp water-bubble travel),
+//     driven by matchedGeometryEffect + withAnimation.
+// < iOS 26: ultraThinMaterial approximation (previous behavior).
 
 struct GlassTabItem: Equatable {
     let key: String
@@ -21,44 +24,42 @@ struct GlassTabBar: View {
     @Binding var selection: String
 
     @Namespace private var thumbNS
+    @Namespace private var glassNS
     @State private var squash: CGSize = CGSize(width: 1, height: 1)
 
     var body: some View {
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer(spacing: 12) {
+                track
+                    .glassEffect(.regular.interactive(), in: .capsule)
+            }
+        } else {
+            track
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay(
+                    Capsule().stroke(Color.white.opacity(0.4), lineWidth: NexusBorder.hair)
+                )
+                .shadow(color: .black.opacity(0.12), radius: 18, x: 0, y: 6)
+        }
+    }
+
+    private var track: some View {
         HStack(spacing: 2) {
             ForEach(tabs, id: \.key) { tab in
                 tabButton(tab)
             }
         }
         .padding(3)
-        .background(.ultraThinMaterial, in: Capsule())
-        .overlay(
-            Capsule()
-                .stroke(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(0.55),
-                            Color.white.opacity(0.1),
-                            Color(red: 150/255, green: 170/255, blue: 1).opacity(0.15),
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: NexusBorder.hair
-                )
-        )
-        .shadow(color: .black.opacity(0.12), radius: 18, x: 0, y: 6)
-        .shadow(color: Color.Nexus.accent.opacity(0.05), radius: 8, x: 0, y: 2)
     }
 
     private func tabButton(_ tab: GlassTabItem) -> some View {
         let isSelected = selection == tab.key
         return Button {
             guard selection != tab.key else { return }
-            // Glide + water-bubble squash, together (prototype: .52s spring
-            // travel, .56s squash 1.13/0.87 → 0.95/1.05 → 1).
             withAnimation(.spring(response: 0.52, dampingFraction: 0.72)) {
                 selection = tab.key
             }
+            // Water-bubble squash layered on top of the native glass morph
             squash = CGSize(width: 1.13, height: 0.87)
             withAnimation(.spring(response: 0.42, dampingFraction: 0.55)) {
                 squash = CGSize(width: 1, height: 1)
@@ -75,20 +76,31 @@ struct GlassTabBar: View {
             .padding(.top, 6)
             .padding(.bottom, 5)
             .padding(.horizontal, 22)
-            .background {
-                if isSelected {
-                    Capsule()
-                        .fill(Color.white.opacity(0.66))
-                        .overlay(
-                            Capsule().stroke(Color.white.opacity(0.85), lineWidth: NexusBorder.hair)
-                        )
-                        .shadow(color: .black.opacity(0.10), radius: 8, x: 0, y: 3)
-                        .scaleEffect(x: squash.width, y: squash.height)
-                        .matchedGeometryEffect(id: "thumb", in: thumbNS)
-                }
-            }
+            .background { if isSelected { thumb } }
         }
         .buttonStyle(.plain)
+    }
+
+    // The traveling selection pill. On iOS 26 it is its own glass element —
+    // glassEffectID inside the shared container gives the liquid morph as it
+    // moves between tab positions.
+    @ViewBuilder
+    private var thumb: some View {
+        if #available(iOS 26.0, *) {
+            Capsule()
+                .fill(.clear)
+                .glassEffect(.regular.tint(Color.Nexus.accent.opacity(0.16)).interactive(), in: .capsule)
+                .glassEffectID("selection-thumb", in: glassNS)
+                .scaleEffect(x: squash.width, y: squash.height)
+                .matchedGeometryEffect(id: "thumb", in: thumbNS)
+        } else {
+            Capsule()
+                .fill(Color.white.opacity(0.66))
+                .overlay(Capsule().stroke(Color.white.opacity(0.85), lineWidth: NexusBorder.hair))
+                .shadow(color: .black.opacity(0.10), radius: 8, x: 0, y: 3)
+                .scaleEffect(x: squash.width, y: squash.height)
+                .matchedGeometryEffect(id: "thumb", in: thumbNS)
+        }
     }
 
     @ViewBuilder

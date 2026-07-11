@@ -90,7 +90,7 @@ struct CollectionView: View {
     private var tabContent: some View {
         switch selectedTab {
         case "ask":
-            NexusTabView(collection: vm.collection)
+            NexusTabView(collection: vm.collection, items: vm.items)
                 .transition(.opacity)
         case "create":
             CreateTabView(collection: vm.collection, items: vm.items)

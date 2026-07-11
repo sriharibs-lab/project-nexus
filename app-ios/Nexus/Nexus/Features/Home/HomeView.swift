@@ -12,24 +12,29 @@ struct HomeView: View {
     @State private var navPath = NavigationPath()
 
     var body: some View {
-        Group {
-            if vm.isLoading && vm.collections.isEmpty {
-                ZStack {
-                    NexusBackground()
-                    LoadingStateView()
-                }
-            } else if vm.collections.isEmpty {
-                // No collections — FRE is the primary screen, not a modal
-                ResearchFlowView { collectionId in
-                    Task {
-                        await vm.load()
-                        if let found = vm.collections.first(where: { $0.id == collectionId }) {
-                            navPath.append(found)
+        // The NavigationStack ALWAYS exists — appending to navPath while the
+        // stack was unmounted (FRE branch) desynced the path binding, leaving
+        // every subsequent NavigationLink tap dead (2026-07-11).
+        NavigationStack(path: $navPath) {
+            Group {
+                if vm.isLoading && vm.collections.isEmpty {
+                    ZStack {
+                        NexusBackground()
+                        LoadingStateView()
+                    }
+                    .toolbar(.hidden, for: .navigationBar)
+                } else if vm.collections.isEmpty {
+                    // No collections — FRE is the primary screen, not a modal
+                    ResearchFlowView { collectionId in
+                        Task {
+                            await vm.load()
+                            if let found = vm.collections.first(where: { $0.id == collectionId }) {
+                                navPath.append(found)
+                            }
                         }
                     }
-                }
-            } else {
-                NavigationStack(path: $navPath) {
+                    .toolbar(.hidden, for: .navigationBar)
+                } else {
                     ZStack {
                         NexusBackground()
                         collectionList
@@ -89,10 +94,12 @@ struct HomeView: View {
                         .presentationDetents([.large])
                         .presentationDragIndicator(.hidden)
                     }
-                    .navigationDestination(for: NexusCollection.self) { collection in
-                        CollectionView(collection: collection)
-                    }
                 }
+            }
+            // Attached to the always-mounted Group, NOT the list branch —
+            // a destination inside a conditional branch unmounts with it.
+            .navigationDestination(for: NexusCollection.self) { collection in
+                CollectionView(collection: collection)
             }
         }
         .task { await vm.load() }

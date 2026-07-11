@@ -20,41 +20,33 @@ import UIKit
 /// that open the source URL in Safari.
 struct NexusTabView: View {
     let collection: NexusCollection
+    /// Live items from CollectionViewModel (auto-polled while ingesting).
+    /// collection.sourceCount is a stale navigation-time snapshot — research
+    /// collections start at 0 and it never updates, which used to hide the
+    /// entire chat UI (no composer, no chips) on fresh collections.
+    var items: [Item] = []
 
     @StateObject private var vm: NexusViewModel
     /// Lifted from ChatComposer so the parent can dismiss the keyboard
     /// by setting this to false on any tap outside the composer.
     @FocusState private var composerFocused: Bool
 
-    init(collection: NexusCollection) {
+    init(collection: NexusCollection, items: [Item] = []) {
         self.collection = collection
+        self.items = items
         _vm = StateObject(wrappedValue: NexusViewModel(collection: collection))
     }
 
+    // The composer and chips are ALWAYS visible (design review 2026-07-11).
+    // Source availability is communicated inline in the thread area instead
+    // of replacing the whole tab.
     var body: some View {
-        // When the collection has no sources yet, show a focused empty state.
-        // The chat composer is hidden — there is nothing for the AI to reason over.
-        // ARCH_BRIEF 1D-002: "Do not show the chat composer in this state."
-        if collection.sourceCount == 0 {
-            noSourcesEmptyState
-        } else {
-            chatUI
-        }
+        chatUI
     }
 
-    // MARK: - No-sources empty state
-
-    private var noSourcesEmptyState: some View {
-        VStack {
-            Spacer()
-            EmptyStateView(
-                icon: "text.magnifyingglass",
-                title: "Add a source to get started",
-                subtitle: "Nexus needs at least one source to answer questions. Switch to Sources and add a link."
-            )
-            Spacer()
-        }
-        .background(Color.Nexus.pageBackground)
+    private var readyCount: Int { items.filter { $0.ingestStatus.isReady }.count }
+    private var ingestingCount: Int {
+        items.filter { $0.ingestStatus == .pending || $0.ingestStatus == .processing }.count
     }
 
     // MARK: - Chat UI (shown when collection has sources)
@@ -95,6 +87,10 @@ struct NexusTabView: View {
                     framingParagraph
                         .padding(.top, NexusSpacing.lg)
 
+                    // Source availability — inline in the thread, never replacing
+                    // the composer (design review 2026-07-11)
+                    sourceStatusStrip
+
                     // Message bubbles
                     ForEach(vm.messages) { msg in
                         MessageBubble(message: msg, retrievedSources: vm.retrievedSources)
@@ -122,6 +118,40 @@ struct NexusTabView: View {
                     proxy.scrollTo("bottom", anchor: .bottom)
                 }
             }
+        }
+    }
+
+    // MARK: - Source status strip (inline, thread area)
+
+    @ViewBuilder
+    private var sourceStatusStrip: some View {
+        if items.isEmpty && collection.sourceCount == 0 {
+            HStack(spacing: NexusSpacing.sm) {
+                Image(systemName: "text.magnifyingglass")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.Nexus.muted)
+                Text("No sources yet — add links in the Sources tab and I'll read them.")
+                    .font(.Nexus.bodySmall)
+                    .foregroundColor(.Nexus.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, NexusSpacing.md)
+            .padding(.vertical, NexusSpacing.sm)
+            .background(Color.Nexus.surface2.opacity(0.6))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        } else if ingestingCount > 0 {
+            HStack(spacing: NexusSpacing.sm) {
+                ProgressView().scaleEffect(0.7)
+                Text(readyCount > 0
+                     ? "\(readyCount) of \(items.count) sources ready — more arriving…"
+                     : "Reading your sources…")
+                    .font(.Nexus.bodySmall)
+                    .foregroundColor(.Nexus.muted)
+            }
+            .padding(.horizontal, NexusSpacing.md)
+            .padding(.vertical, NexusSpacing.sm)
+            .background(Color.Nexus.bloom.opacity(0.35))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
     }
 

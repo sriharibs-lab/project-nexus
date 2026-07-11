@@ -38,7 +38,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.rag import RagChunk, build_context_block, retrieve_similar_chunks
+from app.core.rag import RagChunk, build_context_block, retrieve_recent_chunks, retrieve_similar_chunks
 from app.middleware.auth import get_current_user
 from app.models.collection import Collection, CollectionCreatedBy
 from app.models.user import User
@@ -370,25 +370,34 @@ async def chat_with_collection(
             detail="Collection not found",
         )
 
-    if payload.query_embedding is not None:
-        query_vector = payload.query_embedding
-    else:
+    query_vector: list[float] | None = payload.query_embedding
+    if query_vector is None:
         try:
             query_vector = await _embed_query(payload.message)
         except Exception:
-            logger.exception("Failed to embed query for collection=%s", collection_id)
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to generate query embedding",
+            # Embedding provider down (e.g. Fireworks suspension 2026-07-11):
+            # degrade to recency retrieval instead of failing the chat.
+            logger.warning(
+                "Query embedding unavailable for collection=%s — falling back to recency retrieval",
+                collection_id,
             )
+            query_vector = None
 
-    chunks = await retrieve_similar_chunks(
-        db,
-        collection_id=collection_id,
-        user_id=db_user.id,
-        query_vector=query_vector,
-        top_k=settings.chat_rag_top_k,
-    )
+    if query_vector is not None:
+        chunks = await retrieve_similar_chunks(
+            db,
+            collection_id=collection_id,
+            user_id=db_user.id,
+            query_vector=query_vector,
+            top_k=settings.chat_rag_top_k,
+        )
+    else:
+        chunks = await retrieve_recent_chunks(
+            db,
+            collection_id=collection_id,
+            user_id=db_user.id,
+            top_k=settings.chat_rag_top_k,
+        )
 
     return StreamingResponse(
         _stream_chat(

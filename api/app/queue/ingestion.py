@@ -20,7 +20,9 @@ import uuid
 
 import asyncpg
 from pgqueuer import PgQueuer
+from pgqueuer.db import AsyncpgDriver
 from pgqueuer.models import Job
+from pgqueuer.queries import Queries
 from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -71,17 +73,21 @@ def get_pgq_pool() -> asyncpg.Pool:
 
 async def enqueue_item(url: str, content_type: str, user_id: str, collection_id: str) -> str:
     job_id = str(uuid.uuid4())
+    # pgqueuer payloads are bytes — the previous str + type-ignore raised
+    # ValueError("a bytes-like object is required") on every enqueue.
     payload = json.dumps({
         "job_id": job_id,
         "url": url,
         "content_type": content_type,
         "user_id": user_id,
         "collection_id": collection_id,
-    })
+    }).encode()
     pool = get_pgq_pool()
     async with pool.acquire() as conn:
-        pgq = PgQueuer(conn)
-        await pgq.queries.enqueue(QUEUE_NAME, payload, priority=0)  # type: ignore[arg-type]
+        # pgqueuer requires its Driver wrapper — raw asyncpg connections
+        # break run()'s LISTEN loop (worker crashed silently at startup).
+        driver = AsyncpgDriver(conn)
+        await Queries(driver).enqueue(QUEUE_NAME, payload, priority=0)
     logger.info("Enqueued job %s url=%s user=%s collection=%s", job_id, url, user_id, collection_id)
     return job_id
 
@@ -93,11 +99,15 @@ async def enqueue_item(url: str, content_type: str, user_id: str, collection_id:
 async def start_worker() -> None:
     pool = get_pgq_pool()
     async with pool.acquire() as conn:
-        pgq = PgQueuer(conn)
+        # Driver wrapper is REQUIRED — PgQueuer(raw asyncpg conn) crashed
+        # run() instantly; create_task swallowed it, so the worker "started"
+        # then silently died and jobs sat queued forever (2026-07-11).
+        pgq = PgQueuer(AsyncpgDriver(conn))
 
         @pgq.entrypoint(QUEUE_NAME)
         async def handle_ingest(job: Job) -> None:
-            data = json.loads(job.payload)  # type: ignore[arg-type]
+            data = json.loads(job.payload)  # payload is bytes; loads accepts it
+            logger.info("Processing ingest job url=%s", data.get("url"))
             await _process_job(
                 job_id=data["job_id"],
                 url=data["url"],
@@ -235,7 +245,15 @@ async def _process_job(
                 from pipeline.jina import extract as _extract  # type: ignore[assignment]
 
             import asyncio
-            extraction = await asyncio.to_thread(_extract, url)
+            import inspect
+
+            # jina.extract is async (1D-005 perf work); youtube/deepgram/
+            # readability are sync. to_thread on an async fn returns an
+            # un-awaited coroutine → "'coroutine' object has no attribute 'ok'".
+            if inspect.iscoroutinefunction(_extract):
+                extraction = await _extract(url)
+            else:
+                extraction = await asyncio.to_thread(_extract, url)
 
             if not extraction.ok and content_type not in ("video", "podcast"):
                 from pipeline.readability import extract as _fallback
@@ -253,8 +271,16 @@ async def _process_job(
             processed = await summarize_item(content, content_type)
             ai_ms = int((time.perf_counter() - ai_t0) * 1000)
 
+            # Embeddings are NON-FATAL: a provider outage (e.g. Fireworks
+            # account suspension, 2026-07-11) must not fail the whole ingest.
+            # Item completes without an embedding; semantic search degrades
+            # to full-text for this item until backfilled.
             emb_t0 = time.perf_counter()
-            emb_result = await compute_embedding(content)
+            emb_result = None
+            try:
+                emb_result = await compute_embedding(content)
+            except Exception as emb_exc:
+                logger.warning("Embedding failed (non-fatal) url=%s: %s", url, emb_exc)
             emb_ms = int((time.perf_counter() - emb_t0) * 1000)
 
             # ── 3. Update item ─────────────────────────────────────────────
@@ -293,14 +319,15 @@ async def _process_job(
                 .values(source_count=Collection.source_count + 1)
             )
 
-            # ── 4. Embedding ───────────────────────────────────────────────
-            db.add(Embedding(
-                id=uuid.uuid4(),
-                item_id=item.id,
-                embedding=emb_result.vector,
-                model=emb_result.model,
-                dimensions=emb_result.dimensions,
-            ))
+            # ── 4. Embedding (skipped when the provider failed above) ──────
+            if emb_result is not None:
+                db.add(Embedding(
+                    id=uuid.uuid4(),
+                    item_id=item.id,
+                    embedding=emb_result.vector,
+                    model=emb_result.model,
+                    dimensions=emb_result.dimensions,
+                ))
 
             # ── 5. Tags ────────────────────────────────────────────────────
             for tag_name in processed.tags:
@@ -330,7 +357,7 @@ async def _process_job(
                 input_tokens=processed.input_tokens,
                 output_tokens=processed.output_tokens,
                 cache_read_tokens=processed.cache_read_tokens,
-                cost_usd=processed.cost_usd + emb_result.cost_usd,
+                cost_usd=processed.cost_usd + (emb_result.cost_usd if emb_result else 0),
                 duration_ms=ai_ms + emb_ms,
             ))
 

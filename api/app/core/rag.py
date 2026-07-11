@@ -100,6 +100,56 @@ async def retrieve_similar_chunks(
     return chunks
 
 
+# Fallback when no query embedding is available (provider outage): most
+# recent completed items. At beta collection sizes (≤ ~20 sources) recency
+# is a reasonable stand-in for relevance, and a degraded answer beats a 500.
+_RECENT_QUERY = text("""
+    SELECT
+        i.id            AS item_id,
+        i.title         AS title,
+        i.url           AS url,
+        i.summary       AS summary,
+        i.raw_content   AS raw_content,
+        0.0             AS similarity
+    FROM items i
+    JOIN collection_items ci ON ci.item_id = i.id
+    WHERE ci.collection_id = :collection_id
+      AND i.user_id        = :user_id
+      AND i.ingest_status  = 'completed'
+    ORDER BY i.created_at DESC
+    LIMIT :top_k
+""")
+
+
+async def retrieve_recent_chunks(
+    db: AsyncSession,
+    *,
+    collection_id: UUID,
+    user_id: UUID,
+    top_k: int = 8,
+) -> list[RagChunk]:
+    """Embedding-free retrieval: the collection's most recent completed items."""
+    result = await db.execute(
+        _RECENT_QUERY,
+        {
+            "collection_id": str(collection_id),
+            "user_id": str(user_id),
+            "top_k": top_k,
+        },
+    )
+    return [
+        RagChunk(
+            item_id=row["item_id"],
+            title=row["title"],
+            url=row["url"],
+            summary=row["summary"],
+            raw_content=row["raw_content"],
+            similarity=float(row["similarity"]),
+        )
+        for row in result.mappings().all()
+    ]
+
+
 def build_context_block(chunks: list[RagChunk], max_chars: int = 16_000) -> str:
     """
     Render retrieved chunks into a single context string for the system prompt.

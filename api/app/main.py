@@ -34,6 +34,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await init_pgq_pool()
 
     _worker_task = asyncio.create_task(start_worker())
+    # Surface worker crashes IMMEDIATELY — create_task otherwise swallows the
+    # exception until shutdown, leaving jobs queued with a "started" log line
+    # and no error (exactly how the driver bug hid for weeks).
+    def _log_worker_death(task: asyncio.Task) -> None:
+        if task.cancelled():
+            return
+        if exc := task.exception():
+            logger.error("INGESTION WORKER DIED — jobs will queue unprocessed: %r", exc, exc_info=exc)
+    _worker_task.add_done_callback(_log_worker_death)
 
     yield
 

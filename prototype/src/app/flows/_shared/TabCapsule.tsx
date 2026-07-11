@@ -38,22 +38,35 @@ export function TabCapsule({
 
   return (
     <LiquidGlassCard radius={999}>
-      <div style={{ display: "flex", gap: 2, padding: 4, position: "relative" }}>
+      <div style={{ display: "flex", gap: 2, padding: 3, position: "relative" }}>
         {thumb && (
+          // Outer layer glides (left/width on the true spring); inner visual
+          // layer remounts per selection to replay the water-bubble squash —
+          // the two must be separate elements or the remount kills the glide.
           <div
             style={{
               position: "absolute",
-              top: 4,
-              bottom: 4,
+              top: 3,
+              bottom: 3,
               left: thumb.left,
               width: thumb.width,
-              borderRadius: tokens.radius.full,
-              background: "rgba(255,255,255,0.66)",
-              boxShadow:
-                "inset 0 0 0 1px rgba(255,255,255,0.85), inset 0 1.5px 1px rgba(255,255,255,0.95), 0 5px 16px rgba(19,14,26,0.18)",
               transition: `left .52s ${tokens.motion.springLinear}, width .52s ${tokens.motion.springLinear}`,
+              pointerEvents: "none",
             }}
-          />
+          >
+            <div
+              key={idx}
+              style={{
+                position: "absolute",
+                inset: 0,
+                borderRadius: tokens.radius.full,
+                background: "rgba(255,255,255,0.66)",
+                boxShadow:
+                  "inset 0 0 0 1px rgba(255,255,255,0.85), inset 0 1.5px 1px rgba(255,255,255,0.95), inset -2px -3px 6px rgba(150,170,255,0.14), inset 2px 3px 6px rgba(255,150,205,0.10), 0 5px 16px rgba(19,14,26,0.18)",
+                animation: "nxBubble .56s cubic-bezier(.2,.8,.2,1)",
+              }}
+            />
+          </div>
         )}
         {tabs.map((tab, i) => {
           const selected = active === tab.key;
@@ -71,8 +84,8 @@ export function TabCapsule({
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                gap: 3,
-                padding: "8px 30px 7px",
+                gap: 2,
+                padding: "6px 26px 5px",
                 borderRadius: tokens.radius.full,
                 background: "transparent",
                 border: "none",
@@ -80,10 +93,10 @@ export function TabCapsule({
                 WebkitTapHighlightColor: "transparent",
               }}
             >
-              <Icon name={selected ? tab.iconSelected : tab.icon} size={26} color={tint} stroke={1.7} />
+              <Icon name={selected ? tab.iconSelected : tab.icon} size={23} color={tint} stroke={1.7} />
               <span
                 style={{
-                  fontSize: 11.5,
+                  fontSize: 10.5,
                   fontWeight: 600,
                   letterSpacing: -0.1,
                   color: tint,

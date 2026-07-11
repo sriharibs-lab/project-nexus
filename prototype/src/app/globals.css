@@ -80,6 +80,15 @@ body {
   100% { transform: scale(1); }
 }
 
+/* Liquid-glass tab thumb: water-bubble squash while traveling between tabs
+   (from design tokens: squash 1.13/0.87 → 0.95/1.05 → settle) */
+@keyframes nxBubble {
+  0%   { transform: scale(1, 1); }
+  38%  { transform: scale(1.13, 0.87); }
+  68%  { transform: scale(0.95, 1.05); }
+  100% { transform: scale(1, 1); }
+}
+
 @keyframes nxBlink {
   0%, 100% { opacity: 1; }
   50%      { opacity: 0.25; }

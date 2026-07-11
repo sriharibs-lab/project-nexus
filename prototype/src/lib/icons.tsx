@@ -202,6 +202,24 @@ export const ICONS = {
       ))}
     </>
   ),
+  compose: (p: P) => (
+    <>
+      <path d="M20 12.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h6.5" {...strokeProps(p)} />
+      <path d="M17.7 3.6a2.05 2.05 0 0 1 2.9 2.9L12 15.1l-3.8.9.9-3.8 8.6-8.6Z" {...strokeProps(p)} />
+    </>
+  ),
+  composeFill: (p: P) => (
+    <>
+      <path d="M20 12.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h6.5" {...strokeProps(p)} />
+      <path
+        d="M17.7 3.6a2.05 2.05 0 0 1 2.9 2.9L12 15.1l-3.8.9.9-3.8 8.6-8.6Z"
+        fill={p.stroke}
+        stroke={p.stroke}
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+    </>
+  ),
   envelope: (p: P) => (
     <>
       <rect x="3" y="5" width="18" height="14" rx="2.5" {...strokeProps(p)} />

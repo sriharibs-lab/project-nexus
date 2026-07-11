@@ -444,7 +444,7 @@ export default function QAFlow() {
         <TabCapsule
           tabs={[
             { key: "ask", label: "Ask", icon: "nexus", iconSelected: "nexusFill" },
-            { key: "create", label: "Create", icon: "sparkle", iconSelected: "sparkle" },
+            { key: "create", label: "Create", icon: "compose", iconSelected: "composeFill" },
             { key: "sources", label: "Sources", icon: "layers", iconSelected: "layersFill" },
           ]}
           active={tab}

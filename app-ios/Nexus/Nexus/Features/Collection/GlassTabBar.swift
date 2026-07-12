@@ -81,27 +81,28 @@ private struct TabCellView: View {
     let highlighted: Bool
 
     var body: some View {
-        // FotMob pattern: filled glyphs always; color carries selection state.
-        let tint: Color = highlighted ? .Nexus.accent : .Nexus.muted
-        VStack(spacing: 2) {
+        // FotMob pattern: filled glyphs always; unselected = full ink (black),
+        // selected = accent. Color carries all selection state.
+        let tint: Color = highlighted ? .Nexus.accent : .Nexus.ink
+        VStack(spacing: 3) {
             Group {
                 if tab.icon == "echo" {
-                    EchoMark(color: tint, size: 21)
+                    EchoMark(color: tint, size: 24)
                 } else {
                     Image(systemName: tab.iconSelected)
-                        .font(.system(size: 17.5, weight: .semibold))
+                        .font(.system(size: 20, weight: .semibold))
                         .foregroundColor(tint)
                 }
             }
-            .frame(height: 23)
+            .frame(height: 26)
             Text(tab.label)
-                .font(.system(size: 10.5, weight: .semibold))
+                .font(.system(size: 11, weight: .semibold))
                 .kerning(-0.1)
                 .foregroundColor(tint)
         }
-        .padding(.top, 4)
-        .padding(.bottom, 3)
-        .padding(.horizontal, 10)
+        .padding(.top, 5)
+        .padding(.bottom, 4)
+        .padding(.horizontal, 12)
     }
 }
 
@@ -131,6 +132,9 @@ private struct NativeSegmentedTabBar: UIViewRepresentable {
         )
         control.setContentHuggingPriority(.required, for: .horizontal)
         control.setContentHuggingPriority(.required, for: .vertical)
+        // WhatsApp/FotMob/Clock-app height — the control's intrinsic height
+        // (~32pt) squished the icon+label cells.
+        control.heightAnchor.constraint(equalToConstant: 58).isActive = true
         return control
     }
 

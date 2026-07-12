@@ -408,21 +408,22 @@ struct EchoPulseView: View {
     }
 }
 
-// MARK: - Starter prompts row
+// MARK: - Starter prompts (wrapping pills, per prototype /flows/qa)
+//
+// Prototype spec: chips wrap left-aligned as full-question pills (13.5/500,
+// surface bg, hairline border) — never a truncating horizontal scroll row.
 
 private struct StarterPromptsRow: View {
     let prompts: [String]
     let onSelect: (String) -> Void
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: NexusSpacing.xs) {
-                ForEach(prompts, id: \.self) { prompt in
-                    StarterChip(label: prompt) { onSelect(prompt) }
-                }
+        VStack(alignment: .leading, spacing: NexusSpacing.xs) {
+            ForEach(prompts, id: \.self) { prompt in
+                StarterChip(label: prompt) { onSelect(prompt) }
             }
-            .padding(.horizontal, 1)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -430,25 +431,23 @@ private struct StarterChip: View {
     let label: String
     let action: () -> Void
 
-    @State private var isPressed = false
-
     var body: some View {
         Button(action: action) {
             Text(label)
-                .font(.Nexus.labelSmall)
-                .foregroundColor(.Nexus.muted)
-                .kerning(NexusKerning.normal)
-                .lineLimit(1)
-                .padding(.horizontal, NexusSpacing.md)
-                .padding(.vertical, NexusSpacing.sm)
-                .background(Color.Nexus.surface2)
+                .font(.system(size: 13.5, weight: .medium))
+                .kerning(-0.15)
+                .foregroundColor(.Nexus.ink)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 15)
+                .padding(.vertical, 10)
+                .background(Color.Nexus.cardBackground)
                 .clipShape(Capsule())
                 .overlay(Capsule().stroke(Color.Nexus.border, lineWidth: NexusBorder.hair))
         }
-        .buttonStyle(.plain)
-        .scaleEffect(isPressed ? NexusScale.pressLight : 1)
-        .animation(NexusAnimation.press, value: isPressed)
-        .onLongPressGesture(minimumDuration: 0, pressing: { p in isPressed = p }, perform: {})
+        // ButtonStyle press — a zero-duration long-press gesture here would
+        // steal the tap (same class as the HomeView card bug, 2026-07-11)
+        .buttonStyle(PressableCardStyle())
     }
 }
 

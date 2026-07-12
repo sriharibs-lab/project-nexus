@@ -127,7 +127,10 @@ struct HomeView: View {
                     NavigationLink(value: collection) {
                         CollectionCard(collection: collection)
                     }
-                    .buttonStyle(.plain)
+                    // Press-scale via ButtonStyle — NavigationLink drives it
+                    // natively. The previous onLongPressGesture INSIDE the card
+                    // consumed taps, so links never fired (2026-07-11).
+                    .buttonStyle(PressableCardStyle())
                 }
             }
             .padding(.horizontal, NexusSpacing.sideGutter)
@@ -139,6 +142,18 @@ struct HomeView: View {
 
 }
 
+// MARK: - Pressable card style
+
+/// Press-scale feedback driven by the Button/NavigationLink itself — never
+/// attach tap/press gestures to card content (they steal the link's tap).
+struct PressableCardStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? NexusScale.pressLight : 1)
+            .animation(NexusAnimation.press, value: configuration.isPressed)
+    }
+}
+
 // MARK: - Collection card
 
 /// Home screen card for one collection.
@@ -146,8 +161,6 @@ struct HomeView: View {
 
 private struct CollectionCard: View {
     let collection: NexusCollection
-
-    @State private var isPressed = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: NexusSpacing.sm) {
@@ -200,11 +213,7 @@ private struct CollectionCard: View {
             RoundedRectangle(cornerRadius: NexusRadius.lg)
                 .stroke(Color.Nexus.border, lineWidth: NexusBorder.hair)
         )
-        .scaleEffect(isPressed ? NexusScale.pressLight : 1)
-        .animation(NexusAnimation.press, value: isPressed)
-        .onLongPressGesture(minimumDuration: 0, pressing: { pressing in
-            isPressed = pressing
-        }, perform: {})
+        // Press feedback comes from PressableCardStyle on the NavigationLink.
     }
 
     // MARK: Helpers

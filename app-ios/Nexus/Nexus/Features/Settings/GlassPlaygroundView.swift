@@ -1,244 +1,205 @@
 import SwiftUI
 
-/// Debug-only screen for iterating on glass effects.
-/// Three styles selectable via segmented control — tap avatar to open menu panel.
-struct GlassPlaygroundView: View {
+// MARK: - Glass Playground
+//
+// Isolated lab for getting Liquid Glass RIGHT (2026-07-11 review: glass work
+// moves here; the product tab bar ships whatever this proves out).
+//
+// Key physics: glass only "lights up" when content moves UNDERNEATH it.
+// This playground scrolls vivid content behind each variant — compare
+// directly against WhatsApp/FotMob by scrolling.
 
-    enum GlassStyle: String, CaseIterable {
-        case uikit = "UIKit Blur"
-        case ios26 = "iOS 26"
-        case dark = "Dark Material"
+struct GlassPlaygroundView: View {
+    @State private var variant: GlassVariant = .native
+    @State private var selection = "ask"
+
+    enum GlassVariant: String, CaseIterable, Identifiable {
+        case native   = "Native"
+        case clear    = "Clear"
+        case tinted   = "Tinted"
+        case material = "Material"
+        var id: String { rawValue }
+
+        var caption: String {
+            switch self {
+            case .native:   return ".glassEffect(.regular) — system default, same as WhatsApp"
+            case .clear:    return ".glassEffect(.clear) — maximum transparency"
+            case .tinted:   return ".regular.tint(bloom) — brand-tinted glass"
+            case .material: return "ultraThinMaterial — the pre-iOS-26 fallback"
+            }
+        }
     }
 
-    @State private var menuOpen = false
-    @State private var selectedStyle: GlassStyle = .uikit
-
-    private let mockCollections: [(String, String, Int)] = [
-        ("The attention economy", "12 items · 2h ago", 0),
-        ("Second-brain tools", "7 items · yesterday", 1),
-        ("How memory works", "5 items · last week", 2),
-        ("AI platform shifts", "3 items · 3 days ago", 3),
-        ("Ozempic & longevity", "8 items · 5 days ago", 4),
-        ("Vision Pro 2", "2 items · 1 week ago", 5),
-    ]
-
     var body: some View {
-        ZStack(alignment: .topTrailing) {
-            // ── Backdrop ─────────────────────────────────────────────
+        ZStack(alignment: .bottom) {
+            // ── Vivid scrolling content — the glass needs this to refract ──
             ScrollView {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Collections")
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.Nexus.ink)
-                        .padding(.horizontal, NexusSpacing.standard)
-                        .padding(.top, NexusSpacing.safeTop + 16)
-
-                    ForEach(mockCollections, id: \.2) { title, subtitle, _ in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(title)
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundColor(.Nexus.ink)
-                            Text(subtitle)
-                                .font(.system(size: 13))
-                                .foregroundColor(.Nexus.muted)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(16)
-                        .background(Color.Nexus.cardBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: NexusRadius.base, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: NexusRadius.base, style: .continuous)
-                                .stroke(Color.Nexus.border, lineWidth: NexusBorder.base)
-                        )
-                        .padding(.horizontal, NexusSpacing.standard)
+                LazyVStack(spacing: 14) {
+                    ForEach(0..<24, id: \.self) { i in
+                        DemoCard(index: i)
                     }
                 }
-                .padding(.bottom, 100)
-            }
-            .background(NexusBackground().ignoresSafeArea())
-            .ignoresSafeArea(edges: .top)
-
-            // ── Scrim ─────────────────────────────────────────────────
-            if menuOpen {
-                Color.black.opacity(0.35)
-                    .ignoresSafeArea()
-                    .contentShape(Rectangle())
-                    .onTapGesture { menuOpen = false }
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 150)
             }
 
-            // ── Avatar button ─────────────────────────────────────────
-            PlaygroundAvatarButton(active: menuOpen) { menuOpen.toggle() }
-                .padding(.trailing, NexusSpacing.standard)
-                .padding(.top, NexusSpacing.safeTop + 6)
+            // ── The bar under test ──
+            VStack(spacing: 10) {
+                Text(variant.caption)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.Nexus.muted)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.Nexus.cardBackground.opacity(0.9))
+                    .clipShape(Capsule())
 
-            // ── Glass menu card ───────────────────────────────────────
-            VStack(spacing: 0) {
-                HStack {
-                    Spacer()
-                    PlaygroundMenuCard(style: selectedStyle) { menuOpen = false }
-                        .scaleEffect(menuOpen ? 1.0 : 0.72, anchor: .topTrailing)
-                        .offset(y: menuOpen ? 0 : -4)
-                        .opacity(menuOpen ? 1 : 0)
-                        .animation(.spring(response: 0.38, dampingFraction: 0.52), value: menuOpen)
-                        .allowsHitTesting(menuOpen)
-                        .padding(.trailing, NexusSpacing.standard)
+                demoBar
+
+                Picker("Variant", selection: $variant) {
+                    ForEach(GlassVariant.allCases) { v in
+                        Text(v.rawValue).tag(v)
+                    }
                 }
-                Spacer()
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 24)
             }
-            .padding(.top, NexusSpacing.safeTop + 6)
-        }
-        .safeAreaInset(edge: .bottom) {
-            stylePicker
+            .padding(.bottom, 16)
         }
         .navigationTitle("Glass Playground")
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private var stylePicker: some View {
-        VStack(spacing: 8) {
-            Text("Glass style")
-                .font(.Nexus.caption)
-                .foregroundColor(.Nexus.ghost)
+    // MARK: - Bar variants
 
-            Picker("Style", selection: $selectedStyle) {
-                ForEach(GlassStyle.allCases, id: \.self) { style in
-                    Text(style.rawValue).tag(style)
-                }
-            }
-            .pickerStyle(.segmented)
-        }
-        .padding(.horizontal, NexusSpacing.standard)
-        .padding(.vertical, NexusSpacing.md)
-        .background(.regularMaterial)
-    }
-}
-
-// MARK: - Avatar button
-
-private struct PlaygroundAvatarButton: View {
-    let active: Bool
-    let action: () -> Void
-    @State private var pressing = false
-
-    var body: some View {
-        Button(action: action) {
-            ZStack {
-                Circle()
-                    .fill(active ? Color.Nexus.bloom : Color.Nexus.surface2)
-                    .frame(width: 32, height: 32)
-                    .overlay(Circle().stroke(Color(UIColor.separator), lineWidth: NexusBorder.base))
-                Text("S")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(active ? Color.Nexus.accent : .Nexus.muted)
-            }
-        }
-        .buttonStyle(.plain)
-        .scaleEffect(pressing ? 0.88 : 1.0)
-        .animation(.spring(response: 0.18, dampingFraction: 0.65), value: pressing)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in pressing = true }
-                .onEnded { _ in
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { pressing = false }
-                }
-        )
-    }
-}
-
-// MARK: - Menu card (three glass approaches)
-
-private struct PlaygroundMenuCard: View {
-    let style: GlassPlaygroundView.GlassStyle
-    let onClose: () -> Void
-
-    private let rows: [(String, String)] = [
-        ("person.circle", "Account"),
-        ("gearshape", "Settings"),
-        ("message", "Feedback"),
+    private static let tabs: [GlassTabItem] = [
+        GlassTabItem(key: "ask",     label: "Ask",     icon: "echo",              iconSelected: "echo"),
+        GlassTabItem(key: "create",  label: "Create",  icon: "square.and.pencil", iconSelected: "square.and.pencil"),
+        GlassTabItem(key: "sources", label: "Sources", icon: "rectangle.stack",   iconSelected: "rectangle.stack.fill"),
     ]
 
-    var body: some View {
-        switch style {
-        case .ios26:
-            if #available(iOS 26, *) {
-                menuContent
-                    .frame(width: 196)
-                    .glassEffect(in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .shadow(color: .black.opacity(0.14), radius: 20, x: 0, y: 8)
-                    .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
+    @ViewBuilder
+    private var demoBar: some View {
+        switch variant {
+        case .native:
+            GlassTabBar(tabs: Self.tabs, selection: $selection)
+        case .clear:
+            if #available(iOS 26.0, *) {
+                PlaygroundBar(tabs: Self.tabs, selection: $selection) { track in
+                    AnyView(track.glassEffect(.clear.interactive(), in: .capsule))
+                }
             } else {
-                uikitCard
+                unavailableNote
             }
-        case .dark:
-            menuContent
-                .frame(width: 196)
-                .background(.regularMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .shadow(color: .black.opacity(0.22), radius: 24, x: 0, y: 8)
-                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
-        case .uikit:
-            uikitCard
+        case .tinted:
+            if #available(iOS 26.0, *) {
+                PlaygroundBar(tabs: Self.tabs, selection: $selection) { track in
+                    AnyView(track.glassEffect(
+                        .regular.tint(Color.Nexus.bloom.opacity(0.5)).interactive(),
+                        in: .capsule
+                    ))
+                }
+            } else {
+                unavailableNote
+            }
+        case .material:
+            PlaygroundBar(tabs: Self.tabs, selection: $selection) { track in
+                AnyView(
+                    track
+                        .background(.ultraThinMaterial, in: Capsule())
+                        .overlay(Capsule().stroke(Color.white.opacity(0.4), lineWidth: NexusBorder.hair))
+                        .shadow(color: .black.opacity(0.12), radius: 18, x: 0, y: 6)
+                )
+            }
         }
     }
 
-    private var uikitCard: some View {
-        menuContent
-            .frame(width: 196)
-            .background(
-                ZStack {
-                    VisualEffectBlur(style: .systemUltraThinMaterial, cornerRadius: 14)
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color.white.opacity(0.42))
-                }
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(Color.white.opacity(0.5), lineWidth: 0.5)
-            )
-            .shadow(color: .black.opacity(0.18), radius: 24, x: 0, y: 8)
-            .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
+    private var unavailableNote: some View {
+        Text("Requires iOS 26")
+            .font(.Nexus.caption)
+            .foregroundColor(.Nexus.muted)
+            .padding()
+    }
+}
+
+// MARK: - Parameterized bar (playground only — product uses GlassTabBar)
+
+private struct PlaygroundBar: View {
+    let tabs: [GlassTabItem]
+    @Binding var selection: String
+    let chrome: (AnyView) -> AnyView
+
+    @Namespace private var thumbNS
+
+    var body: some View {
+        chrome(AnyView(track))
     }
 
-    private var menuContent: some View {
-        VStack(spacing: 0) {
-            ForEach(rows, id: \.1) { icon, label in
-                Button(action: onClose) {
-                    HStack(spacing: 9) {
-                        Image(systemName: icon)
-                            .font(.system(size: 12.5, weight: .regular))
-                            .foregroundColor(Color(UIColor.label))
-                            .frame(width: 18, alignment: .center)
-                        Text(label)
-                            .font(.system(size: 13.5, weight: .regular))
-                            .foregroundColor(Color(UIColor.label))
-                        Spacer()
+    private var track: some View {
+        HStack(spacing: 2) {
+            ForEach(tabs, id: \.key) { tab in
+                let isSelected = selection == tab.key
+                Button {
+                    withAnimation(.spring(response: 0.52, dampingFraction: 0.72)) {
+                        selection = tab.key
                     }
-                    .padding(.horizontal, 13)
-                    .padding(.vertical, 10)
-                    .contentShape(Rectangle())
+                } label: {
+                    VStack(spacing: 2) {
+                        Group {
+                            if tab.icon == "echo" {
+                                EchoMark(color: isSelected ? .Nexus.accent : .Nexus.muted, size: 21)
+                            } else {
+                                Image(systemName: isSelected ? tab.iconSelected : tab.icon)
+                                    .font(.system(size: 17.5, weight: .medium))
+                                    .foregroundColor(isSelected ? .Nexus.accent : .Nexus.muted)
+                            }
+                        }
+                        .frame(height: 23)
+                        Text(tab.label)
+                            .font(.system(size: 10.5, weight: .semibold))
+                            .foregroundColor(isSelected ? .Nexus.accent : .Nexus.muted)
+                    }
+                    .padding(.top, 6).padding(.bottom, 5).padding(.horizontal, 22)
+                    .background {
+                        if isSelected {
+                            Capsule()
+                                .fill(Color.white.opacity(0.55))
+                                .matchedGeometryEffect(id: "pthumb", in: thumbNS)
+                        }
+                    }
                 }
                 .buttonStyle(.plain)
             }
-
-            Divider()
-
-            Button(action: onClose) {
-                HStack(spacing: 9) {
-                    Image(systemName: "rectangle.portrait.and.arrow.right")
-                        .font(.system(size: 12.5, weight: .regular))
-                        .foregroundColor(Color(UIColor.label))
-                        .frame(width: 18, alignment: .center)
-                    Text("Sign out")
-                        .font(.system(size: 13.5, weight: .regular))
-                        .foregroundColor(Color(UIColor.label))
-                    Spacer()
-                }
-                .padding(.horizontal, 13)
-                .padding(.vertical, 10)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
         }
+        .padding(3)
+    }
+}
+
+// MARK: - Vivid demo content
+
+private struct DemoCard: View {
+    let index: Int
+
+    private static let palettes: [[Color]] = [
+        [Color(red: 0.98, green: 0.45, blue: 0.35), Color(red: 0.95, green: 0.65, blue: 0.30)],
+        [Color(red: 0.30, green: 0.55, blue: 0.95), Color(red: 0.45, green: 0.80, blue: 0.95)],
+        [Color(red: 0.45, green: 0.75, blue: 0.45), Color(red: 0.75, green: 0.90, blue: 0.50)],
+        [Color(red: 0.55, green: 0.40, blue: 0.90), Color(red: 0.85, green: 0.50, blue: 0.90)],
+        [Color(red: 0.95, green: 0.75, blue: 0.25), Color(red: 0.98, green: 0.55, blue: 0.45)],
+    ]
+
+    var body: some View {
+        let colors = Self.palettes[index % Self.palettes.count]
+        RoundedRectangle(cornerRadius: 18, style: .continuous)
+            .fill(
+                LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
+            )
+            .frame(height: 110)
+            .overlay(alignment: .bottomLeading) {
+                Text("Scroll me under the bar")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.85))
+                    .padding(12)
+            }
     }
 }

@@ -31,10 +31,6 @@ struct CollectionView: View {
             NexusBackground()
 
             tabContent
-                // Capsule zone is unsafe area — composers/lists float above it
-                .safeAreaInset(edge: .bottom) {
-                    Color.clear.frame(height: 84)
-                }
 
             // Bottom floating glass capsule (DESIGN_LANGUAGE §3 + §8):
             // 24pt above the home indicator, content scrolls underneath.
@@ -90,10 +86,15 @@ struct CollectionView: View {
     private var tabContent: some View {
         switch selectedTab {
         case "ask":
+            // Composer must clear the capsule — inset the whole tab
             NexusTabView(collection: vm.collection, items: vm.items)
+                .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 84) }
                 .transition(.opacity)
         case "create":
+            // Content scrolls UNDER the glass capsule (margins, not insets —
+            // glass is invisible unless content passes beneath it)
             CreateTabView(collection: vm.collection, items: vm.items)
+                .contentMargins(.bottom, 110, for: .scrollContent)
                 .transition(.opacity)
         default:
             SourcesTabView(
@@ -104,6 +105,7 @@ struct CollectionView: View {
                 onDelete: { item in await vm.delete(item: item) },
                 onRefresh: { await vm.load() }
             )
+            .contentMargins(.bottom, 110, for: .scrollContent)
             .transition(.opacity)
         }
     }

@@ -1,17 +1,15 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Bottom floating glass tab bar
 //
-// iOS 26+: NATIVE Liquid Glass, FotMob interaction pattern (review 2026-07-11):
-//   • ONE tap/drag gesture on the whole capsule — no Buttons. Buttons under
-//     interactive glass swallowed taps (the "tap twice or thrice" bug), and
-//     the track's .interactive() bounced the whole bar. Tap = select tab at
-//     finger; press-and-slide = the droplet FOLLOWS the finger and snaps to
-//     the nearest tab on release (native TabView behavior).
-//   • The droplet is a SIBLING glass element in the GlassEffectContainer —
-//     its animated position gets liquid deformation from the system.
-//   • Icons: always the FILLED variant; color carries selection state
-//     (muted → accent), exactly like FotMob.
+// BREAKTHROUGH (2026-07-11 device review): the exact liquid-glass selection
+// effect Srihari wants — droplet slides between segments, deforms in flight,
+// follows the finger on drag — is the NATIVE UISegmentedControl treatment on
+// iOS 26 (spotted on the playground's variant Picker). We stop reimplementing
+// the physics and wrap the real control, feeding it our tab cells (icon +
+// label) as rendered images. The system owns the glass, the droplet, and the
+// gesture handling — taps are 100% reliable.
 //
 // < iOS 26: material bar with buttons + matchedGeometry thumb (unchanged).
 
@@ -27,140 +25,13 @@ struct GlassTabBar: View {
     @Binding var selection: String
 
     @Namespace private var thumbNS
-    @Namespace private var glassNS
-    @State private var tabFrames: [String: CGRect] = [:]
-
-    // Finger-following droplet state
-    @State private var dragX: CGFloat?
-    @State private var isDragging = false
 
     var body: some View {
         if #available(iOS 26.0, *) {
-            glassBar
+            NativeSegmentedTabBar(tabs: tabs, selection: $selection)
+                .fixedSize()
         } else {
             legacyBar
-        }
-    }
-
-    // MARK: - iOS 26 glass bar
-
-    @available(iOS 26.0, *)
-    private var glassBar: some View {
-        GlassEffectContainer(spacing: 18) {
-            ZStack(alignment: .topLeading) {
-                track
-                    .glassEffect(.regular, in: .capsule)
-
-                if let frame = dropletFrame {
-                    Capsule()
-                        .fill(.clear)
-                        .glassEffect(
-                            .regular.tint(Color.Nexus.accent.opacity(0.16)).interactive(),
-                            in: .capsule
-                        )
-                        .glassEffectID("selection-droplet", in: glassNS)
-                        .frame(width: frame.width, height: frame.height)
-                        .offset(x: frame.minX, y: frame.minY)
-                        .allowsHitTesting(false)
-                        // While the finger drives it, no implicit animation —
-                        // it must track 1:1; the release snap animates via
-                        // withAnimation in the gesture's onEnded.
-                        .animation(isDragging ? nil : .spring(response: 0.45, dampingFraction: 0.72), value: frame)
-                }
-            }
-        }
-        .coordinateSpace(name: "glasstrack")
-        .onPreferenceChange(TabFramePreference.self) { tabFrames = $0 }
-        .contentShape(Capsule())
-        .gesture(barGesture)
-    }
-
-    /// Where the droplet sits right now: under the finger while dragging,
-    /// otherwise on the selected tab.
-    private var dropletFrame: CGRect? {
-        guard let selected = tabFrames[selection] else { return nil }
-        guard isDragging, let x = dragX else { return selected }
-        let minX = tabFrames.values.map(\.minX).min() ?? selected.minX
-        let maxX = tabFrames.values.map(\.maxX).max() ?? selected.maxX
-        let clampedCenter = min(max(x, minX + selected.width / 2), maxX - selected.width / 2)
-        return CGRect(
-            x: clampedCenter - selected.width / 2,
-            y: selected.minY,
-            width: selected.width,
-            height: selected.height
-        )
-    }
-
-    /// The tab a given x-position lands on (nearest by center distance).
-    private func tab(atX x: CGFloat) -> String {
-        tabFrames.min { abs($0.value.midX - x) < abs($1.value.midX - x) }?.key ?? selection
-    }
-
-    /// Tab whose color should light up right now (live feedback mid-drag).
-    private var highlightedKey: String {
-        if isDragging, let x = dragX { return tab(atX: x) }
-        return selection
-    }
-
-    private var barGesture: some Gesture {
-        DragGesture(minimumDistance: 0, coordinateSpace: .named("glasstrack"))
-            .onChanged { value in
-                dragX = value.location.x
-                // A tap stays a tap; the droplet detaches after slight movement
-                if abs(value.translation.width) > 6 { isDragging = true }
-            }
-            .onEnded { value in
-                let target = tab(atX: value.location.x)
-                withAnimation(.spring(response: 0.45, dampingFraction: 0.72)) {
-                    selection = target
-                    isDragging = false
-                }
-                dragX = nil
-            }
-    }
-
-    private var track: some View {
-        HStack(spacing: 2) {
-            ForEach(tabs, id: \.key) { tab in
-                tabCell(tab, highlighted: highlightedKey == tab.key)
-                    .background {
-                        GeometryReader { geo in
-                            Color.clear.preference(
-                                key: TabFramePreference.self,
-                                value: [tab.key: geo.frame(in: .named("glasstrack"))]
-                            )
-                        }
-                    }
-            }
-        }
-        .padding(3)
-    }
-
-    private func tabCell(_ tab: GlassTabItem, highlighted: Bool) -> some View {
-        VStack(spacing: 2) {
-            tabIcon(tab, highlighted: highlighted)
-                .frame(height: 23)
-            Text(tab.label)
-                .font(.system(size: 10.5, weight: .semibold))
-                .kerning(-0.1)
-                .foregroundColor(highlighted ? .Nexus.accent : .Nexus.muted)
-        }
-        .padding(.top, 6)
-        .padding(.bottom, 5)
-        .padding(.horizontal, 22)
-        .animation(.easeOut(duration: 0.15), value: highlighted)
-    }
-
-    // FotMob pattern: filled glyphs ALWAYS; only the color changes with state.
-    @ViewBuilder
-    private func tabIcon(_ tab: GlassTabItem, highlighted: Bool) -> some View {
-        let tint: Color = highlighted ? .Nexus.accent : .Nexus.muted
-        if tab.icon == "echo" {
-            EchoMark(color: tint, size: 21)
-        } else {
-            Image(systemName: tab.iconSelected)
-                .font(.system(size: 17.5, weight: .semibold))
-                .foregroundColor(tint)
         }
     }
 
@@ -188,7 +59,7 @@ struct GlassTabBar: View {
                 selection = tab.key
             }
         } label: {
-            tabCell(tab, highlighted: isSelected)
+            TabCellView(tab: tab, highlighted: isSelected)
                 .background {
                     if isSelected {
                         Capsule()
@@ -203,11 +74,98 @@ struct GlassTabBar: View {
     }
 }
 
-// MARK: - Frame preference
+// MARK: - Tab cell (shared by both paths; rendered to UIImage for the native control)
 
-private struct TabFramePreference: PreferenceKey {
-    static var defaultValue: [String: CGRect] = [:]
-    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
-        value.merge(nextValue()) { _, new in new }
+private struct TabCellView: View {
+    let tab: GlassTabItem
+    let highlighted: Bool
+
+    var body: some View {
+        // FotMob pattern: filled glyphs always; color carries selection state.
+        let tint: Color = highlighted ? .Nexus.accent : .Nexus.muted
+        VStack(spacing: 2) {
+            Group {
+                if tab.icon == "echo" {
+                    EchoMark(color: tint, size: 21)
+                } else {
+                    Image(systemName: tab.iconSelected)
+                        .font(.system(size: 17.5, weight: .semibold))
+                        .foregroundColor(tint)
+                }
+            }
+            .frame(height: 23)
+            Text(tab.label)
+                .font(.system(size: 10.5, weight: .semibold))
+                .kerning(-0.1)
+                .foregroundColor(tint)
+        }
+        .padding(.top, 4)
+        .padding(.bottom, 3)
+        .padding(.horizontal, 10)
+    }
+}
+
+// MARK: - Native segmented control wrapper (iOS 26)
+
+@available(iOS 26.0, *)
+private struct NativeSegmentedTabBar: UIViewRepresentable {
+    let tabs: [GlassTabItem]
+    @Binding var selection: String
+
+    func makeUIView(context: Context) -> UISegmentedControl {
+        let control = UISegmentedControl(items: [UIImage()])
+        control.removeAllSegments()
+        for (i, tab) in tabs.enumerated() {
+            control.insertSegment(
+                with: Self.cellImage(tab, highlighted: tab.key == selection),
+                at: i,
+                animated: false
+            )
+        }
+        control.apportionsSegmentWidthsByContent = true
+        control.selectedSegmentIndex = tabs.firstIndex { $0.key == selection } ?? 0
+        control.addTarget(
+            context.coordinator,
+            action: #selector(Coordinator.changed(_:)),
+            for: .valueChanged
+        )
+        control.setContentHuggingPriority(.required, for: .horizontal)
+        control.setContentHuggingPriority(.required, for: .vertical)
+        return control
+    }
+
+    func updateUIView(_ control: UISegmentedControl, context: Context) {
+        context.coordinator.parent = self
+        let idx = tabs.firstIndex { $0.key == selection } ?? 0
+        if control.selectedSegmentIndex != idx {
+            control.selectedSegmentIndex = idx
+        }
+        // Re-bake segment images so the selected cell is tinted accent
+        for (i, tab) in tabs.enumerated() {
+            control.setImage(Self.cellImage(tab, highlighted: i == idx), forSegmentAt: i)
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
+
+    /// Render the SwiftUI tab cell into an image the control can host.
+    /// .alwaysOriginal keeps our baked-in colors (the control would otherwise
+    /// template-tint everything).
+    @MainActor
+    static func cellImage(_ tab: GlassTabItem, highlighted: Bool) -> UIImage {
+        let renderer = ImageRenderer(content: TabCellView(tab: tab, highlighted: highlighted))
+        renderer.scale = UIScreen.main.scale
+        return (renderer.uiImage ?? UIImage()).withRenderingMode(.alwaysOriginal)
+    }
+
+    final class Coordinator: NSObject {
+        var parent: NativeSegmentedTabBar
+        init(parent: NativeSegmentedTabBar) { self.parent = parent }
+
+        @objc func changed(_ control: UISegmentedControl) {
+            let idx = control.selectedSegmentIndex
+            guard parent.tabs.indices.contains(idx) else { return }
+            parent.selection = parent.tabs[idx].key
+        }
     }
 }

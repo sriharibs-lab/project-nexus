@@ -28,8 +28,12 @@ struct GlassTabBar: View {
 
     var body: some View {
         if #available(iOS 26.0, *) {
+            // Glass backdrop BEHIND the native control (Clock-app pattern):
+            // the control's own track is nearly transparent, so without this
+            // the bar doesn't separate from content scrolling underneath.
             NativeSegmentedTabBar(tabs: tabs, selection: $selection)
                 .fixedSize()
+                .glassEffect(.regular, in: .capsule)
         } else {
             legacyBar
         }

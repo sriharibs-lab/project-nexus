@@ -68,6 +68,8 @@ private struct RootView: View {
             )
         case "auth":
             return AnyView(AuthView())
+        case "glass":
+            return AnyView(NavigationStack { GlassPlaygroundView() })
         default:
             return nil
         }

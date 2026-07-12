@@ -132,10 +132,15 @@ private struct NativeSegmentedTabBar: UIViewRepresentable {
         )
         control.setContentHuggingPriority(.required, for: .horizontal)
         control.setContentHuggingPriority(.required, for: .vertical)
-        // WhatsApp/FotMob/Clock-app height — the control's intrinsic height
-        // (~32pt) squished the icon+label cells.
-        control.heightAnchor.constraint(equalToConstant: 58).isActive = true
         return control
+    }
+
+    // WhatsApp/FotMob/Clock-app height. A heightAnchor constraint fights
+    // SwiftUI's sizing of representables (it uses sizeThatFits and squished
+    // the bar to the control's ~32pt intrinsic height) — report the size here.
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UISegmentedControl, context: Context) -> CGSize? {
+        let intrinsic = uiView.intrinsicContentSize
+        return CGSize(width: intrinsic.width, height: 58)
     }
 
     func updateUIView(_ control: UISegmentedControl, context: Context) {

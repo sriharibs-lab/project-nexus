@@ -22,6 +22,9 @@ struct AccountView: View {
                     profileSection
                         .padding(.top, NexusSpacing.xxxl)
 
+                    settingsSection
+                        .padding(.top, NexusSpacing.xxl)
+
                     Spacer()
 
                     signOutSection
@@ -68,6 +71,40 @@ struct AccountView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Settings section
+    //
+    // SettingsView (incl. Glass Playground) became unreachable when the
+    // avatar bloom menu was replaced by this sheet (1G-001) — this row
+    // restores the path: avatar → Account → Settings.
+
+    private var settingsSection: some View {
+        NavigationLink {
+            SettingsView()
+        } label: {
+            HStack(spacing: NexusSpacing.sm) {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.Nexus.muted)
+                Text("Settings")
+                    .font(.Nexus.labelLarge)
+                    .foregroundColor(.Nexus.ink)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.Nexus.ghost)
+            }
+            .padding(.horizontal, NexusSpacing.standard)
+            .frame(height: NexusSpacing.buttonHeight)
+            .background(Color.Nexus.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: NexusRadius.md, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: NexusRadius.md, style: .continuous)
+                    .stroke(Color.Nexus.border, lineWidth: NexusBorder.hair)
+            )
+        }
+        .buttonStyle(PressableCardStyle())
     }
 
     // MARK: - Sign Out section

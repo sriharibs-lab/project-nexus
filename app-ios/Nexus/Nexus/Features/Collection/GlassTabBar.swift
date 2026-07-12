@@ -102,7 +102,9 @@ private struct TabCellView: View {
         }
         .padding(.top, 5)
         .padding(.bottom, 4)
-        .padding(.horizontal, 12)
+        // Wide horizontal padding → the selection pill reads as an OVAL,
+        // not a circle (Clock-app proportions, review 2026-07-11)
+        .padding(.horizontal, 28)
     }
 }
 

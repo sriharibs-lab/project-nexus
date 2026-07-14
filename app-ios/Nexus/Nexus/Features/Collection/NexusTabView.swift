@@ -83,18 +83,35 @@ struct NexusTabView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: NexusSpacing.md) {
-                    // Framing paragraph pinned at top
-                    framingParagraph
-                        .padding(.top, NexusSpacing.lg)
+                    if vm.messages.isEmpty {
+                        // Empty state: hero (mark → framing → ASK → chips)
+                        heroBlock
+                            .padding(.top, NexusSpacing.lg)
+                    } else {
+                        // With history: framing stays as quiet context at top
+                        Text(framingText)
+                            .font(.system(size: 16.5, weight: .medium))
+                            .kerning(-0.25)
+                            .lineSpacing(5)
+                            .foregroundColor(.Nexus.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, NexusSpacing.lg)
+                    }
 
                     // Source availability — inline in the thread, never replacing
                     // the composer (design review 2026-07-11)
                     sourceStatusStrip
 
-                    // Message bubbles
+                    // Messages
                     ForEach(vm.messages) { msg in
                         MessageBubble(message: msg, retrievedSources: vm.retrievedSources)
                             .id(msg.id)
+                    }
+
+                    // Wait state — in-thread, after the last message (prototype)
+                    if vm.phase == .streaming, vm.messages.last?.content.isEmpty != false {
+                        EchoPulseView()
+                            .frame(height: 44)
                     }
 
                     // Invisible anchor for auto-scroll
@@ -155,53 +172,57 @@ struct NexusTabView: View {
         }
     }
 
-    // MARK: - Framing paragraph
+    // MARK: - Hero (empty state) — locked prototype spec (flows/qa Ask pane):
+    // Echo mark top-left → framing as PLAIN TEXT (16.5/medium, relaxed
+    // leading) → "ASK" overline → wrapping starter chips. No card, no label.
 
-    @ViewBuilder
-    private var framingParagraph: some View {
-        let text: String = {
-            if let f = collection.framingParagraph, !f.isEmpty { return f }
-            let n = collection.sourceCount
-            let countStr = n == 0 ? "sources" : (n == 1 ? "1 source" : "\(n) sources")
-            return "This collection has \(countStr). Ask me anything about what you've saved here."
-        }()
-
-        VStack(alignment: .leading, spacing: NexusSpacing.xs) {
-            // Echo mark accent line above framing
-            HStack(spacing: NexusSpacing.xs) {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.Nexus.accent)
-                    .frame(width: 3, height: 18)
-                Text("NEXUS")
-                    .font(.Nexus.overline)
-                    .foregroundColor(.Nexus.accent)
-                    .kerning(NexusKerning.wide)
-            }
-
-            Text(text)
-                .font(.Nexus.bodyMedium)
-                .foregroundColor(.Nexus.ink)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(NexusSpacing.standard)
-        .background(Color.Nexus.bloom.opacity(0.35))
-        .clipShape(RoundedRectangle(cornerRadius: NexusRadius.base))
-        .overlay(
-            RoundedRectangle(cornerRadius: NexusRadius.base)
-                .stroke(Color.Nexus.accent.opacity(0.18), lineWidth: NexusBorder.hair)
-        )
+    private var framingText: String {
+        if let f = collection.framingParagraph, !f.isEmpty { return f }
+        let n = collection.sourceCount
+        let countStr = n == 0 ? "sources" : (n == 1 ? "1 source" : "\(n) sources")
+        return "This collection has \(countStr). Ask me anything about what you've saved here."
     }
 
-    // MARK: - Starter prompts / Echo pulse
+    private var heroBlock: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            EchoMark(color: Color.Nexus.ink, size: 27)
+
+            Text(framingText)
+                .font(.system(size: 16.5, weight: .medium))
+                .kerning(-0.25)
+                .lineSpacing(5)
+                .foregroundColor(.Nexus.ink)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 14)
+
+            Text("ASK")
+                .font(.Nexus.overline)
+                .foregroundColor(.Nexus.ghost)
+                .kerning(NexusKerning.wide)
+                .padding(.top, 28)
+
+            StarterPromptsRow(prompts: vm.starterPrompts) { vm.sendStarter($0) }
+                .padding(.top, 12)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: - Suggestion carousel (above composer, after first exchange only)
+    //
+    // Empty state has its chips in the hero; the wait pulse lives in-thread.
 
     @ViewBuilder
     private var promptRow: some View {
-        if vm.phase == .streaming {
-            EchoPulseView()
-                .frame(height: 44)
-        } else {
-            StarterPromptsRow(prompts: vm.starterPrompts) { vm.sendStarter($0) }
+        if !vm.messages.isEmpty, vm.phase != .streaming {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: NexusSpacing.xs) {
+                    ForEach(vm.starterPrompts, id: \.self) { prompt in
+                        StarterChip(label: prompt, nowrap: true) { vm.sendStarter(prompt) }
+                    }
+                }
+                .padding(.horizontal, NexusSpacing.sideGutter)
+            }
+            .padding(.horizontal, -NexusSpacing.sideGutter)
         }
     }
 }
@@ -212,24 +233,38 @@ private struct MessageBubble: View {
     let message: ChatMessage
     let retrievedSources: [CitedSource]
 
+    // Locked prototype spec (flows/qa):
+    //  • user — quiet right-aligned pill: surface2 fill, hairline border,
+    //    radius 18, 15pt ink, max 82% width. Never a loud accent bubble.
+    //  • assistant — NO bubble: plain 15pt ink text, relaxed leading,
+    //    citation chips below.
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
             if message.role == .user { Spacer(minLength: NexusSpacing.xxxl) }
 
             VStack(alignment: message.role == .user ? .trailing : .leading, spacing: NexusSpacing.xs) {
-                // Text bubble
-                Text(strippedContent)
-                    .font(.Nexus.bodySmall)
-                    .foregroundColor(message.role == .user ? .white : .Nexus.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, NexusSpacing.md)
-                    .padding(.vertical, NexusSpacing.sm + 2)
-                    .background(bubbleBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: NexusRadius.md))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: NexusRadius.md)
-                            .stroke(bubbleBorder, lineWidth: NexusBorder.hair)
-                    )
+                if message.role == .user {
+                    Text(strippedContent)
+                        .font(.system(size: 15))
+                        .kerning(-0.2)
+                        .foregroundColor(.Nexus.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(Color.Nexus.surface2)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(Color.Nexus.hair, lineWidth: NexusBorder.hair)
+                        )
+                } else {
+                    Text(strippedContent)
+                        .font(.system(size: 15))
+                        .kerning(-0.2)
+                        .lineSpacing(6)
+                        .foregroundColor(.Nexus.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
                 // Streaming cursor
                 if message.isStreaming {
@@ -261,13 +296,6 @@ private struct MessageBubble: View {
         ).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private var bubbleBackground: Color {
-        message.role == .user ? Color.Nexus.accent : Color.Nexus.cardBackground
-    }
-
-    private var bubbleBorder: Color {
-        message.role == .user ? Color.clear : Color.Nexus.border
-    }
 }
 
 // MARK: - Streaming cursor
@@ -429,6 +457,7 @@ private struct StarterPromptsRow: View {
 
 private struct StarterChip: View {
     let label: String
+    var nowrap: Bool = false
     let action: () -> Void
 
     var body: some View {
@@ -438,7 +467,8 @@ private struct StarterChip: View {
                 .kerning(-0.15)
                 .foregroundColor(.Nexus.ink)
                 .multilineTextAlignment(.leading)
-                .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(nowrap ? 1 : nil)
+                .fixedSize(horizontal: nowrap, vertical: true)
                 .padding(.horizontal, 15)
                 .padding(.vertical, 10)
                 .background(Color.Nexus.cardBackground)

@@ -94,7 +94,9 @@ private struct TabCellView: View {
                 case "echo":
                     EchoMark(color: tint, size: 24)
                 case "sparkleBubble":
-                    // Ask — chat bubble with a sparkle inside
+                    // Ask — chat bubble with a sparkle inside.
+                    // Fixed frame: offset sparkles made ImageRenderer output
+                    // size wobble between bakes, feeding the layout loop.
                     ZStack {
                         Image(systemName: "bubble.left.fill")
                             .font(.system(size: 20, weight: .semibold))
@@ -104,6 +106,7 @@ private struct TabCellView: View {
                             .foregroundColor(.white)
                             .offset(y: -1.5)
                     }
+                    .frame(width: 30, height: 26)
                 case "sparklePhoto":
                     // Create — image with a sparkle at its corner (Canva/Figma)
                     ZStack(alignment: .topTrailing) {
@@ -115,6 +118,7 @@ private struct TabCellView: View {
                             .foregroundColor(tint)
                             .offset(x: 6, y: -5)
                     }
+                    .frame(width: 30, height: 26)
                 default:
                     Image(systemName: tab.iconSelected)
                         .font(.system(size: 20, weight: .semibold))
@@ -178,7 +182,13 @@ private struct NativeSegmentedTabBar: UIViewRepresentable {
         if control.selectedSegmentIndex != idx {
             control.selectedSegmentIndex = idx
         }
-        // Re-bake segment images so the selected cell is tinted accent
+        // Re-bake ONLY when the selection actually changed. Re-baking on every
+        // update pass froze the app: setImage invalidates the control's
+        // intrinsic size → SwiftUI re-runs layout/update → setImage again — a
+        // main-thread layout feedback loop, fed continuously by item polling
+        // re-renders (2026-07-14). The guard breaks the cycle.
+        guard context.coordinator.lastBakedSelection != selection else { return }
+        context.coordinator.lastBakedSelection = selection
         for (i, tab) in tabs.enumerated() {
             control.setImage(Self.cellImage(tab, highlighted: i == idx), forSegmentAt: i)
         }
@@ -198,6 +208,9 @@ private struct NativeSegmentedTabBar: UIViewRepresentable {
 
     final class Coordinator: NSObject {
         var parent: NativeSegmentedTabBar
+        /// Selection the segment images were last rendered for — guards the
+        /// updateUIView re-bake so it never runs on unrelated update passes.
+        var lastBakedSelection: String?
         init(parent: NativeSegmentedTabBar) { self.parent = parent }
 
         @objc func changed(_ control: UISegmentedControl) {

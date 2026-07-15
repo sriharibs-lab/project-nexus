@@ -85,14 +85,37 @@ private struct TabCellView: View {
     let highlighted: Bool
 
     var body: some View {
-        // FotMob pattern: filled glyphs always; unselected = full ink (black),
-        // selected = accent. Color carries all selection state.
-        let tint: Color = highlighted ? .Nexus.accent : .Nexus.ink
+        // Filled glyphs always; color carries selection state. Unselected is
+        // soft near-black — jet black stood out too much (review 2026-07-14).
+        let tint: Color = highlighted ? .Nexus.accent : Color.Nexus.ink.opacity(0.72)
         VStack(spacing: 3) {
             Group {
-                if tab.icon == "echo" {
+                switch tab.icon {
+                case "echo":
                     EchoMark(color: tint, size: 24)
-                } else {
+                case "sparkleBubble":
+                    // Ask — chat bubble with a sparkle inside
+                    ZStack {
+                        Image(systemName: "bubble.left.fill")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(tint)
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(.white)
+                            .offset(y: -1.5)
+                    }
+                case "sparklePhoto":
+                    // Create — image with a sparkle at its corner (Canva/Figma)
+                    ZStack(alignment: .topTrailing) {
+                        Image(systemName: "photo.fill")
+                            .font(.system(size: 19, weight: .semibold))
+                            .foregroundColor(tint)
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(tint)
+                            .offset(x: 6, y: -5)
+                    }
+                default:
                     Image(systemName: tab.iconSelected)
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundColor(tint)

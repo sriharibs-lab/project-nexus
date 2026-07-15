@@ -16,9 +16,11 @@ struct CollectionView: View {
     @State private var linkSheetContentType: DetectedContentType? = nil
 
     private static let tabs: [GlassTabItem] = [
-        GlassTabItem(key: "ask",     label: "Ask",     icon: "echo",             iconSelected: "echo"),
-        GlassTabItem(key: "create",  label: "Create",  icon: "square.and.pencil", iconSelected: "square.and.pencil"),
-        GlassTabItem(key: "sources", label: "Sources", icon: "rectangle.stack",  iconSelected: "rectangle.stack.fill"),
+        // Composite glyphs (review 2026-07-14): Ask = sparkle-on-chat-bubble,
+        // Create = sparkle-on-image (Canva/Figma convention)
+        GlassTabItem(key: "ask",     label: "Ask",     icon: "sparkleBubble", iconSelected: "sparkleBubble"),
+        GlassTabItem(key: "create",  label: "Create",  icon: "sparklePhoto",  iconSelected: "sparklePhoto"),
+        GlassTabItem(key: "sources", label: "Sources", icon: "rectangle.stack", iconSelected: "rectangle.stack.fill"),
     ]
 
     init(collection: NexusCollection, initialTab: String = "ask") {

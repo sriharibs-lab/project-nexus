@@ -28,6 +28,19 @@ final class CollectionViewModel: ObservableObject {
         items.contains { Self.activeStatuses.contains($0.ingestStatus) }
     }
 
+    /// Set on the first successful load — anchors the empty-list grace window.
+    private var firstLoadAt: Date?
+
+    /// Freshly created collections navigate here BEFORE their fire-and-forget
+    /// ingest requests have created item rows — the first fetch races them and
+    /// returns empty, and with zero items the status-based polling never started,
+    /// leaving the tab stuck on "No sources yet" (bug 2026-07-14). Keep polling
+    /// an empty list for a grace window so late-arriving items get picked up.
+    private var inEmptyGraceWindow: Bool {
+        guard items.isEmpty, let anchor = firstLoadAt else { return false }
+        return Date().timeIntervalSince(anchor) < 45
+    }
+
     init(collection: NexusCollection) {
         self.collection = collection
     }
@@ -44,6 +57,7 @@ final class CollectionViewModel: ObservableObject {
         do {
             let fetched = try await APIClient.shared.fetchItems(in: collection.id)
             items = fetched
+            if firstLoadAt == nil { firstLoadAt = Date() }
             startPollingIfNeeded()
         } catch let e as APIError {
             error = e
@@ -103,7 +117,7 @@ final class CollectionViewModel: ObservableObject {
         pollTask?.cancel()
         pollTask = nil
 
-        guard hasActiveItems else { return }
+        guard hasActiveItems || inEmptyGraceWindow else { return }
 
         pollTask = Task { [weak self] in
             guard let self else { return }
@@ -118,8 +132,9 @@ final class CollectionViewModel: ObservableObject {
             while !Task.isCancelled {
                 await self.pollOnce()
 
-                // Stop the loop once all items have reached a terminal state.
-                if !self.hasActiveItems { break }
+                // Stop once all items are terminal — unless we're still inside
+                // the empty-list grace window waiting for ingest rows to appear.
+                if !self.hasActiveItems && !self.inEmptyGraceWindow { break }
 
                 do {
                     try await Task.sleep(nanoseconds: UInt64(self.pollInterval * 1_000_000_000))

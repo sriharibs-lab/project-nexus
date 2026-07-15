@@ -48,6 +48,9 @@ struct NexusTabView: View {
     private var ingestingCount: Int {
         items.filter { $0.ingestStatus == .pending || $0.ingestStatus == .processing }.count
     }
+    /// No sources at all → asking is pointless: chips hidden, composer dimmed
+    /// (design review 2026-07-14). The sourceStatusStrip explains why.
+    private var hasAnySources: Bool { !items.isEmpty || collection.sourceCount > 0 }
 
     // MARK: - Chat UI (shown when collection has sources)
 
@@ -64,6 +67,8 @@ struct NexusTabView: View {
             ChatComposer(vm: vm, focused: $composerFocused)
                 .padding(.horizontal, NexusSpacing.sideGutter)
                 .padding(.bottom, NexusSpacing.standard)
+                .opacity(hasAnySources ? 1 : 0.55)
+                .disabled(!hasAnySources)
         }
         .background(NexusBackground())
         // Error banner overlay
@@ -126,6 +131,10 @@ struct NexusTabView: View {
             // scrolls up through the message history. Consistent with iOS system
             // patterns (Messages, Mail). Already used in OnboardingView.
             .scrollDismissesKeyboard(.interactively)
+            // Tap-outside dismiss: plain gesture on the scroll area — chips and
+            // buttons inside still win their own taps (never simultaneousGesture,
+            // see 1F-004)
+            .onTapGesture { composerFocused = false }
             .onChange(of: vm.messages.count) { _ in
                 withAnimation { proxy.scrollTo("bottom", anchor: .bottom) }
             }
@@ -195,14 +204,17 @@ struct NexusTabView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 14)
 
-            Text("ASK")
-                .font(.Nexus.overline)
-                .foregroundColor(.Nexus.ghost)
-                .kerning(NexusKerning.wide)
-                .padding(.top, 28)
+            // Suggested questions only make sense once there is something to ask about
+            if hasAnySources {
+                Text("ASK")
+                    .font(.Nexus.overline)
+                    .foregroundColor(.Nexus.ghost)
+                    .kerning(NexusKerning.wide)
+                    .padding(.top, 28)
 
-            StarterPromptsRow(prompts: vm.starterPrompts) { vm.sendStarter($0) }
-                .padding(.top, 12)
+                StarterPromptsRow(prompts: vm.starterPrompts) { vm.sendStarter($0) }
+                    .padding(.top, 12)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -258,18 +270,11 @@ private struct MessageBubble: View {
                                 .stroke(Color.Nexus.hair, lineWidth: NexusBorder.hair)
                         )
                 } else {
-                    Text(strippedContent)
-                        .font(.system(size: 15))
-                        .kerning(-0.2)
-                        .lineSpacing(6)
-                        .foregroundColor(.Nexus.ink)
-                        .fixedSize(horizontal: false, vertical: true)
+                    AssistantMarkdown(content: strippedContent)
                 }
 
-                // Streaming cursor
-                if message.isStreaming {
-                    StreamingCursor()
-                }
+                // While thinking, the in-thread EchoPulse is the wait indicator
+                // (design review 2026-07-14: brand animation, not a cursor)
 
                 // Citation chips beneath assistant response
                 if message.role == .assistant && !message.citedSources.isEmpty {
@@ -298,21 +303,118 @@ private struct MessageBubble: View {
 
 }
 
-// MARK: - Streaming cursor
+// MARK: - Assistant markdown
+//
+// Claude's answers arrive as markdown (##, **, bullets). Text() renders only
+// inline markdown — headings and lists leak through as raw symbols (review
+// 2026-07-14). Lightweight block renderer: headings, bullets, numbered items,
+// paragraphs; inline **bold**/*italic* via AttributedString per block.
 
-private struct StreamingCursor: View {
-    @State private var opacity: Double = 1
+struct AssistantMarkdown: View {
+    let content: String
+
+    private enum Block: Identifiable {
+        case heading(String, level: Int)
+        case bullet(String)
+        case numbered(String, index: String)
+        case paragraph(String)
+
+        var id: String {
+            switch self {
+            case .heading(let t, let l): return "h\(l):\(t)"
+            case .bullet(let t): return "b:\(t)"
+            case .numbered(let t, let i): return "n\(i):\(t)"
+            case .paragraph(let t): return "p:\(t)"
+            }
+        }
+    }
 
     var body: some View {
-        RoundedRectangle(cornerRadius: 1)
-            .fill(Color.Nexus.accent)
-            .frame(width: 2, height: 14)
-            .opacity(opacity)
-            .onAppear {
-                withAnimation(.easeInOut(duration: 0.55).repeatForever(autoreverses: true)) {
-                    opacity = 0
+        VStack(alignment: .leading, spacing: 9) {
+            ForEach(blocks) { block in
+                switch block {
+                case .heading(let text, let level):
+                    inline(text)
+                        .font(.system(size: level <= 2 ? 16.5 : 15, weight: .semibold))
+                        .kerning(-0.3)
+                        .foregroundColor(.Nexus.ink)
+                        .padding(.top, 4)
+                case .bullet(let text):
+                    HStack(alignment: .top, spacing: 9) {
+                        Text("•")
+                            .font(.system(size: 15))
+                            .foregroundColor(.Nexus.faint)
+                        inline(text)
+                            .font(.system(size: 15))
+                            .kerning(-0.2)
+                            .lineSpacing(4)
+                            .foregroundColor(.Nexus.ink)
+                    }
+                case .numbered(let text, let index):
+                    HStack(alignment: .top, spacing: 9) {
+                        Text("\(index).")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(.Nexus.faint)
+                        inline(text)
+                            .font(.system(size: 15))
+                            .kerning(-0.2)
+                            .lineSpacing(4)
+                            .foregroundColor(.Nexus.ink)
+                    }
+                case .paragraph(let text):
+                    inline(text)
+                        .font(.system(size: 15))
+                        .kerning(-0.2)
+                        .lineSpacing(6)
+                        .foregroundColor(.Nexus.ink)
                 }
             }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// Inline markdown (bold/italic/links); falls back to plain text mid-stream
+    /// when a `**` pair is still unclosed.
+    private func inline(_ text: String) -> Text {
+        if let attributed = try? AttributedString(
+            markdown: text,
+            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+        ) {
+            return Text(attributed)
+        }
+        return Text(text)
+    }
+
+    private var blocks: [Block] {
+        var result: [Block] = []
+        var paragraph: [String] = []
+
+        func flushParagraph() {
+            guard !paragraph.isEmpty else { return }
+            result.append(.paragraph(paragraph.joined(separator: " ")))
+            paragraph = []
+        }
+
+        for rawLine in content.components(separatedBy: "\n") {
+            let line = rawLine.trimmingCharacters(in: .whitespaces)
+            if line.isEmpty {
+                flushParagraph()
+            } else if let match = line.wholeMatch(of: /(#{1,4})\s+(.+)/) {
+                flushParagraph()
+                result.append(.heading(String(match.2), level: match.1.count))
+            } else if let match = line.wholeMatch(of: /[-*•]\s+(.+)/) {
+                flushParagraph()
+                result.append(.bullet(String(match.1)))
+            } else if let match = line.wholeMatch(of: /(\d+)[.)]\s+(.+)/) {
+                flushParagraph()
+                result.append(.numbered(String(match.2), index: String(match.1)))
+            } else {
+                paragraph.append(line)
+            }
+        }
+        flushParagraph()
+        return result
     }
 }
 
@@ -493,61 +595,116 @@ private struct ChatComposer: View {
         !vm.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && vm.phase == .idle
     }
 
-    var body: some View {
-        HStack(alignment: .bottom, spacing: NexusSpacing.sm) {
-            // Text input
-            ZStack(alignment: .leading) {
-                if vm.inputText.isEmpty {
-                    Text("Ask about \"\(vm.collection.name)\"…")
-                        .font(.Nexus.bodySmall)
-                        .foregroundColor(.Nexus.ghost)
-                        .padding(.horizontal, 6)
-                        .allowsHitTesting(false)
-                }
-                TextField("", text: $vm.inputText, axis: .vertical)
-                    .font(.Nexus.bodySmall)
-                    .foregroundColor(.Nexus.ink)
-                    .focused(focused)
-                    .lineLimit(1...5)
-                    .submitLabel(.send)
-                    .onSubmit {
-                        if canSend { vm.send() }
-                    }
-                    .padding(.horizontal, 6)
-            }
-            .padding(.horizontal, NexusSpacing.sm)
-            .padding(.vertical, NexusSpacing.sm + 2)
-            .background(Color.Nexus.cardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: NexusRadius.xxl))
-            .overlay(
-                RoundedRectangle(cornerRadius: NexusRadius.xxl)
-                    .stroke(focused.wrappedValue ? Color.Nexus.accent.opacity(0.5) : Color.Nexus.border,
-                            lineWidth: NexusBorder.base)
-            )
+    /// Notion pattern (review 2026-07-14): resting = one-line oval; on focus
+    /// the box GROWS into a taller glass card with the input on top and a
+    /// control row (waveform · send) beneath.
+    private var isExpanded: Bool { focused.wrappedValue || !vm.inputText.isEmpty }
 
-            // Send / mic button
-            Button {
-                if canSend { vm.send() }
-            } label: {
-                Image(systemName: canSend ? "arrow.up" : "waveform")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(canSend ? .white : .Nexus.faint)
-                    .frame(width: 36, height: 36)
-                    .background(canSend ? Color.Nexus.accent : Color.Nexus.surface2)
-                    .clipShape(Circle())
+    var body: some View {
+        Group {
+            if isExpanded {
+                expandedComposer
+            } else {
+                restingComposer
             }
-            .buttonStyle(.plain)
-            .animation(NexusAnimation.element, value: canSend)
-            .disabled(vm.phase == .streaming)
+        }
+        .animation(.spring(response: 0.36, dampingFraction: 0.82), value: isExpanded)
+    }
+
+    // ── Resting: one-line oval ──
+
+    private var restingComposer: some View {
+        HStack(spacing: NexusSpacing.sm) {
+            textInput
+            waveformCircle
         }
         .padding(NexusSpacing.sm)
         .background(Color.Nexus.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: NexusRadius.xxl + 4))
+        .clipShape(Capsule())
+        .overlay(Capsule().stroke(Color.Nexus.border, lineWidth: NexusBorder.hair))
+        .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+    }
+
+    // ── Expanded: Notion-style glass card ──
+
+    private var expandedComposer: some View {
+        VStack(alignment: .leading, spacing: NexusSpacing.sm) {
+            textInput
+                .padding(.top, 4)
+                .padding(.horizontal, 4)
+
+            HStack(spacing: NexusSpacing.sm) {
+                waveformCircle
+                Spacer()
+                Button {
+                    if canSend { vm.send() }
+                } label: {
+                    Image(systemName: "arrow.up")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(width: 38, height: 38)
+                        .background(canSend ? Color.Nexus.ink : Color.Nexus.ghost)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .disabled(!canSend)
+                .animation(NexusAnimation.element, value: canSend)
+            }
+        }
+        .padding(NexusSpacing.md)
+        .background(composerGlass)
         .overlay(
-            RoundedRectangle(cornerRadius: NexusRadius.xxl + 4)
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
                 .stroke(Color.Nexus.border, lineWidth: NexusBorder.hair)
         )
-        .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+        .shadow(color: .black.opacity(0.08), radius: 16, y: 4)
+    }
+
+    // Liquid Glass backdrop (floating layer per DESIGN_LANGUAGE §3) — no
+    // explicit background fill, which would defeat the glass (2026-07-11).
+    @ViewBuilder
+    private var composerGlass: some View {
+        if #available(iOS 26.0, *) {
+            Color.clear.glassEffect(.regular, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+        } else {
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(.ultraThinMaterial)
+        }
+    }
+
+    // ── Shared pieces ──
+
+    private var textInput: some View {
+        ZStack(alignment: .leading) {
+            if vm.inputText.isEmpty {
+                Text("Ask about \"\(vm.collection.name)\"…")
+                    .font(.Nexus.bodySmall)
+                    .foregroundColor(.Nexus.ghost)
+                    .padding(.horizontal, 6)
+                    .allowsHitTesting(false)
+            }
+            TextField("", text: $vm.inputText, axis: .vertical)
+                .font(.Nexus.bodySmall)
+                .foregroundColor(.Nexus.ink)
+                .focused(focused)
+                .lineLimit(isExpanded ? 1...6 : 1...1)
+                .submitLabel(.send)
+                .onSubmit {
+                    if canSend { vm.send() }
+                }
+                .padding(.horizontal, 6)
+        }
+        .padding(.horizontal, NexusSpacing.sm)
+        .padding(.vertical, NexusSpacing.sm + 2)
+    }
+
+    private var waveformCircle: some View {
+        Image(systemName: "waveform")
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundColor(.Nexus.faint)
+            .frame(width: 36, height: 36)
+            .background(Color.Nexus.surface2)
+            .clipShape(Circle())
     }
 }
 

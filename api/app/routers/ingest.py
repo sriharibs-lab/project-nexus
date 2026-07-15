@@ -6,10 +6,12 @@ from pydantic import BaseModel, HttpUrl
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+
 from app.core.database import get_db
 from app.middleware.auth import get_current_user
 from app.models.collection import Collection
-from app.models.item import ContentType
+from app.models.item import ContentType, IngestStatus, Item, collection_items
 from app.models.user import User
 from app.queue.ingestion import enqueue_item
 
@@ -51,11 +53,31 @@ async def ingest_item(
     if col_result.scalar_one_or_none() is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found")
 
+    # Create the Item row NOW (status=pending) so the client sees the source
+    # immediately — visibility must never depend on worker pickup timing
+    # (Ask tab sat on "No sources yet" while jobs waited, 2026-07-14).
+    item = Item(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        url=str(payload.url),
+        content_type=payload.content_type,
+        ingest_status=IngestStatus.pending,
+    )
+    db.add(item)
+    await db.flush()
+    await db.execute(
+        pg_insert(collection_items)
+        .values(collection_id=payload.collection_id, item_id=item.id)
+        .on_conflict_do_nothing()
+    )
+    await db.commit()
+
     job_id = await enqueue_item(
         url=str(payload.url),
         content_type=payload.content_type.value,
         user_id=str(user.id),
         collection_id=str(payload.collection_id),
+        item_id=str(item.id),
     )
     return IngestResponse(
         job_id=job_id,

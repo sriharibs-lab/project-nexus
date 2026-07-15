@@ -13,6 +13,7 @@ new infrastructure required.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import time
@@ -71,7 +72,13 @@ def get_pgq_pool() -> asyncpg.Pool:
 # Public enqueue interface
 # ---------------------------------------------------------------------------
 
-async def enqueue_item(url: str, content_type: str, user_id: str, collection_id: str) -> str:
+async def enqueue_item(
+    url: str,
+    content_type: str,
+    user_id: str,
+    collection_id: str,
+    item_id: str | None = None,
+) -> str:
     job_id = str(uuid.uuid4())
     # pgqueuer payloads are bytes — the previous str + type-ignore raised
     # ValueError("a bytes-like object is required") on every enqueue.
@@ -81,6 +88,9 @@ async def enqueue_item(url: str, content_type: str, user_id: str, collection_id:
         "content_type": content_type,
         "user_id": user_id,
         "collection_id": collection_id,
+        # Pre-created by the ingest router (status=pending) so the client sees
+        # the source instantly; the worker updates this row instead of creating one.
+        "item_id": item_id,
     }).encode()
     pool = get_pgq_pool()
     async with pool.acquire() as conn:
@@ -97,6 +107,60 @@ async def enqueue_item(url: str, content_type: str, user_id: str, collection_id:
 # ---------------------------------------------------------------------------
 
 async def start_worker() -> None:
+    """
+    Supervised worker: pgqueuer's run() has wedged silently in production —
+    "worker started" logged, connection healthy, yet queued jobs sat untouched
+    for minutes (observed 2026-07-14: 14 jobs, zero dispatched, no exception).
+    The supervisor pairs the worker with a watchdog that checks queue staleness;
+    when queued jobs are old and nothing is processing, it kills and restarts
+    the worker loop. Restart also re-drains the backlog (initial fetch works
+    reliably even when the notify path doesn't).
+    """
+    while True:
+        worker = asyncio.create_task(_run_worker_once(), name="pgq-worker")
+        watchdog = asyncio.create_task(_watchdog(worker), name="pgq-watchdog")
+        try:
+            await worker
+            logger.error("pgqueuer run() returned unexpectedly — restarting in 5s")
+        except asyncio.CancelledError:
+            if worker.cancelled() or worker.done():
+                logger.error("pgqueuer worker cancelled by watchdog — restarting in 5s")
+            else:
+                worker.cancel()
+                raise  # app shutdown
+        except Exception:
+            logger.exception("pgqueuer worker crashed — restarting in 5s")
+        finally:
+            watchdog.cancel()
+        await asyncio.sleep(5)
+
+
+async def _watchdog(worker: asyncio.Task) -> None:
+    """Cancel the worker task if queued jobs are going stale under it."""
+    pool = get_pgq_pool()
+    while not worker.done():
+        await asyncio.sleep(30)
+        try:
+            async with pool.acquire() as conn:
+                stale = await conn.fetchval(
+                    """
+                    SELECT count(*) FROM pgqueuer
+                    WHERE status = 'queued'
+                      AND created < now() - interval '45 seconds'
+                    """
+                )
+            if stale and stale > 0:
+                logger.error(
+                    "WATCHDOG: %d queued job(s) stale >45s with a 'running' worker — force-restarting worker",
+                    stale,
+                )
+                worker.cancel()
+                return
+        except Exception:
+            logger.exception("watchdog check failed (non-fatal)")
+
+
+async def _run_worker_once() -> None:
     pool = get_pgq_pool()
     async with pool.acquire() as conn:
         # Driver wrapper is REQUIRED — PgQueuer(raw asyncpg conn) crashed
@@ -114,6 +178,7 @@ async def start_worker() -> None:
                 content_type=data["content_type"],
                 user_id=data["user_id"],
                 collection_id=data["collection_id"],
+                item_id=data.get("item_id"),
             )
 
         logger.info("pgqueuer ingestion worker started, queue=%s", QUEUE_NAME)
@@ -209,21 +274,30 @@ async def _process_job(
     content_type: str,
     user_id: str,
     collection_id: str,
+    item_id: str | None = None,
 ) -> None:
     logger.info("Processing job %s url=%s collection=%s", job_id, url, collection_id)
 
     async with AsyncSessionLocal() as db:
         t0 = time.perf_counter()
 
-        # Create item record
-        item = Item(
-            id=uuid.uuid4(),
-            user_id=uuid.UUID(user_id),
-            url=url,
-            content_type=ContentType(content_type) if content_type in ContentType._value2member_map_ else ContentType.article,
-            ingest_status=IngestStatus.processing,
-        )
-        db.add(item)
+        # The ingest router pre-creates the Item (status=pending) so clients
+        # see it immediately; reuse that row. Legacy payloads without item_id
+        # (jobs enqueued before 2026-07-14) fall back to creating one here.
+        item: Item | None = None
+        if item_id is not None:
+            item = await db.get(Item, uuid.UUID(item_id))
+        if item is None:
+            item = Item(
+                id=uuid.uuid4(),
+                user_id=uuid.UUID(user_id),
+                url=url,
+                content_type=ContentType(content_type) if content_type in ContentType._value2member_map_ else ContentType.article,
+                ingest_status=IngestStatus.processing,
+            )
+            db.add(item)
+        else:
+            item.ingest_status = IngestStatus.processing
         await db.flush()
 
         # Wire into collection immediately (visible as "processing")

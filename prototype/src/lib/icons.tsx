@@ -180,6 +180,13 @@ export const ICONS = {
     </>
   ),
   arrowUp: (p: P) => <path d="M12 19V5m-6 6 6-6 6 6" {...strokeProps(p)} />,
+  x: (p: P) => <path d="m6 6 12 12M18 6 6 18" {...strokeProps(p)} />,
+  trash: (p: P) => (
+    <>
+      <path d="M4 7h16M10 11v6M14 11v6" {...strokeProps(p)} />
+      <path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" {...strokeProps(p)} />
+    </>
+  ),
   send: (p: P) => <path d="M12 19V5m-6 6 6-6 6 6" {...strokeProps(p)} />,
   trending: (p: P) => (
     <>

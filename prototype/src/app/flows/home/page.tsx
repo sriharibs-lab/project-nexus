@@ -447,20 +447,23 @@ function SwipeableCard({
           borderRadius: 14,
         }}
       >
+        {/* Weather-app style: icon only, no label */}
         <button
           onClick={onDelete}
+          aria-label="Delete collection"
           style={{
             width: 84,
             height: "100%",
             border: "none",
             background: "transparent",
-            color: "#fff",
-            fontSize: 13.5,
-            fontWeight: 600,
             cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 0,
           }}
         >
-          Delete
+          <Icon name="trash" size={20} color="#FFFFFF" stroke={1.8} />
         </button>
       </div>
 
@@ -596,19 +599,26 @@ function ClaudeSearchBar({
             onChange("");
             inputRef.current?.blur();
           }}
+          aria-label="Cancel search"
           style={{
-            border: "none",
-            background: "transparent",
-            fontSize: 15,
-            fontWeight: 500,
-            letterSpacing: -0.2,
-            color: t.plum,
+            width: 44,
+            height: 44,
+            flexShrink: 0,
+            borderRadius: 999,
+            border: `1px solid rgba(255,255,255,0.65)`,
+            background: "rgba(255,255,255,0.62)",
+            backdropFilter: "blur(26px) saturate(185%)",
+            WebkitBackdropFilter: "blur(26px) saturate(185%)",
+            boxShadow: "0 10px 32px rgba(19,14,26,0.12), inset 0 1px 1px rgba(255,255,255,0.85)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             cursor: "pointer",
-            padding: "4px 2px",
-            animation: "nxFade .2s ease both",
+            animation: "nxPop .3s ease both",
+            padding: 0,
           }}
         >
-          Cancel
+          <Icon name="x" size={18} color={t.ink} stroke={2} />
         </button>
       )}
     </div>

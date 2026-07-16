@@ -22,6 +22,7 @@ SSE event format:
   data: {"event": "error", "message": "..."}  ← only on failure
 """
 
+import asyncio
 import json
 import logging
 import time
@@ -29,6 +30,8 @@ import uuid
 from collections.abc import AsyncGenerator
 from decimal import Decimal
 from typing import Annotated
+
+import httpx
 
 from fastapi import APIRouter, Body, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -60,6 +63,39 @@ async def _resolve_user(supabase_id: str, db: AsyncSession) -> User:
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return user
+
+
+_URL_CHECK_TIMEOUT = 6.0
+_URL_CHECK_UA = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+)
+
+
+async def _url_alive(client: httpx.AsyncClient, url: str) -> bool:
+    """True if the URL resolves to a non-error response. HEAD first (cheap),
+    GET on 403/405 (some servers reject HEAD)."""
+    try:
+        resp = await client.head(url, follow_redirects=True)
+        if resp.status_code in (403, 405):
+            resp = await client.get(url, follow_redirects=True)
+        return resp.status_code < 400
+    except Exception:
+        return False
+
+
+async def _filter_live_sources(sources: list) -> list:
+    """Drop candidates whose URLs don't resolve (Claude hallucinates links)."""
+    async with httpx.AsyncClient(
+        timeout=_URL_CHECK_TIMEOUT,
+        headers={"User-Agent": _URL_CHECK_UA},
+    ) as client:
+        checks = await asyncio.gather(*(_url_alive(client, s.url) for s in sources))
+    kept = [s for s, ok in zip(sources, checks) if ok]
+    dropped = [s.url for s, ok in zip(sources, checks) if not ok]
+    if dropped:
+        logger.info("research: dropped %d dead URL(s): %s", len(dropped), dropped)
+    return kept
 
 
 def _sse(payload: dict) -> str:
@@ -115,6 +151,15 @@ async def _stream_research(
 
     if not sources_collected:
         yield _sse({"event": "error", "message": "No sources found. Try a more specific topic."})
+        return
+
+    # Verify every candidate URL actually resolves — Claude fabricates
+    # plausible-looking deep links (observed 2026-07-15: epa.gov/nps.gov/usgs.gov
+    # paths that 404). Prompt tuning cannot fix hallucination; only a fetch can.
+    sources_collected = await _filter_live_sources(sources_collected)
+
+    if not sources_collected:
+        yield _sse({"event": "error", "message": "No reachable sources found. Try a different topic."})
         return
 
     # Yield each source

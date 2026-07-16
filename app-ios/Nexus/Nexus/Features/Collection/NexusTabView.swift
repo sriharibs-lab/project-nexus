@@ -55,21 +55,26 @@ struct NexusTabView: View {
     // MARK: - Chat UI (shown when collection has sources)
 
     private var chatUI: some View {
-        VStack(spacing: 0) {
-            // Chat thread fills available space
-            chatThread
-            // Prompt chips or Echo pulse
-            promptRow
-                .padding(.horizontal, NexusSpacing.sideGutter)
-                .padding(.bottom, NexusSpacing.sm)
-            // Composer — receives the lifted FocusState binding so the parent
-            // can dismiss the keyboard by flipping composerFocused = false.
-            ChatComposer(vm: vm, focused: $composerFocused)
-                .padding(.horizontal, NexusSpacing.sideGutter)
+        // The composer lives in a bottom safe-area inset so thread content
+        // SCROLLS UNDERNEATH it — glass over flat page background reads as a
+        // plain white card (device review 2026-07-15); glass needs content
+        // behind it to exist.
+        chatThread
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                VStack(spacing: NexusSpacing.sm) {
+                    // Prompt chips carousel (after first exchange)
+                    promptRow
+                        .padding(.horizontal, NexusSpacing.sideGutter)
+                    // Composer — receives the lifted FocusState binding so the
+                    // parent can dismiss the keyboard from tap-outside.
+                    ChatComposer(vm: vm, focused: $composerFocused)
+                        .padding(.horizontal, NexusSpacing.sideGutter)
+                        .opacity(hasAnySources ? 1 : 0.55)
+                        .disabled(!hasAnySources)
+                }
+                .padding(.top, NexusSpacing.xs)
                 .padding(.bottom, NexusSpacing.standard)
-                .opacity(hasAnySources ? 1 : 0.55)
-                .disabled(!hasAnySources)
-        }
+            }
         .background(NexusBackground())
         // Error banner overlay
         .overlay(alignment: .top) {

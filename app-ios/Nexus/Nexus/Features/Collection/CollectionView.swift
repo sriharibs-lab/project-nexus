@@ -36,8 +36,11 @@ struct CollectionView: View {
 
             // Bottom floating glass capsule (DESIGN_LANGUAGE §3 + §8):
             // 24pt above the home indicator, content scrolls underneath.
+            // Never keyboard-avoids — the keyboard covers it (WhatsApp/Clock
+            // behavior); riding up with the keyboard looked broken (2026-07-15).
             GlassTabBar(tabs: Self.tabs, selection: $selectedTab)
                 .padding(.bottom, 24)
+                .ignoresSafeArea(.keyboard, edges: .bottom)
         }
         .navigationTitle(vm.collection.name)
         .navigationBarTitleDisplayMode(.inline)

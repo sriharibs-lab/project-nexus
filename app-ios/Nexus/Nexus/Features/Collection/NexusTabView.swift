@@ -662,7 +662,10 @@ private struct ChatComposer: View {
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.white)
                             .frame(width: 38, height: 38)
-                            .background(canSend ? Color.Nexus.ink : Color.Nexus.ghost)
+                            // Plum: sending to Nexus is an AI moment — the one
+                            // accent belongs here (matches FRE create + link-sheet
+                            // Save). Ink is reserved for the audio glyph.
+                            .background(canSend ? Color.Nexus.accent : Color.Nexus.ghost)
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)

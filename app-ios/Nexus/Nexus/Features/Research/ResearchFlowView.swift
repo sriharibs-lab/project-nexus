@@ -31,6 +31,11 @@ private let frePhrasesSearching = [
 struct ResearchFlowView: View {
     @StateObject private var vm = ResearchViewModel()
     var onComplete: (UUID) -> Void
+    /// True when presented from Home (fullScreenCover) — shows a top-left
+    /// back button. The zero-collections landing keeps it hidden (nothing
+    /// to go back to).
+    var showsBackButton = false
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.dismiss) private var dismiss
 
     private var sheetVisible: Bool {
@@ -185,8 +190,25 @@ private struct FREInputScreen: View {
                 Spacer()
             }
 
-            // Avatar button — top right
+            // Top bar: back (only when presented from Home) + avatar right
             HStack {
+                if showsBackButton {
+                    Button {
+                        dismiss()
+                    } label: {
+                        ZStack {
+                            Circle()
+                                .fill(Color.Nexus.cardBackground)
+                                .frame(width: 40, height: 40)
+                                .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.Nexus.ink)
+                        }
+                    }
+                    .buttonStyle(PressableCardStyle())
+                    .padding(.leading, NexusSpacing.standard)
+                }
                 Spacer()
                 NexusAvatarButton(active: showAvatarMenu) {
                     withAnimation(.spring(response: 0.22, dampingFraction: 0.86)) {
@@ -194,8 +216,8 @@ private struct FREInputScreen: View {
                     }
                 }
                 .padding(.trailing, NexusSpacing.standard)
-                .padding(.top, NexusSpacing.safeTop + 6)
             }
+            .padding(.top, NexusSpacing.safeTop + 6)
 
             // Shared bloom menu (scrim + top-right bloom, locked 3-row card)
             AvatarBloomOverlay(

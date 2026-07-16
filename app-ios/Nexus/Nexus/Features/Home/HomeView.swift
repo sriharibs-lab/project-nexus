@@ -94,14 +94,14 @@ struct HomeView: View {
         .sheet(isPresented: $showingSettings) { SettingsView() }
         .sheet(isPresented: $showingFeedback) { FeedbackView(preloadedScreenshot: nil) }
         .fullScreenCover(isPresented: $showingResearchFlow) {
-            ResearchFlowView { collectionId in
+            ResearchFlowView(onComplete: { collectionId in
                 Task {
                     await vm.load()
                     if let found = vm.collections.first(where: { $0.id == collectionId }) {
                         navPath.append(found)
                     }
                 }
-            }
+            }, showsBackButton: true)
         }
         .alert("Couldn't delete collection", isPresented: Binding(
             get: { vm.deleteError != nil },

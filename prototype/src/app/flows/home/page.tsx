@@ -36,6 +36,12 @@ export default function HomeFlow() {
   const router = useRouter();
   const [state, setState] = useState<string>(params.get("state") === "empty" ? "Empty" : "Collections");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [collections, setCollections] = useState(COLLECTIONS);
+
+  const visible = collections.filter((c) =>
+    c.title.toLowerCase().includes(query.trim().toLowerCase())
+  );
 
   return (
     <Screen>
@@ -59,34 +65,23 @@ export default function HomeFlow() {
             <AvatarButton active={menuOpen} onClick={() => setMenuOpen(true)} />
           </div>
 
-          {/* collection cards */}
+          {/* collection cards — swipe left to reveal Delete */}
           <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 16px 170px" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {COLLECTIONS.map((c) => (
-                <Pressable
+              {visible.map((c) => (
+                <SwipeableCard
                   key={c.title}
-                  scale={0.985}
-                  onClick={() => router.push("/flows/qa")}
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    textAlign: "left",
-                    background: t.surface,
-                    border: `1px solid ${t.border}`,
-                    borderRadius: 14,
-                    padding: "15px 16px",
-                    cursor: "pointer",
-                    animation: "nxFadeRise .3s ease both",
-                  }}
-                >
-                  <div style={{ fontSize: 17, fontWeight: 650, letterSpacing: -0.4, color: t.text, lineHeight: 1.25 }}>
-                    {c.title}
-                  </div>
-                  <div style={{ fontSize: 13, color: t.faint, marginTop: 4, letterSpacing: -0.1 }}>
-                    {c.items} sources · {c.when}
-                  </div>
-                </Pressable>
+                  title={c.title}
+                  meta={`${c.items} sources · ${c.when}`}
+                  onOpen={() => router.push("/flows/qa")}
+                  onDelete={() => setCollections((cs) => cs.filter((x) => x.title !== c.title))}
+                />
               ))}
+              {visible.length === 0 && (
+                <div style={{ textAlign: "center", color: t.faint, fontSize: 14, paddingTop: 40 }}>
+                  No collections match “{query}”
+                </div>
+              )}
             </div>
           </div>
 
@@ -116,26 +111,7 @@ export default function HomeFlow() {
               New collection
             </Pressable>
 
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                width: "100%",
-                padding: "14px 18px",
-                background: "rgba(255,255,255,0.62)",
-                backdropFilter: "blur(26px) saturate(185%)",
-                WebkitBackdropFilter: "blur(26px) saturate(185%)",
-                border: `1px solid rgba(255,255,255,0.65)`,
-                borderRadius: 999,
-                boxShadow: "0 10px 32px rgba(19,14,26,0.12), inset 0 1px 1px rgba(255,255,255,0.85)",
-              }}
-            >
-              <Icon name="search" size={16} color={t.faint} />
-              <span style={{ flex: 1, fontSize: 15, letterSpacing: -0.2, color: t.ghost }}>
-                Search collections…
-              </span>
-            </div>
+            <ClaudeSearchBar value={query} onChange={setQuery} />
           </div>
 
           {/* avatar bloom menu — 3 flat rows, no header (locked 2026-06-29) */}
@@ -248,43 +224,12 @@ function EmptyLanding() {
         </div>
       </div>
 
-      {/* central composer */}
-      <Pressable
-        scale={0.99}
-        onClick={() => router.push("/flows/create")}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 11,
-          width: "100%",
-          marginTop: 24,
-          padding: "16px 18px",
-          background: t.surface,
-          border: `1px solid ${t.borderStrong}`,
-          borderRadius: 24,
-          boxShadow: `0 0 0 4px ${tokens.color.bloom}44`,
-          cursor: "text",
-          textAlign: "left",
-        }}
-      >
-        <span style={{ flex: 1, fontSize: 15.5, letterSpacing: -0.2, color: t.ghost }}>
-          Describe a topic…
-        </span>
-        <Icon name="mic" size={17} color={t.faint} />
-        <div
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: 999,
-            background: t.surface2,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Icon name="waveform" size={16} color={t.ink} />
-        </div>
-      </Pressable>
+      {/* central composer — EXACT FREComposer port (ResearchFlowView.swift):
+          two tiers: 17pt input (pad-x 4, top 2, bottom 16, minH 28) over a
+          42pt toolbar row — plus in 32×32 radius-8 square left, mic in 32×32
+          circle right (→ 42pt plum send circle when text). Container: 14/16/12
+          padding, radius xxl(24), border→borderStrong on focus. */}
+      <FREComposerMock onSubmit={() => router.push("/flows/create")} />
 
       {/* trending chips */}
       <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 0.7, color: t.ghost, margin: "26px 0 10px" }}>
@@ -344,6 +289,328 @@ function EmptyLanding() {
       </Pressable>
 
       <div style={{ flex: 1.2 }} />
+    </div>
+  );
+}
+
+// ── FREComposer — 1:1 with the shipped iOS composer, but INTERACTIVE ──
+
+function FREComposerMock({ onSubmit }: { onSubmit: (topic: string) => void }) {
+  const [text, setText] = useState("");
+  const [focused, setFocused] = useState(false);
+  const hasText = text.trim().length > 0;
+
+  return (
+    <div
+      onClick={(e) => (e.currentTarget.querySelector("textarea") as HTMLTextAreaElement)?.focus()}
+      style={{
+        marginTop: 24,
+        padding: "16px 14px 12px",
+        background: t.surface,
+        borderRadius: 24,
+        border: `1px solid ${focused ? t.borderStrong : t.border}`,
+        transition: "border-color .2s ease",
+        cursor: "text",
+      }}
+    >
+      {/* text tier */}
+      <div style={{ position: "relative", minHeight: 28, paddingBottom: 16 }}>
+        {text === "" && (
+          <span
+            style={{
+              position: "absolute",
+              left: 4,
+              top: 2,
+              fontSize: 17,
+              letterSpacing: -0.2,
+              color: t.ghost,
+              pointerEvents: "none",
+            }}
+          >
+            Research a topic…
+          </span>
+        )}
+        <textarea
+          value={text}
+          rows={1}
+          onChange={(e) => setText(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey && hasText) {
+              e.preventDefault();
+              onSubmit(text.trim());
+            }
+          }}
+          style={{
+            width: "100%",
+            border: "none",
+            outline: "none",
+            resize: "none",
+            background: "transparent",
+            fontSize: 17,
+            letterSpacing: -0.2,
+            color: t.text,
+            fontFamily: "inherit",
+            padding: "2px 4px 0",
+            maxHeight: 66,
+          }}
+        />
+      </div>
+
+      {/* toolbar tier — anchored 42pt */}
+      <div style={{ display: "flex", alignItems: "center", height: 42 }}>
+        <div
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            background: t.surface2,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Icon name="plus" size={15} color={t.ink} />
+        </div>
+        <div style={{ flex: 1 }} />
+        {hasText ? (
+          <Pressable
+            scale={0.9}
+            onClick={() => onSubmit(text.trim())}
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 999,
+              background: t.plum,
+              border: "none",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              animation: "nxPop .3s ease both",
+            }}
+          >
+            <Icon name="arrowUp" size={15} color="#FFFFFF" stroke={2.4} />
+          </Pressable>
+        ) : (
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 999,
+              background: t.surface2,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: 5,
+            }}
+          >
+            <Icon name="mic" size={14} color={t.muted} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Swipeable collection card (pointer drag reveals Delete) ──
+
+function SwipeableCard({
+  title,
+  meta,
+  onOpen,
+  onDelete,
+}: {
+  title: string;
+  meta: string;
+  onOpen: () => void;
+  onDelete: () => void;
+}) {
+  const [dx, setDx] = useState(0);
+  const drag = React.useRef<{ startX: number; active: boolean; moved: boolean }>({ startX: 0, active: false, moved: false });
+  const OPEN = -84;
+
+  const settle = (open: boolean) => setDx(open ? OPEN : 0);
+
+  return (
+    <div style={{ position: "relative", borderRadius: 14, overflow: "hidden" }}>
+      {/* delete backdrop */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          background: "#C0392B",
+          borderRadius: 14,
+        }}
+      >
+        <button
+          onClick={onDelete}
+          style={{
+            width: 84,
+            height: "100%",
+            border: "none",
+            background: "transparent",
+            color: "#fff",
+            fontSize: 13.5,
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          Delete
+        </button>
+      </div>
+
+      {/* card */}
+      <div
+        onPointerDown={(e) => {
+          drag.current = { startX: e.clientX - dx, active: true, moved: false };
+          (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        }}
+        onPointerMove={(e) => {
+          if (!drag.current.active) return;
+          const next = Math.min(0, Math.max(OPEN - 20, e.clientX - drag.current.startX));
+          if (Math.abs(next - dx) > 2) drag.current.moved = true;
+          setDx(next);
+        }}
+        onPointerUp={() => {
+          if (!drag.current.active) return;
+          drag.current.active = false;
+          if (!drag.current.moved) {
+            if (dx !== 0) settle(false);
+            else onOpen();
+            return;
+          }
+          settle(dx < OPEN / 2);
+        }}
+        style={{
+          position: "relative",
+          background: t.surface,
+          border: `1px solid ${t.border}`,
+          borderRadius: 14,
+          padding: "15px 16px",
+          transform: `translateX(${dx}px)`,
+          transition: drag.current.active ? "none" : "transform .28s cubic-bezier(.2,.8,.2,1)",
+          touchAction: "pan-y",
+          cursor: "pointer",
+          userSelect: "none",
+        }}
+      >
+        <div style={{ fontSize: 17, fontWeight: 650, letterSpacing: -0.4, color: t.text, lineHeight: 1.25 }}>
+          {title}
+        </div>
+        <div style={{ fontSize: 13, color: t.faint, marginTop: 4, letterSpacing: -0.1 }}>{meta}</div>
+      </div>
+    </div>
+  );
+}
+
+// ── Claude-iOS-style search (real input: focus, type, filter, clear) ──
+
+function ClaudeSearchBar({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [focused, setFocused] = useState(false);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div
+        onClick={() => inputRef.current?.focus()}
+        style={{
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          gap: 9,
+          padding: "13px 16px",
+          background: "rgba(255,255,255,0.62)",
+          backdropFilter: "blur(26px) saturate(185%)",
+          WebkitBackdropFilter: "blur(26px) saturate(185%)",
+          border: `1px solid ${focused ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.65)"}`,
+          borderRadius: 999,
+          boxShadow: focused
+            ? "0 10px 32px rgba(19,14,26,0.16), inset 0 1px 1px rgba(255,255,255,0.9)"
+            : "0 10px 32px rgba(19,14,26,0.12), inset 0 1px 1px rgba(255,255,255,0.85)",
+          transition: "border-color .2s ease, box-shadow .2s ease",
+          cursor: "text",
+        }}
+      >
+        <Icon name="search" size={16} color={t.faint} />
+        <input
+          ref={inputRef}
+          value={value}
+          placeholder="Search"
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            border: "none",
+            outline: "none",
+            background: "transparent",
+            fontSize: 15.5,
+            letterSpacing: -0.2,
+            color: t.text,
+            fontFamily: "inherit",
+          }}
+        />
+        {value && (
+          <button
+            onClick={() => {
+              onChange("");
+              inputRef.current?.focus();
+            }}
+            style={{
+              width: 18,
+              height: 18,
+              borderRadius: 999,
+              border: "none",
+              background: t.ghost,
+              color: "#fff",
+              fontSize: 11,
+              lineHeight: 1,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 0,
+            }}
+          >
+            ×
+          </button>
+        )}
+      </div>
+
+      {focused && (
+        <button
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            onChange("");
+            inputRef.current?.blur();
+          }}
+          style={{
+            border: "none",
+            background: "transparent",
+            fontSize: 15,
+            fontWeight: 500,
+            letterSpacing: -0.2,
+            color: t.plum,
+            cursor: "pointer",
+            padding: "4px 2px",
+            animation: "nxFade .2s ease both",
+          }}
+        >
+          Cancel
+        </button>
+      )}
     </div>
   );
 }

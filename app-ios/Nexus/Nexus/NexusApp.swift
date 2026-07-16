@@ -77,8 +77,11 @@ private struct RootView: View {
             )
         case "fre":
             return AnyView(
-                ResearchFlowView { _ in }
-                    .environmentObject(AuthManager.shared)
+                ResearchFlowView(
+                    onComplete: { _ in },
+                    showsBackButton: args.contains("-back")
+                )
+                .environmentObject(AuthManager.shared)
             )
         default:
             return nil

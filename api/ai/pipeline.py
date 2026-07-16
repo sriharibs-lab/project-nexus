@@ -72,6 +72,13 @@ Output rules:
 - Prefer: long-form articles, research papers, definitive essays, high-signal newsletters, \
   authoritative explainers. Avoid: listicles, generic overview posts, outdated content.
 - Each source must have a real, specific, resolvable URL.
+- CRITICAL — the user's reader fetches each URL's full text, so every source must be \
+  openly readable by an automated fetcher. NEVER suggest hard-paywalled or bot-blocked \
+  sites (newyorker.com, lrb.co.uk, bloomberg.com, wsj.com, ft.com, economist.com, \
+  nytimes.com), book-store or publisher product pages (penguin.co.in, amazon), or \
+  login-gated content. Prefer openly accessible outlets: Wikipedia, arXiv, .gov/.edu, \
+  Our World in Data, Reuters, AP, BBC, The Atlantic, Vox, official blogs and \
+  documentation, established personal sites (e.g. Stratechery, Daring Fireball).
 - Provide a 1-sentence rationale for why this source is worth reading.
 
 Stream output as a JSON array of objects with this exact structure:

@@ -269,6 +269,16 @@ private struct MessageBubble: View {
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
                                 .stroke(Color.Nexus.hair, lineWidth: NexusBorder.hair)
                         )
+                } else if message.isStreaming {
+                    // Plain text while streaming — parsing markdown per token
+                    // rebuilt regexes for every line of the growing answer and
+                    // pegged the main thread (the Ask-tab freeze, 2026-07-15).
+                    Text(strippedContent)
+                        .font(.system(size: 15))
+                        .kerning(-0.2)
+                        .lineSpacing(6)
+                        .foregroundColor(.Nexus.ink)
+                        .fixedSize(horizontal: false, vertical: true)
                 } else {
                     AssistantMarkdown(content: strippedContent)
                 }
@@ -386,6 +396,12 @@ struct AssistantMarkdown: View {
         return Text(text)
     }
 
+    // Compiled once — building regex literals inside the parse loop is
+    // measurably expensive and this parser can run in scroll-critical paths.
+    private static let headingRx = /(#{1,4})\s+(.+)/
+    private static let bulletRx = /[-*•]\s+(.+)/
+    private static let numberedRx = /(\d+)[.)]\s+(.+)/
+
     private var blocks: [Block] {
         var result: [Block] = []
         var paragraph: [String] = []
@@ -400,13 +416,13 @@ struct AssistantMarkdown: View {
             let line = rawLine.trimmingCharacters(in: .whitespaces)
             if line.isEmpty {
                 flushParagraph()
-            } else if let match = line.wholeMatch(of: /(#{1,4})\s+(.+)/) {
+            } else if let match = line.wholeMatch(of: Self.headingRx) {
                 flushParagraph()
                 result.append(.heading(String(match.2), level: match.1.count))
-            } else if let match = line.wholeMatch(of: /[-*•]\s+(.+)/) {
+            } else if let match = line.wholeMatch(of: Self.bulletRx) {
                 flushParagraph()
                 result.append(.bullet(String(match.1)))
-            } else if let match = line.wholeMatch(of: /(\d+)[.)]\s+(.+)/) {
+            } else if let match = line.wholeMatch(of: Self.numberedRx) {
                 flushParagraph()
                 result.append(.numbered(String(match.2), index: String(match.1)))
             } else {
@@ -478,62 +494,54 @@ struct CitationChip: View {
 // while the AI is generating a response. Radius and opacity animate in sequence.
 // Uses Canvas for performance — no view allocation per frame.
 
+// The brand mark broadcasting: the Echo arc pairs ripple outward from the
+// center node — two staggered generations, 1.7s loop (design handoff §motion).
+// TimelineView drives the Canvas per-frame; withAnimation on @State does
+// NOTHING for Canvas (it doesn't interpolate) — the old version rendered a
+// static dot + "Nexus is thinking…" label (bug 2026-07-15). No text: the
+// mark itself is the wait state.
 struct EchoPulseView: View {
-    // Two independent animation phases, offset so rings are staggered.
-    @State private var phase1: Double = 0
-    @State private var phase2: Double = 0
-    // Breathing pulse on the center node
-    @State private var breathe: Bool = false
+    private static let period: Double = 1.7
 
     var body: some View {
-        HStack(spacing: NexusSpacing.md) {
-            // The pulse animation itself
+        TimelineView(.animation) { timeline in
             Canvas { ctx, size in
+                let t = timeline.date.timeIntervalSinceReferenceDate
                 let cx = size.width / 2
                 let cy = size.height / 2
-                let maxR: Double = min(cx, cy) - 2
 
-                // Draw two ring pairs with independent phases
-                for (phase, opacity) in [(phase1, 0.6), (phase2, 0.4)] {
-                    let r = maxR * phase
-                    let alpha = (1 - phase) * opacity
-                    var ring = Path()
-                    ring.addEllipse(in: CGRect(
-                        x: cx - r, y: cy - r, width: r * 2, height: r * 2
-                    ))
-                    ctx.stroke(ring, with: .color(.Nexus.accent.opacity(alpha)), lineWidth: 1.5)
+                // Two staggered ripple generations of the mark's arc pairs
+                for generation in 0..<2 {
+                    let phase = ((t / Self.period) + Double(generation) * 0.5)
+                        .truncatingRemainder(dividingBy: 1)
+                    let radius = 5.5 + phase * 10.5
+                    let alpha = (1 - phase) * (generation == 0 ? 0.6 : 0.42)
+
+                    for side in [1.0, -1.0] {
+                        let mid: Double = side > 0 ? 0 : 180
+                        var arc = Path()
+                        arc.addArc(
+                            center: CGPoint(x: cx, y: cy),
+                            radius: radius,
+                            startAngle: .degrees(mid - 38),
+                            endAngle: .degrees(mid + 38),
+                            clockwise: false
+                        )
+                        ctx.stroke(
+                            arc,
+                            with: .color(.Nexus.accent.opacity(alpha)),
+                            style: StrokeStyle(lineWidth: 2, lineCap: .round)
+                        )
+                    }
                 }
 
-                // Center dot — breathing
-                let dotR: Double = breathe ? 4.5 : 3.5
+                // Center node — gentle breathing
+                let dotR = 3.4 + 0.7 * sin(t * 2 * .pi / 0.95)
                 var dot = Path()
                 dot.addEllipse(in: CGRect(x: cx - dotR, y: cy - dotR, width: dotR * 2, height: dotR * 2))
-                ctx.fill(dot, with: .color(.Nexus.accent.opacity(breathe ? 1 : 0.7)))
+                ctx.fill(dot, with: .color(.Nexus.accent.opacity(0.9)))
             }
-            .frame(width: 32, height: 32)
-            .onAppear { startAnimations() }
-
-            Text("Nexus is thinking…")
-                .font(.Nexus.caption)
-                .foregroundColor(.Nexus.ghost)
-                .kerning(NexusKerning.normal)
-        }
-    }
-
-    private func startAnimations() {
-        // Ring 1: 0 → 1 over 1.4s, repeat
-        withAnimation(.linear(duration: 1.4).repeatForever(autoreverses: false)) {
-            phase1 = 1.0
-        }
-        // Ring 2: starts at 0.5 offset — staggered 0.7s delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
-            withAnimation(.linear(duration: 1.4).repeatForever(autoreverses: false)) {
-                phase2 = 1.0
-            }
-        }
-        // Center breathing
-        withAnimation(.easeInOut(duration: 0.85).repeatForever(autoreverses: true)) {
-            breathe = true
+            .frame(width: 36, height: 36)
         }
     }
 }
@@ -596,106 +604,94 @@ private struct ChatComposer: View {
     }
 
     /// Notion pattern (review 2026-07-14): resting = one-line oval; on focus
-    /// the box GROWS into a taller glass card with the input on top and a
-    /// control row (waveform · send) beneath.
+    /// the box GROWS into a taller glass card with a send row beneath.
+    ///
+    /// CRITICAL: this is ONE view tree that morphs — never an if/else swap
+    /// between two layouts. The swap gave the freshly-focused TextField a new
+    /// identity, destroying first responder the moment you tapped ("can't
+    /// type into the chat box", 2026-07-15). The TextField below exists in
+    /// exactly one place; only spacing, shape, and the send row animate.
     private var isExpanded: Bool { focused.wrappedValue || !vm.inputText.isEmpty }
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading, spacing: isExpanded ? NexusSpacing.sm : 0) {
+            HStack(alignment: .bottom, spacing: NexusSpacing.sm) {
+                // THE text field — single identity, always present
+                ZStack(alignment: .leading) {
+                    if vm.inputText.isEmpty {
+                        Text("Ask about \"\(vm.collection.name)\"…")
+                            .font(.Nexus.bodySmall)
+                            .foregroundColor(.Nexus.ghost)
+                            .padding(.horizontal, 6)
+                            .allowsHitTesting(false)
+                    }
+                    TextField("", text: $vm.inputText, axis: .vertical)
+                        .font(.Nexus.bodySmall)
+                        .foregroundColor(.Nexus.ink)
+                        .focused(focused)
+                        .lineLimit(1...6)
+                        .submitLabel(.send)
+                        .onSubmit {
+                            if canSend { vm.send() }
+                        }
+                        .padding(.horizontal, 6)
+                }
+                .padding(.horizontal, NexusSpacing.sm)
+                .padding(.vertical, NexusSpacing.sm + 2)
+
+                // Waveform sits inline while resting; drops to the send row when expanded
+                if !isExpanded {
+                    waveformCircle
+                        .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                }
+            }
+
             if isExpanded {
-                expandedComposer
-            } else {
-                restingComposer
+                HStack(spacing: NexusSpacing.sm) {
+                    waveformCircle
+                    Spacer()
+                    Button {
+                        if canSend { vm.send() }
+                    } label: {
+                        Image(systemName: "arrow.up")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(width: 38, height: 38)
+                            .background(canSend ? Color.Nexus.ink : Color.Nexus.ghost)
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!canSend)
+                    .animation(NexusAnimation.element, value: canSend)
+                }
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
         }
+        .padding(isExpanded ? NexusSpacing.md : NexusSpacing.sm)
+        .background(composerBackdrop)
+        .overlay(
+            RoundedRectangle(cornerRadius: isExpanded ? 26 : 30, style: .continuous)
+                .stroke(Color.Nexus.border, lineWidth: NexusBorder.hair)
+        )
+        .shadow(color: .black.opacity(isExpanded ? 0.08 : 0.04), radius: isExpanded ? 16 : 8, y: isExpanded ? 4 : 2)
         .animation(.spring(response: 0.36, dampingFraction: 0.82), value: isExpanded)
     }
 
-    // ── Resting: one-line oval ──
-
-    private var restingComposer: some View {
-        HStack(spacing: NexusSpacing.sm) {
-            textInput
-            waveformCircle
-        }
-        .padding(NexusSpacing.sm)
-        .background(Color.Nexus.cardBackground)
-        .clipShape(Capsule())
-        .overlay(Capsule().stroke(Color.Nexus.border, lineWidth: NexusBorder.hair))
-        .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
-    }
-
-    // ── Expanded: Notion-style glass card ──
-
-    private var expandedComposer: some View {
-        VStack(alignment: .leading, spacing: NexusSpacing.sm) {
-            textInput
-                .padding(.top, 4)
-                .padding(.horizontal, 4)
-
-            HStack(spacing: NexusSpacing.sm) {
-                waveformCircle
-                Spacer()
-                Button {
-                    if canSend { vm.send() }
-                } label: {
-                    Image(systemName: "arrow.up")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(width: 38, height: 38)
-                        .background(canSend ? Color.Nexus.ink : Color.Nexus.ghost)
-                        .clipShape(Circle())
-                }
-                .buttonStyle(.plain)
-                .disabled(!canSend)
-                .animation(NexusAnimation.element, value: canSend)
-            }
-        }
-        .padding(NexusSpacing.md)
-        .background(composerGlass)
-        .overlay(
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .stroke(Color.Nexus.border, lineWidth: NexusBorder.hair)
-        )
-        .shadow(color: .black.opacity(0.08), radius: 16, y: 4)
-    }
-
-    // Liquid Glass backdrop (floating layer per DESIGN_LANGUAGE §3) — no
-    // explicit background fill, which would defeat the glass (2026-07-11).
+    // Liquid Glass backdrop when expanded (floating layer, DESIGN_LANGUAGE §3);
+    // solid card at rest. No explicit fill under glass (defeats it, 2026-07-11).
     @ViewBuilder
-    private var composerGlass: some View {
-        if #available(iOS 26.0, *) {
-            Color.clear.glassEffect(.regular, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-        } else {
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(.ultraThinMaterial)
-        }
-    }
-
-    // ── Shared pieces ──
-
-    private var textInput: some View {
-        ZStack(alignment: .leading) {
-            if vm.inputText.isEmpty {
-                Text("Ask about \"\(vm.collection.name)\"…")
-                    .font(.Nexus.bodySmall)
-                    .foregroundColor(.Nexus.ghost)
-                    .padding(.horizontal, 6)
-                    .allowsHitTesting(false)
+    private var composerBackdrop: some View {
+        if isExpanded {
+            if #available(iOS 26.0, *) {
+                Color.clear.glassEffect(.regular, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+            } else {
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(.ultraThinMaterial)
             }
-            TextField("", text: $vm.inputText, axis: .vertical)
-                .font(.Nexus.bodySmall)
-                .foregroundColor(.Nexus.ink)
-                .focused(focused)
-                .lineLimit(isExpanded ? 1...6 : 1...1)
-                .submitLabel(.send)
-                .onSubmit {
-                    if canSend { vm.send() }
-                }
-                .padding(.horizontal, 6)
+        } else {
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(Color.Nexus.cardBackground)
         }
-        .padding(.horizontal, NexusSpacing.sm)
-        .padding(.vertical, NexusSpacing.sm + 2)
     }
 
     private var waveformCircle: some View {

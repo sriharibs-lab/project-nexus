@@ -36,7 +36,6 @@ struct ResearchFlowView: View {
     /// to go back to).
     var showsBackButton = false
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.dismiss) private var dismiss
 
     private var sheetVisible: Bool {
         switch vm.phase {
@@ -49,7 +48,7 @@ struct ResearchFlowView: View {
         GeometryReader { geo in
             ZStack(alignment: .bottom) {
                 // ── Input screen — scales back when the sheet rises ──
-                FREInputScreen(vm: vm)
+                FREInputScreen(vm: vm, showsBackButton: showsBackButton, onBack: { dismiss() })
                     .scaleEffect(sheetVisible ? 0.945 : 1.0)
                     .clipShape(RoundedRectangle(cornerRadius: sheetVisible ? 22 : 0, style: .continuous))
                     .animation(.spring(response: 0.52, dampingFraction: 0.86), value: sheetVisible)
@@ -103,6 +102,8 @@ struct ResearchFlowView: View {
 
 private struct FREInputScreen: View {
     @ObservedObject var vm: ResearchViewModel
+    var showsBackButton = false
+    var onBack: () -> Void = {}
     @EnvironmentObject private var authManager: AuthManager
     @State private var showAvatarMenu = false
     @State private var showAccount = false
@@ -194,7 +195,7 @@ private struct FREInputScreen: View {
             HStack {
                 if showsBackButton {
                     Button {
-                        dismiss()
+                        onBack()
                     } label: {
                         ZStack {
                             Circle()

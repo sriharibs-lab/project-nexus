@@ -1,15 +1,33 @@
 import Combine
 import SwiftUI
 
+// MARK: - Home
+//
+// LOCKED design (prototype /flows/home, 2026-07-15):
+//  • Header: "Nexus" title left + avatar right (bloom menu: Account ·
+//    Settings · Feedback). No nav-bar toolbar, no Recent/All pivot.
+//  • Cards: native swipe-left reveals an icon-only trash delete (Weather).
+//  • Bottom stack floats over the list: primary "+ New collection" ink pill
+//    (right-aligned) above a full-width liquid-glass search bar that filters
+//    the list live (Claude-style: magnifier, "Search" ghost, ×-circle cancel).
+//  • Empty state: the FRE (ResearchFlowView) with its single link CTA.
+
 struct HomeView: View {
-    @StateObject private var vm = HomeViewModel()
+    @StateObject private var vm: HomeViewModel
     @ObservedObject private var authManager = AuthManager.shared
 
-    @State private var showingNewCollectionChoice = false
     @State private var showingResearchFlow = false
-    @State private var showingLinkSheet = false
     @State private var showingAccount = false
+    @State private var showingSettings = false
+    @State private var showingFeedback = false
+    @State private var showAvatarMenu = false
     @State private var navPath = NavigationPath()
+    @FocusState private var searchFocused: Bool
+
+    @MainActor
+    init(viewModel: HomeViewModel? = nil) {
+        _vm = StateObject(wrappedValue: viewModel ?? HomeViewModel())
+    }
 
     var body: some View {
         // The NavigationStack ALWAYS exists — appending to navPath while the
@@ -35,65 +53,8 @@ struct HomeView: View {
                     }
                     .toolbar(.hidden, for: .navigationBar)
                 } else {
-                    ZStack {
-                        NexusBackground()
-                        collectionList
-                    }
-                    .navigationTitle("Nexus")
-                    .navigationBarTitleDisplayMode(.large)
-                    .toolbar {
-                        ToolbarItem(placement: .navigationBarLeading) {
-                            Button {
-                                showingAccount = true
-                            } label: {
-                                AvatarCircle(initials: avatarInitials, size: 30)
-                            }
-                            .frame(width: NexusSpacing.hitTarget, height: NexusSpacing.hitTarget)
-                        }
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            Button {
-                                showingNewCollectionChoice = true
-                            } label: {
-                                Image(systemName: "plus")
-                                    .font(.system(size: 17, weight: .medium))
-                                    .foregroundColor(.Nexus.accent)
-                                    .frame(width: NexusSpacing.hitTarget, height: NexusSpacing.hitTarget)
-                            }
-                        }
-                    }
-                    .sheet(isPresented: $showingAccount) {
-                        AccountView()
-                    }
-                    .confirmationDialog("New Collection", isPresented: $showingNewCollectionChoice, titleVisibility: .hidden) {
-                        Button("Research a topic") { showingResearchFlow = true }
-                        Button("Start with a link") { showingLinkSheet = true }
-                        Button("Cancel", role: .cancel) {}
-                    }
-                    .fullScreenCover(isPresented: $showingResearchFlow) {
-                        ResearchFlowView { collectionId in
-                            Task {
-                                await vm.load()
-                                if let found = vm.collections.first(where: { $0.id == collectionId }) {
-                                    navPath.append(found)
-                                }
-                            }
-                        }
-                    }
-                    .sheet(isPresented: $showingLinkSheet) {
-                        LinkURLSheetView(
-                            initialContentType: .website,
-                            collections: vm.collections
-                        ) { _, collectionId in
-                            Task {
-                                await vm.load()
-                                if let found = vm.collections.first(where: { $0.id == collectionId }) {
-                                    navPath.append(found)
-                                }
-                            }
-                        }
-                        .presentationDetents([.large])
-                        .presentationDragIndicator(.hidden)
-                    }
+                    collectionsScreen
+                        .toolbar(.hidden, for: .navigationBar)
                 }
             }
             // Attached to the always-mounted Group, NOT the list branch —
@@ -105,41 +66,231 @@ struct HomeView: View {
         .task { await vm.load() }
     }
 
-    // MARK: - Avatar initials
+    // MARK: - Collections screen
 
-    private var avatarInitials: String {
-        if !authManager.displayName.isEmpty {
-            let parts = authManager.displayName.split(separator: " ").prefix(2)
-            return parts.compactMap { $0.first.map { String($0) } }.joined().uppercased()
+    private var collectionsScreen: some View {
+        ZStack(alignment: .topTrailing) {
+            NexusBackground()
+
+            VStack(spacing: 0) {
+                header
+                collectionList
+            }
+
+            // Shared bloom menu (scrim + top-right bloom, locked 3-row card)
+            AvatarBloomOverlay(
+                isPresented: showAvatarMenu,
+                topInset: 52,
+                onDismiss: closeAvatarMenu
+            ) {
+                NexusAvatarMenuCard(
+                    onAccount: { closeAvatarMenu(); presentAfterMenu { showingAccount = true } },
+                    onSettings: { closeAvatarMenu(); presentAfterMenu { showingSettings = true } },
+                    onFeedback: { closeAvatarMenu(); presentAfterMenu { showingFeedback = true } }
+                )
+            }
         }
-        if let first = authManager.email.first {
-            return String(first).uppercased()
-        }
-        return "N"
-    }
-
-    // MARK: - Collection list
-
-    private var collectionList: some View {
-        ScrollView {
-            LazyVStack(spacing: NexusSpacing.sm) {
-                ForEach(vm.collections) { collection in
-                    NavigationLink(value: collection) {
-                        CollectionCard(collection: collection)
+        .sheet(isPresented: $showingAccount) { AccountView() }
+        .sheet(isPresented: $showingSettings) { SettingsView() }
+        .sheet(isPresented: $showingFeedback) { FeedbackView(preloadedScreenshot: nil) }
+        .fullScreenCover(isPresented: $showingResearchFlow) {
+            ResearchFlowView { collectionId in
+                Task {
+                    await vm.load()
+                    if let found = vm.collections.first(where: { $0.id == collectionId }) {
+                        navPath.append(found)
                     }
-                    // Press-scale via ButtonStyle — NavigationLink drives it
-                    // natively. The previous onLongPressGesture INSIDE the card
-                    // consumed taps, so links never fired (2026-07-11).
-                    .buttonStyle(PressableCardStyle())
                 }
             }
-            .padding(.horizontal, NexusSpacing.sideGutter)
-            .padding(.top, NexusSpacing.sm)
-            .padding(.bottom, NexusSpacing.xl)
         }
-        .refreshable { await vm.load() }
+        .alert("Couldn't delete collection", isPresented: Binding(
+            get: { vm.deleteError != nil },
+            set: { if !$0 { vm.deleteError = nil } }
+        )) {
+            Button("OK", role: .cancel) { vm.deleteError = nil }
+        } message: {
+            Text(vm.deleteError?.errorDescription ?? "Please try again.")
+        }
     }
 
+    // Header: title left, avatar right (locked mock)
+    private var header: some View {
+        HStack {
+            Text("Nexus")
+                .font(.system(size: 22, weight: .bold))
+                .kerning(-0.5)
+                .foregroundColor(.Nexus.ink)
+            Spacer()
+            NexusAvatarButton(active: showAvatarMenu) {
+                withAnimation(.spring(response: 0.22, dampingFraction: 0.86)) {
+                    showAvatarMenu = true
+                }
+            }
+        }
+        .padding(.horizontal, NexusSpacing.sideGutter)
+        .padding(.top, 8)
+        .padding(.bottom, 4)
+    }
+
+    private func closeAvatarMenu() {
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+            showAvatarMenu = false
+        }
+    }
+
+    private func presentAfterMenu(_ present: @escaping () -> Void) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22, execute: present)
+    }
+
+    // MARK: - Collection list (native List for Weather-style swipe delete)
+
+    private var collectionList: some View {
+        List {
+            ForEach(vm.visibleCollections) { collection in
+                // Hidden-link pattern: suppresses the List's own disclosure
+                // chevron (the card showed doubled chevrons otherwise)
+                ZStack {
+                    NavigationLink(value: collection) { EmptyView() }
+                        .opacity(0)
+                    CollectionCard(collection: collection)
+                }
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(
+                    top: 5, leading: NexusSpacing.sideGutter,
+                    bottom: 5, trailing: NexusSpacing.sideGutter
+                ))
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button(role: .destructive) {
+                        Task { await vm.delete(collection) }
+                    } label: {
+                        // Icon only — Weather-app pattern (locked 2026-07-15)
+                        Image(systemName: "trash")
+                    }
+                }
+            }
+
+            if vm.visibleCollections.isEmpty {
+                Text("No collections match \u{201C}\(vm.query)\u{201D}")
+                    .font(.Nexus.bodySmall)
+                    .foregroundColor(.Nexus.faint)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 40)
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+            }
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .refreshable { await vm.load() }
+        .scrollDismissesKeyboard(.interactively)
+        // Bottom stack: "+ New collection" above the glass search bar.
+        // safeAreaInset keeps it above the keyboard when search is focused.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            bottomStack
+        }
+    }
+
+    // MARK: - Bottom stack (primary CTA + glass search)
+
+    private var bottomStack: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Spacer()
+                Button {
+                    showingResearchFlow = true
+                } label: {
+                    HStack(spacing: 7) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 14, weight: .semibold))
+                        Text("New collection")
+                            .font(.system(size: 14, weight: .semibold))
+                            .kerning(-0.2)
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 12)
+                    .background(Color.Nexus.ink)
+                    .clipShape(Capsule())
+                    .shadow(color: .black.opacity(0.22), radius: 12, y: 4)
+                }
+                .buttonStyle(PressableCardStyle())
+            }
+
+            HStack(spacing: 10) {
+                searchField
+
+                if searchFocused {
+                    Button {
+                        vm.query = ""
+                        searchFocused = false
+                    } label: {
+                        ZStack {
+                            Circle().fill(.ultraThinMaterial)
+                            Circle().stroke(Color.white.opacity(0.65), lineWidth: NexusBorder.hair)
+                            Image(systemName: "xmark")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(.Nexus.ink)
+                        }
+                        .frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(PressableCardStyle())
+                    .transition(.scale(scale: 0.6).combined(with: .opacity))
+                }
+            }
+            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: searchFocused)
+        }
+        .padding(.horizontal, NexusSpacing.sideGutter)
+        .padding(.top, NexusSpacing.xs)
+        .padding(.bottom, NexusSpacing.sm)
+    }
+
+    // Claude-style glass search: magnifier + "Search" ghost + live filter
+    private var searchField: some View {
+        HStack(spacing: 9) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundColor(.Nexus.faint)
+            TextField("Search", text: $vm.query)
+                .font(.system(size: 15.5))
+                .kerning(-0.2)
+                .foregroundColor(.Nexus.ink)
+                .focused($searchFocused)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+            if !vm.query.isEmpty {
+                Button {
+                    vm.query = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 15))
+                        .foregroundColor(.Nexus.ghost)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 13)
+        .background(searchGlass)
+        .overlay(
+            Capsule().stroke(
+                searchFocused ? Color.white.opacity(0.95) : Color.white.opacity(0.65),
+                lineWidth: NexusBorder.hair
+            )
+        )
+        .shadow(color: .black.opacity(searchFocused ? 0.16 : 0.12), radius: 16, y: 5)
+    }
+
+    // Liquid Glass (floating layer) — native on iOS 26, material fallback.
+    // No explicit fill under glassEffect (defeats it, ios-gotchas).
+    @ViewBuilder
+    private var searchGlass: some View {
+        if #available(iOS 26.0, *) {
+            Color.clear.glassEffect(.regular, in: Capsule())
+        } else {
+            Capsule().fill(.ultraThinMaterial)
+        }
+    }
 }
 
 // MARK: - Pressable card style
@@ -162,58 +313,30 @@ struct PressableCardStyle: ButtonStyle {
 private struct CollectionCard: View {
     let collection: NexusCollection
 
+    // Locked mock card (2026-07-15): title (17/650) over one quiet meta line
+    // "{n} sources · {when}". No chevron, no badge, no description.
     var body: some View {
-        VStack(alignment: .leading, spacing: NexusSpacing.sm) {
-            // Top row: name + AI badge + chevron
-            HStack(alignment: .top, spacing: NexusSpacing.sm) {
-                Text(collection.name)
-                    .font(.Nexus.labelLarge)
-                    .foregroundColor(.Nexus.ink)
-                    .kerning(NexusKerning.normal)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(alignment: .leading, spacing: 4) {
+            Text(collection.name)
+                .font(.system(size: 17, weight: .semibold))
+                .kerning(-0.4)
+                .foregroundColor(.Nexus.ink)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
 
-                if collection.createdBy == .ai {
-                    AIBadge()
-                }
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.Nexus.ghost)
-            }
-
-            // Optional description
-            if let desc = collection.description, !desc.isEmpty {
-                Text(desc)
-                    .font(.Nexus.bodySmall)
-                    .foregroundColor(.Nexus.muted)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            // Footer: source count + relative time
-            HStack(spacing: NexusSpacing.md) {
-                Label(sourceCountLabel, systemImage: "doc.text")
-                    .font(.Nexus.caption)
-                    .foregroundColor(.Nexus.ghost)
-                    .labelStyle(.titleAndIcon)
-
-                Spacer()
-
-                Text(relativeDate)
-                    .font(.Nexus.caption)
-                    .foregroundColor(.Nexus.ghost)
-            }
+            Text("\(sourceCountLabel) · \(relativeDate)")
+                .font(.system(size: 13))
+                .kerning(-0.1)
+                .foregroundColor(.Nexus.faint)
         }
-        .padding(NexusSpacing.standard)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(EdgeInsets(top: 15, leading: 16, bottom: 15, trailing: 16))
         .background(Color.Nexus.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: NexusRadius.lg))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: NexusRadius.lg)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(Color.Nexus.border, lineWidth: NexusBorder.hair)
         )
-        // Press feedback comes from PressableCardStyle on the NavigationLink.
     }
 
     // MARK: Helpers
@@ -227,25 +350,5 @@ private struct CollectionCard: View {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated
         return formatter.localizedString(for: collection.updatedAt, relativeTo: Date())
-    }
-}
-
-// MARK: - AI badge
-
-/// Small pill indicating this collection was AI-seeded ("Research a topic" flow).
-private struct AIBadge: View {
-    var body: some View {
-        Text("AI")
-            .font(.Nexus.overline)
-            .foregroundColor(.Nexus.accent)
-            .kerning(NexusKerning.wide)
-            .padding(.horizontal, NexusSpacing.sm)
-            .padding(.vertical, 2)
-            .background(Color.Nexus.bloom.opacity(0.5))
-            .clipShape(Capsule())
-            .overlay(
-                Capsule()
-                    .stroke(Color.Nexus.accent.opacity(0.2), lineWidth: NexusBorder.hair)
-            )
     }
 }

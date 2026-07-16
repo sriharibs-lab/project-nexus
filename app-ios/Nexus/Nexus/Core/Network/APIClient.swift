@@ -55,6 +55,10 @@ final class APIClient {
         try await delete(.item(collectionId: collectionId, itemId: itemId))
     }
 
+    func deleteCollection(id: UUID) async throws {
+        try await delete(.collection(id: id))
+    }
+
     func ingest(url: String, collectionId: UUID, contentType: String = "article") async throws -> IngestResponse {
         let body = IngestRequest(url: url, collectionId: collectionId, contentType: contentType)
         return try await post(.ingest, body: body)

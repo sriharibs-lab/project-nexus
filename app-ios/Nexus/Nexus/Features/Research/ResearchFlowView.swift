@@ -100,6 +100,21 @@ private struct FREInputScreen: View {
     @ObservedObject var vm: ResearchViewModel
     @EnvironmentObject private var authManager: AuthManager
     @State private var showAvatarMenu = false
+    @State private var showAccount = false
+    @State private var showSettings = false
+    @State private var showFeedback = false
+
+    private func closeAvatarMenu() {
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+            showAvatarMenu = false
+        }
+    }
+
+    /// Presenting a sheet in the same tick as the bloom-close animation makes
+    /// the menu vanish without its collapse; stagger slightly (June review).
+    private func presentAfterMenu(_ present: @escaping () -> Void) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22, execute: present)
+    }
     // Local state scopes TextField rerenders to FREComposer only — avoids
     // rerendering the entire screen on every keystroke.
     @State private var composerText = ""
@@ -157,9 +172,12 @@ private struct FREInputScreen: View {
                     .padding(.bottom, 26)
 
                     // Or start with a link
-                    FRELinkButtons { contentType in
-                        linkSheetContentType = contentType
+                    // Single CTA replacing the three link-type tiles
+                    // (home-flow lock 2026-07-15; type auto-detects in the sheet)
+                    StartWithLinkCTA {
+                        linkSheetContentType = .website
                     }
+                    .frame(maxWidth: .infinity)
                 }
                 .padding(.horizontal, NexusSpacing.sideGutter + 4)
 
@@ -170,7 +188,7 @@ private struct FREInputScreen: View {
             // Avatar button — top right
             HStack {
                 Spacer()
-                FREAvatarButton(active: showAvatarMenu) {
+                NexusAvatarButton(active: showAvatarMenu) {
                     withAnimation(.spring(response: 0.22, dampingFraction: 0.86)) {
                         showAvatarMenu = true
                     }
@@ -179,45 +197,25 @@ private struct FREInputScreen: View {
                 .padding(.top, NexusSpacing.safeTop + 6)
             }
 
-            // Scrim — transparent, tap to close the menu
-            if showAvatarMenu {
-                Color.clear
-                    .contentShape(Rectangle())
-                    .ignoresSafeArea()
-                    .onTapGesture {
-                        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
-                            showAvatarMenu = false
-                        }
-                    }
-            }
-
-            // Avatar bloom menu — snaps from the top-right corner, Notion-style
-            VStack {
-                HStack {
-                    Spacer()
-                    FREAvatarMenuCard {
-                        withAnimation(.spring(response: 0.2, dampingFraction: 0.85)) {
-                            showAvatarMenu = false
-                        }
-                    }
-                    .padding(.trailing, NexusSpacing.standard)
-                }
-                Spacer()
-            }
-            .padding(.top, NexusSpacing.safeTop + 6 + 32 + 8)
-            .scaleEffect(showAvatarMenu ? 1 : 0.5, anchor: .topTrailing)
-            .opacity(showAvatarMenu ? 1 : 0)
-            .animation(.spring(response: 0.42, dampingFraction: 0.64), value: showAvatarMenu)
-            .allowsHitTesting(showAvatarMenu)
-        }
-        .simultaneousGesture(
-            TapGesture().onEnded {
-                UIApplication.shared.sendAction(
-                    #selector(UIResponder.resignFirstResponder),
-                    to: nil, from: nil, for: nil
+            // Shared bloom menu (scrim + top-right bloom, locked 3-row card)
+            AvatarBloomOverlay(
+                isPresented: showAvatarMenu,
+                topInset: NexusSpacing.safeTop + 6 + 36 + 8,
+                onDismiss: closeAvatarMenu
+            ) {
+                NexusAvatarMenuCard(
+                    onAccount: { closeAvatarMenu(); presentAfterMenu { showAccount = true } },
+                    onSettings: { closeAvatarMenu(); presentAfterMenu { showSettings = true } },
+                    onFeedback: { closeAvatarMenu(); presentAfterMenu { showFeedback = true } }
                 )
             }
-        )
+        }
+        // NOTE: never attach a screen-wide simultaneous resignFirstResponder
+        // gesture here — it steals TextField taps and freezes the keyboard
+        // (1F-004; this exact regression has been reintroduced twice).
+        .sheet(isPresented: $showAccount) { AccountView() }
+        .sheet(isPresented: $showSettings) { SettingsView() }
+        .sheet(isPresented: $showFeedback) { FeedbackView(preloadedScreenshot: nil) }
         // Link URL sheet — presented when user taps Website / PDF / YouTube
         .sheet(item: $linkSheetContentType) { contentType in
             LinkURLSheetView(
@@ -456,160 +454,30 @@ private struct FRETrendingChips: View {
 
 // MARK: - "Or start with a link" buttons
 
-private struct FRELinkButtons: View {
-    // Callback receives the selected content-type hint so the sheet can pre-select it.
-    let onSelect: (DetectedContentType) -> Void
-
-    private let options: [(icon: String, label: String, type: DetectedContentType)] = [
-        ("globe",          "Website", .website),
-        ("doc",            "PDF",     .pdf),
-        ("play.rectangle", "YouTube", .youtube),
-    ]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Or start with a link")
-                .font(.system(size: 13))
-                .foregroundColor(.Nexus.faint)
-                .kerning(-0.1)
-
-            HStack(spacing: 7) {
-                ForEach(options, id: \.label) { option in
-                    Button(action: { onSelect(option.type) }) {
-                        VStack(spacing: 5) {
-                            Image(systemName: option.icon)
-                                .font(.system(size: 18, weight: .medium))
-                                .foregroundColor(.Nexus.muted)
-                            Text(option.label)
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.Nexus.muted)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(Color.Nexus.cardBackground)
-                        .clipShape(Capsule())
-                        .overlay(Capsule().stroke(Color.Nexus.border, lineWidth: NexusBorder.base))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Avatar button
-
-private struct FREAvatarButton: View {
-    let active: Bool
+// Single "Start with a link" CTA (replaced the three link-type tiles,
+// home-flow lock 2026-07-15). Quiet centered pill; type auto-detects.
+struct StartWithLinkCTA: View {
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            ZStack {
-                Circle()
-                    .fill(Color.Nexus.surface2)
-                    .frame(width: 32, height: 32)
-                    .overlay(Circle().stroke(Color.Nexus.border, lineWidth: NexusBorder.hair))
-                Text("S")
-                    .font(.system(size: 13, weight: .semibold))
+            HStack(spacing: 8) {
+                Image(systemName: "link")
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.Nexus.muted)
+                Text("Start with a link")
+                    .font(.system(size: 14, weight: .semibold))
+                    .kerning(-0.2)
+                    .foregroundColor(.Nexus.ink)
             }
+            .padding(.horizontal, 22)
+            .padding(.vertical, 12)
+            .background(Color.clear)
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(Color.Nexus.border, lineWidth: NexusBorder.base))
+            .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
-        .scaleEffect(active ? 0.88 : 1.0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: active)
-    }
-}
-
-// MARK: - Avatar menu card
-
-private struct FREAvatarMenuCard: View {
-    let onClose: () -> Void
-    @EnvironmentObject private var authManager: AuthManager
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header: avatar + name + email
-            HStack(spacing: 10) {
-                ZStack {
-                    Circle()
-                        .fill(Color.Nexus.bloom)
-                        .frame(width: 36, height: 36)
-                    Text("S")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(Color.Nexus.accent)
-                }
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Srihari")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(Color(UIColor.label))
-                    Text("srihari.scorp@gmail.com")
-                        .font(.system(size: 12))
-                        .foregroundColor(Color(UIColor.tertiaryLabel))
-                        .lineLimit(1)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 12)
-            .padding(.top, 12)
-            .padding(.bottom, 10)
-
-            Divider().padding(.horizontal, 8)
-
-            ForEach(["Account", "Settings", "Feedback"], id: \.self) { label in
-                AvatarMenuRow(label: label, action: onClose)
-            }
-
-            Divider().padding(.horizontal, 8)
-
-            // Sign out — same visual weight as other rows, not red
-            AvatarMenuRow(label: "Sign out") {
-                onClose()
-                authManager.signOut()
-            }
-        }
-        .frame(width: 210)
-        .background(
-            ZStack {
-                // frosted glass base
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(.thinMaterial)
-                // white wash so the glass reads clearly on the light plum background
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.white.opacity(0.62))
-            }
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color(UIColor.separator), lineWidth: 0.5)
-        )
-        .shadow(color: .black.opacity(0.14), radius: 20, x: 0, y: 8)
-        .shadow(color: .black.opacity(0.06), radius: 2, x: 0, y: 1)
-    }
-}
-
-private struct AvatarMenuRow: View {
-    let label: String
-    let action: () -> Void
-    @State private var pressed = false
-
-    var body: some View {
-        Button(action: action) {
-            Text(label)
-                .font(.system(size: 14.5, weight: .regular))
-                .foregroundColor(Color(UIColor.label))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 9)
-                .contentShape(Rectangle())
-                .background(pressed ? Color(UIColor.systemGray5) : Color.clear)
-        }
-        .buttonStyle(.plain)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in pressed = true }
-                .onEnded { _ in pressed = false }
-        )
+        .buttonStyle(PressableCardStyle())
     }
 }
 

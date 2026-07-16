@@ -70,6 +70,16 @@ private struct RootView: View {
             return AnyView(AuthView())
         case "glass":
             return AnyView(NavigationStack { GlassPlaygroundView() })
+        case "home":
+            return AnyView(
+                HomeView(viewModel: HomeViewModel(previewCollections: NexusCollection.previewList))
+                    .environmentObject(AuthManager.shared)
+            )
+        case "fre":
+            return AnyView(
+                ResearchFlowView { _ in }
+                    .environmentObject(AuthManager.shared)
+            )
         default:
             return nil
         }
@@ -92,6 +102,29 @@ extension NexusCollection {
             createdAt: Date(),
             updatedAt: Date()
         )
+    }
+
+    /// Home-list sample set for `-preview home`.
+    static var previewList: [NexusCollection] {
+        [
+            ("The attention economy", 12, true),
+            ("Second-brain tools", 7, false),
+            ("How memory works", 5, true),
+            ("AI platform shifts", 9, true),
+            ("Ozempic & longevity", 6, true),
+        ].map { name, count, ai in
+            NexusCollection(
+                id: UUID(),
+                userId: UUID(),
+                name: name,
+                description: nil,
+                framingParagraph: nil,
+                createdBy: ai ? .ai : .user,
+                sourceCount: count,
+                createdAt: Date().addingTimeInterval(-86_400),
+                updatedAt: Date().addingTimeInterval(-3_600)
+            )
+        }
     }
 }
 #endif

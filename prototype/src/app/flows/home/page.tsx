@@ -16,11 +16,10 @@
  * Floating [Empty · Collections] chip toggles states; syncs to ?state=.
  */
 
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icon } from "../../../lib/icons";
-import { EchoMark } from "../../../lib/logo";
-import { Pressable, Screen, Segmented, StatusBar } from "../../../lib/primitives";
+import { Pressable, Screen, StatusBar } from "../../../lib/primitives";
 import { BloomMenu } from "../../../lib/surfaces";
 import { t, tokens } from "../../../lib/tokens";
 
@@ -36,13 +35,7 @@ export default function HomeFlow() {
   const params = useSearchParams();
   const router = useRouter();
   const [state, setState] = useState<string>(params.get("state") === "empty" ? "Empty" : "Collections");
-  const [pivot, setPivot] = useState("Recent");
   const [menuOpen, setMenuOpen] = useState(false);
-
-  const cards = useMemo(
-    () => (pivot === "Recent" ? COLLECTIONS.slice(0, 3) : COLLECTIONS),
-    [pivot]
-  );
 
   return (
     <Screen>
@@ -50,24 +43,26 @@ export default function HomeFlow() {
 
       {state === "Empty" ? <EmptyLanding /> : (
         <>
-          {/* header: pivot + avatar */}
+          {/* header: title + avatar (Recent/All pivot removed, review 2026-07-15) */}
           <div
             style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              padding: "4px 14px 0",
+              padding: "8px 16px 0",
               flexShrink: 0,
             }}
           >
-            <Segmented items={["Recent", "All"]} value={pivot} onChange={setPivot} />
+            <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.5, color: t.text, fontFamily: tokens.font.display }}>
+              Nexus
+            </div>
             <AvatarButton active={menuOpen} onClick={() => setMenuOpen(true)} />
           </div>
 
           {/* collection cards */}
-          <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "18px 16px 120px" }}>
+          <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 16px 170px" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {cards.map((c) => (
+              {COLLECTIONS.map((c) => (
                 <Pressable
                   key={c.title}
                   scale={0.985}
@@ -95,33 +90,52 @@ export default function HomeFlow() {
             </div>
           </div>
 
-          {/* create dock — the mock's composer, reinterpreted as creation entry */}
-          <div style={{ position: "absolute", left: 16, right: 16, bottom: 24 }}>
+          {/* bottom stack: primary + New collection (right) above glass search bar */}
+          <div style={{ position: "absolute", left: 16, right: 16, bottom: 24, display: "flex", flexDirection: "column", gap: 12 }}>
             <Pressable
-              scale={0.98}
-              onClick={() => router.push("/flows/create")}
+              scale={0.96}
+              onClick={() => setState("Empty")}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 7,
+                alignSelf: "flex-end",
+                padding: "12px 18px",
+                background: t.ink,
+                border: "none",
+                borderRadius: 999,
+                fontSize: 14,
+                fontWeight: 600,
+                letterSpacing: -0.2,
+                color: "#FFFFFF",
+                cursor: "pointer",
+                boxShadow: "0 8px 24px rgba(19,14,26,0.22)",
+              }}
+            >
+              <Icon name="plus" size={15} color="#FFFFFF" stroke={2.2} />
+              New collection
+            </Pressable>
+
+            <div
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 11,
+                gap: 10,
                 width: "100%",
-                padding: "15px 18px",
-                background: "rgba(255,255,255,0.72)",
-                backdropFilter: "blur(24px) saturate(180%)",
-                WebkitBackdropFilter: "blur(24px) saturate(180%)",
+                padding: "14px 18px",
+                background: "rgba(255,255,255,0.62)",
+                backdropFilter: "blur(26px) saturate(185%)",
+                WebkitBackdropFilter: "blur(26px) saturate(185%)",
                 border: `1px solid rgba(255,255,255,0.65)`,
                 borderRadius: 999,
-                boxShadow: "0 10px 32px rgba(19,14,26,0.13)",
-                cursor: "pointer",
-                textAlign: "left",
+                boxShadow: "0 10px 32px rgba(19,14,26,0.12), inset 0 1px 1px rgba(255,255,255,0.85)",
               }}
             >
-              <Icon name="sparkle" size={17} color={t.plum} />
-              <span style={{ flex: 1, fontSize: 15.5, letterSpacing: -0.2, color: t.ghost }}>
-                Research a topic or paste a link…
+              <Icon name="search" size={16} color={t.faint} />
+              <span style={{ flex: 1, fontSize: 15, letterSpacing: -0.2, color: t.ghost }}>
+                Search collections…
               </span>
-              <Icon name="arrowUp" size={16} color={t.faint} />
-            </Pressable>
+            </div>
           </div>
 
           {/* avatar bloom menu — 3 flat rows, no header (locked 2026-06-29) */}
@@ -156,7 +170,7 @@ export default function HomeFlow() {
       <div
         style={{
           position: "absolute",
-          bottom: state === "Empty" ? 24 : 92,
+          bottom: state === "Empty" ? 24 : 148,
           left: "50%",
           transform: "translateX(-50%)",
           display: "flex",
@@ -196,98 +210,141 @@ export default function HomeFlow() {
   );
 }
 
-// ── Empty landing: single-purpose zero state ──
+// ── Empty landing — the FRE input screen (review 2026-07-15):
+//    kicker → rotating headline → central composer → 4 trending chips →
+//    ONE "Start with a link" CTA (the three link-type tiles are gone).
+
+const ROTATING = ["the attention economy", "Vision Pro 2", "Ozempic & longevity", "AI platform shifts"];
+const TRENDING = ["US–Iran conflict", "AI platform shifts", "Ozempic & longevity", "Vision Pro 2"];
 
 function EmptyLanding() {
   const router = useRouter();
+  const [wordIdx, setWordIdx] = useState(0);
+
+  React.useEffect(() => {
+    const id = setInterval(() => setWordIdx((i) => (i + 1) % ROTATING.length), 2600);
+    return () => clearInterval(id);
+  }, []);
+
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 20px" }}>
-      {/* avatar still reachable top-right */}
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 22px", position: "relative" }}>
+      {/* avatar top-right */}
       <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 4 }}>
         <AvatarButton active={false} onClick={() => {}} />
       </div>
 
       <div style={{ flex: 1 }} />
 
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <EchoMark size={56} />
+      {/* kicker */}
+      <div style={{ fontSize: 11.5, fontWeight: 600, letterSpacing: 0.8, color: t.ghost, marginBottom: 14 }}>
+        NEW COLLECTION
+      </div>
+
+      {/* headline + rotating word */}
+      <div style={{ fontSize: 29, fontWeight: 700, letterSpacing: -0.8, lineHeight: 1.18 }}>
+        <div style={{ color: t.muted }}>Start a collection on</div>
+        <div key={wordIdx} style={{ color: t.text, animation: "nxFadeRise .4s ease both", minHeight: 36 }}>
+          {ROTATING[wordIdx]}
+        </div>
+      </div>
+
+      {/* central composer */}
+      <Pressable
+        scale={0.99}
+        onClick={() => router.push("/flows/create")}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 11,
+          width: "100%",
+          marginTop: 24,
+          padding: "16px 18px",
+          background: t.surface,
+          border: `1px solid ${t.borderStrong}`,
+          borderRadius: 24,
+          boxShadow: `0 0 0 4px ${tokens.color.bloom}44`,
+          cursor: "text",
+          textAlign: "left",
+        }}
+      >
+        <span style={{ flex: 1, fontSize: 15.5, letterSpacing: -0.2, color: t.ghost }}>
+          Describe a topic…
+        </span>
+        <Icon name="mic" size={17} color={t.faint} />
         <div
           style={{
-            fontSize: 22,
-            fontWeight: 650,
-            letterSpacing: -0.5,
-            color: t.text,
-            marginTop: 22,
-            fontFamily: tokens.font.display,
+            width: 34,
+            height: 34,
+            borderRadius: 999,
+            background: t.surface2,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
-          Start your first collection
+          <Icon name="waveform" size={16} color={t.ink} />
         </div>
-        <div style={{ fontSize: 14.5, color: t.muted, letterSpacing: -0.15, marginTop: 8, textAlign: "center" }}>
-          Nexus reads what you save and answers from it.
-        </div>
+      </Pressable>
+
+      {/* trending chips */}
+      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 0.7, color: t.ghost, margin: "26px 0 10px" }}>
+        TRENDING NOW
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {TRENDING.map((topic) => (
+          <Pressable
+            key={topic}
+            scale={0.96}
+            onClick={() => router.push("/flows/create")}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "9px 14px",
+              background: t.surface,
+              border: `1px solid ${t.border}`,
+              borderRadius: 999,
+              fontSize: 13,
+              fontWeight: 500,
+              letterSpacing: -0.15,
+              color: t.text,
+              cursor: "pointer",
+            }}
+          >
+            <Icon name="trending" size={12} color={t.faint} />
+            {topic}
+          </Pressable>
+        ))}
       </div>
 
-      <div style={{ flex: 0.85 }} />
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <ActionCard
-          icon="sparkle"
-          title="Research a topic"
-          detail="Nexus finds authoritative sources for you"
-          onClick={() => router.push("/flows/create")}
-        />
-        <ActionCard
-          icon="link"
-          title="Start with a link"
-          detail="Paste an article, video, or PDF"
-          onClick={() => router.push("/flows/sources")}
-        />
-      </div>
-
-      <div style={{ height: 96, flexShrink: 0 }} />
-    </div>
-  );
-}
-
-function ActionCard({ icon, title, detail, onClick }: { icon: React.ComponentProps<typeof Icon>["name"]; title: string; detail: string; onClick: () => void }) {
-  return (
-    <Pressable
-      scale={0.98}
-      onClick={onClick}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 13,
-        width: "100%",
-        padding: "16px 16px",
-        background: t.surface,
-        border: `1px solid ${t.border}`,
-        borderRadius: 16,
-        cursor: "pointer",
-        textAlign: "left",
-      }}
-    >
-      <div
+      {/* single CTA replacing the three link-type tiles */}
+      <Pressable
+        scale={0.97}
+        onClick={() => router.push("/flows/sources")}
         style={{
-          width: 38,
-          height: 38,
-          borderRadius: 12,
-          background: tokens.color.bloom,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          flexShrink: 0,
+          gap: 8,
+          alignSelf: "center",
+          marginTop: 30,
+          padding: "12px 22px",
+          background: "transparent",
+          border: `1px solid ${t.border}`,
+          borderRadius: 999,
+          fontSize: 14,
+          fontWeight: 600,
+          letterSpacing: -0.2,
+          color: t.text,
+          cursor: "pointer",
         }}
       >
-        <Icon name={icon} size={18} color={t.plum} />
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 15.5, fontWeight: 600, letterSpacing: -0.25, color: t.text }}>{title}</div>
-        <div style={{ fontSize: 12.5, color: t.faint, letterSpacing: -0.1, marginTop: 2 }}>{detail}</div>
-      </div>
-      <Icon name="chevRight" size={15} color={t.ghost} />
-    </Pressable>
+        <Icon name="link" size={15} color={t.muted} />
+        Start with a link
+      </Pressable>
+
+      <div style={{ flex: 1.2 }} />
+    </div>
   );
 }
 

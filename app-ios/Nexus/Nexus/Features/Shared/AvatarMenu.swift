@@ -11,9 +11,19 @@ struct NexusAvatarButton: View {
     let action: () -> Void
 
     @EnvironmentObject private var authManager: AuthManager
+    // Bounce choreography (locked 2026-06-29, re-shipped 2026-07-16):
+    // tap = squish (the avatar "spits out" the menu), menu close = overshoot
+    // pop (it "swallows" the menu back).
+    @State private var bounceScale: CGFloat = 1.0
 
     var body: some View {
-        Button(action: action) {
+        Button {
+            bounceScale = 0.72
+            withAnimation(.spring(response: 0.38, dampingFraction: 0.46)) {
+                bounceScale = 1.0
+            }
+            action()
+        } label: {
             ZStack {
                 Circle()
                     .fill(Color.Nexus.surface2)
@@ -24,10 +34,18 @@ struct NexusAvatarButton: View {
                     .foregroundColor(.Nexus.muted)
             }
         }
-        .buttonStyle(PressableCardStyle())
+        .buttonStyle(.plain)
+        .scaleEffect(bounceScale)
         // Button hides while the menu occupies its corner
         .opacity(active ? 0 : 1)
         .animation(.spring(response: 0.26, dampingFraction: 0.72), value: active)
+        .onChange(of: active) { _, nowActive in
+            guard !nowActive else { return }
+            bounceScale = 1.28
+            withAnimation(.spring(response: 0.48, dampingFraction: 0.38)) {
+                bounceScale = 1.0
+            }
+        }
     }
 }
 
@@ -42,18 +60,14 @@ struct NexusAvatarMenuCard: View {
             AvatarMenuRow(icon: "gearshape", label: "Settings", action: onSettings)
             AvatarMenuRow(icon: "message", label: "Feedback", action: onFeedback)
         }
-        .padding(.vertical, 4)
-        .frame(width: 190)
-        .background(
-            ZStack {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(.thinMaterial)
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.white.opacity(0.62))
-            }
-        )
+        .padding(.vertical, 5)
+        .frame(width: 196)
+        // Liquid Glass floating-menu material (DESIGN_LANGUAGE §3: menus are
+        // the floating layer, radius 22). Native glassEffect on iOS 26 — no
+        // fill underneath (defeats glass); material fallback below 26.
+        .background(menuGlass)
         .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .stroke(
                     LinearGradient(
                         colors: [Color.white.opacity(0.7), Color.white.opacity(0.2)],
@@ -63,8 +77,22 @@ struct NexusAvatarMenuCard: View {
                     lineWidth: 0.6
                 )
         )
-        .shadow(color: .black.opacity(0.12), radius: 20, x: 0, y: 6)
+        .shadow(color: .black.opacity(0.16), radius: 29, x: 0, y: 11)
         .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+    }
+
+    @ViewBuilder
+    private var menuGlass: some View {
+        if #available(iOS 26.0, *) {
+            Color.clear.glassEffect(.regular, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        } else {
+            ZStack {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(.thinMaterial)
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(Color.white.opacity(0.55))
+            }
+        }
     }
 }
 
@@ -122,12 +150,20 @@ struct AvatarBloomOverlay<Menu: View>: View {
                     .onTapGesture(perform: onDismiss)
             }
 
+            // Bloom-morph: grows from the avatar's corner at near-zero scale
+            // with a visible overshoot (design language: menu bloom, spring
+            // linear ≈1.1 peak) — the WhatsApp/Notion pop.
             menu()
                 .padding(.trailing, NexusSpacing.standard)
                 .padding(.top, topInset)
-                .scaleEffect(isPresented ? 1 : 0.5, anchor: .topTrailing)
+                .scaleEffect(isPresented ? 1 : 0.12, anchor: .topTrailing)
                 .opacity(isPresented ? 1 : 0)
-                .animation(.spring(response: 0.42, dampingFraction: 0.64), value: isPresented)
+                .animation(
+                    isPresented
+                        ? .spring(response: 0.5, dampingFraction: 0.62)   // bloom out, overshoot
+                        : .spring(response: 0.28, dampingFraction: 0.9),  // quick collapse
+                    value: isPresented
+                )
                 .allowsHitTesting(isPresented)
         }
     }

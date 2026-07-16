@@ -64,6 +64,14 @@ struct HomeView: View {
             }
         }
         .task { await vm.load() }
+        #if DEBUG
+        // `-preview home -menu`: open the avatar menu for screenshots
+        .onAppear {
+            if ProcessInfo.processInfo.arguments.contains("-menu") {
+                showAvatarMenu = true
+            }
+        }
+        #endif
     }
 
     // MARK: - Collections screen

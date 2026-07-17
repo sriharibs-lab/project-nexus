@@ -190,12 +190,14 @@ struct FeedbackView: View {
         .navigationTitle("Send Feedback")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                SheetCloseButton { dismiss() }
-            }
+            // X standardized to TRAILING on every sheet (2026-07-16);
+            // submit lives beside it while the form is active.
             ToolbarItem(placement: .navigationBarTrailing) {
-                if !vm.didSubmit {
-                    submitButton
+                HStack(spacing: 14) {
+                    if !vm.didSubmit {
+                        submitButton
+                    }
+                    SheetCloseButton { dismiss() }
                 }
             }
         }

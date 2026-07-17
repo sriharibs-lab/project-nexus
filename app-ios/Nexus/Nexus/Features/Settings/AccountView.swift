@@ -193,24 +193,19 @@ struct AccountView: View {
 
 // MARK: - Sheet close button (shared chrome)
 //
-// The iOS-native grey X-in-circle (Maps/Weather sheets). Swipe-down still
-// works — this is the explicit affordance.
+// Bare xmark ONLY — iOS 26 toolbars wrap buttons in their own glass circle;
+// drawing our own circle produced a circle-in-circle (device review
+// 2026-07-16). Standard position: TRAILING on every sheet.
 
 struct SheetCloseButton: View {
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            ZStack {
-                Circle()
-                    .fill(Color.Nexus.surface2)
-                    .frame(width: 30, height: 30)
-                Image(systemName: "xmark")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(.Nexus.muted)
-            }
+            Image(systemName: "xmark")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.Nexus.muted)
         }
-        .buttonStyle(.plain)
         .accessibilityLabel("Close")
     }
 }

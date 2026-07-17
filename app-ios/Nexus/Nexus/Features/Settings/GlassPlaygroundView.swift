@@ -35,6 +35,18 @@ struct GlassPlaygroundView: View {
             // ── Vivid scrolling content — the glass needs this to refract ──
             ScrollView {
                 LazyVStack(spacing: 14) {
+                    // Native-menu proof: the EXACT avatar menu over vivid
+                    // gradients. If glass shows here but not on Home, the
+                    // mechanism works and the white page is why it reads flat.
+                    HStack {
+                        Text("Native Menu test — tap:")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.Nexus.muted)
+                        Spacer()
+                        NexusAvatarMenu(onAccount: {}, onSettings: {}, onFeedback: {})
+                    }
+                    .padding(.horizontal, 4)
+
                     ForEach(0..<24, id: \.self) { i in
                         DemoCard(index: i)
                     }

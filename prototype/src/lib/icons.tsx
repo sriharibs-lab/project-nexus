@@ -180,6 +180,25 @@ export const ICONS = {
     </>
   ),
   arrowUp: (p: P) => <path d="M12 19V5m-6 6 6-6 6 6" {...strokeProps(p)} />,
+  arrowUpRight: (p: P) => <path d="M7 17 17 7M8 7h9v9" {...strokeProps(p)} />,
+  logout: (p: P) => (
+    <>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" {...strokeProps(p)} />
+      <path d="M16 17l5-5-5-5M21 12H9" {...strokeProps(p)} />
+    </>
+  ),
+  phone: (p: P) => (
+    <path
+      d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z"
+      {...strokeProps(p)}
+    />
+  ),
+  restore: (p: P) => (
+    <>
+      <path d="M3 12a9 9 0 1 0 3-6.7L3 8" {...strokeProps(p)} />
+      <path d="M3 3v5h5" {...strokeProps(p)} />
+    </>
+  ),
   trash: (p: P) => (
     <>
       <path d="M4 7h16M10 11v6M14 11v6" {...strokeProps(p)} />

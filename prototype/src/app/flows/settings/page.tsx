@@ -1,17 +1,10 @@
 "use client";
 
 /**
- * Sheet variants (2026-07-16) — Account · Settings · Feedback, each with
- * A/B designs. Top segmented picks the screen; A·B pill picks the variant.
- *
- * Account   A · Stats     — profile + plan + usage stats + identity rows
- *           B · Flat list — ChatGPT-style single card of icon rows
- * Settings  A · Flat list — ChatGPT-style: icon rows, hairline separators,
- *                           inline value + native-menu feel for Appearance
- *           B · Cards     — current grouped-cards style (baseline)
- * Feedback  A · Form      — category chips, big text card, screenshot chip,
- *                           primary send at bottom
- *           B · Chat      — one conversational input in the product voice
+ * Account · Settings · Feedback sheets — ChatGPT-exact styling (2026-07-16
+ * review). Flat white cards (NO border stroke), grey section labels, icon
+ * rows with inset hairline separators, values right-aligned. Top segmented
+ * switches which sheet you're reviewing. X standardized trailing.
  */
 
 import React, { useState } from "react";
@@ -29,47 +22,28 @@ export default function SheetVariants() {
   const [screen, setScreen] = useState<ScreenName>(
     (SCREENS.find((s) => s.toLowerCase() === params.get("s")) ?? "Account") as ScreenName
   );
-  const [variant, setVariant] = useState<"A" | "B">(params.get("v")?.toUpperCase() === "B" ? "B" : "A");
-
-  const sync = (s: ScreenName, v: "A" | "B") =>
-    router.replace(`/flows/settings?s=${s.toLowerCase()}&v=${v.toLowerCase()}`);
 
   return (
     <Screen>
       <StatusBar />
 
-      {/* sheet chrome: grabber + title + X (trailing, standardized) */}
+      {/* sheet chrome: grabber + title + X (trailing) */}
       <div style={{ display: "flex", justifyContent: "center", paddingTop: 8 }}>
         <div style={{ width: 36, height: 5, borderRadius: 999, background: t.border }} />
       </div>
       <div style={{ display: "flex", alignItems: "center", padding: "10px 16px 4px" }}>
         <div style={{ width: 30 }} />
         <div style={{ flex: 1, textAlign: "center", fontSize: 17, fontWeight: 650, letterSpacing: -0.4, color: t.text }}>
-          {screen}
+          {screen === "Feedback" ? "Send feedback" : screen}
         </div>
-        <button
-          style={{
-            width: 30,
-            height: 30,
-            borderRadius: 999,
-            border: "none",
-            background: t.surface2,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-          }}
-          aria-label="Close"
-        >
-          <Icon name="x" size={14} color={t.muted} stroke={2.2} />
-        </button>
+        <CloseX />
       </div>
 
-      {screen === "Account" && (variant === "A" ? <AccountStats /> : <AccountFlat />)}
-      {screen === "Settings" && (variant === "A" ? <SettingsFlat /> : <SettingsCards />)}
-      {screen === "Feedback" && (variant === "A" ? <FeedbackForm /> : <FeedbackChat />)}
+      {screen === "Account" && <AccountSheet />}
+      {screen === "Settings" && <SettingsSheet />}
+      {screen === "Feedback" && <FeedbackSheet />}
 
-      {/* review controls */}
+      {/* review-only screen switcher */}
       <div
         style={{
           position: "absolute",
@@ -77,269 +51,211 @@ export default function SheetVariants() {
           left: "50%",
           transform: "translateX(-50%)",
           display: "flex",
-          alignItems: "center",
-          gap: 8,
+          gap: 4,
+          padding: 3,
+          background: "rgba(19,14,26,0.06)",
+          borderRadius: 999,
+          backdropFilter: "blur(10px)",
           zIndex: 30,
         }}
       >
-        <div style={{ display: "flex", gap: 4, padding: 3, background: "rgba(19,14,26,0.06)", borderRadius: 999, backdropFilter: "blur(10px)" }}>
-          {SCREENS.map((s) => (
-            <button
-              key={s}
-              onClick={() => { setScreen(s); sync(s, variant); }}
-              style={{
-                padding: "5px 11px", borderRadius: 999, border: "none", fontSize: 11, fontWeight: 600,
-                cursor: "pointer",
-                background: screen === s ? t.surface : "transparent",
-                color: screen === s ? t.text : t.muted,
-                boxShadow: screen === s ? "0 2px 8px rgba(19,14,26,0.10)" : "none",
-              }}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-        <div style={{ display: "flex", gap: 4, padding: 3, background: "rgba(19,14,26,0.06)", borderRadius: 999, backdropFilter: "blur(10px)" }}>
-          {(["A", "B"] as const).map((v) => (
-            <button
-              key={v}
-              onClick={() => { setVariant(v); sync(screen, v); }}
-              style={{
-                width: 30, height: 24, borderRadius: 999, border: "none", fontSize: 12, fontWeight: 700,
-                cursor: "pointer",
-                background: variant === v ? t.surface : "transparent",
-                color: variant === v ? t.text : t.muted,
-                boxShadow: variant === v ? "0 2px 8px rgba(19,14,26,0.10)" : "none",
-              }}
-            >
-              {v}
-            </button>
-          ))}
-        </div>
+        {SCREENS.map((s) => (
+          <button
+            key={s}
+            onClick={() => { setScreen(s); router.replace(`/flows/settings?s=${s.toLowerCase()}`); }}
+            style={{
+              padding: "5px 12px", borderRadius: 999, border: "none", fontSize: 11, fontWeight: 600,
+              cursor: "pointer",
+              background: screen === s ? t.surface : "transparent",
+              color: screen === s ? t.text : t.muted,
+              boxShadow: screen === s ? "0 2px 8px rgba(19,14,26,0.10)" : "none",
+            }}
+          >
+            {s}
+          </button>
+        ))}
       </div>
     </Screen>
   );
 }
 
-// ── shared row primitives (ChatGPT flat-list grammar) ──
-
-function FlatCard({ children }: { children: React.ReactNode }) {
+function CloseX() {
   return (
-    <div style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 16, overflow: "hidden" }}>
+    <button
+      aria-label="Close"
+      style={{
+        width: 30, height: 30, borderRadius: 999, border: "none", background: t.surface2,
+        display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+      }}
+    >
+      <Icon name="x" size={14} color={t.muted} stroke={2.2} />
+    </button>
+  );
+}
+
+// ── ChatGPT flat-card primitives (no border stroke) ──
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ fontSize: 13, fontWeight: 500, letterSpacing: -0.1, color: t.faint, padding: "0 18px 7px" }}>
       {children}
     </div>
   );
 }
 
-function FlatRow({
+function Card({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        background: t.surface,
+        borderRadius: 16,
+        overflow: "hidden",
+        boxShadow: "0 1px 3px rgba(19,14,26,0.05)",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function Row({
   icon,
   label,
   value,
-  chevron = "right",
+  trailing = "none",
   danger = false,
   last = false,
-  valueDot,
+  onClick,
 }: {
   icon: string;
   label: string;
   value?: string;
-  chevron?: "right" | "menu" | "none";
+  trailing?: "chevron" | "external" | "none";
   danger?: boolean;
   last?: boolean;
-  valueDot?: string;
+  onClick?: () => void;
 }) {
+  const color = danger ? "#C0392B" : t.text;
   return (
-    <div
+    <Pressable
+      scale={0.99}
+      onClick={onClick}
       style={{
         display: "flex",
         alignItems: "center",
-        gap: 12,
-        padding: "13px 14px",
+        gap: 13,
+        width: "100%",
+        padding: "13px 15px",
+        // separator inset to align under the label, ChatGPT-style
         borderBottom: last ? "none" : `1px solid ${t.hair}`,
-        cursor: "pointer",
+        borderBottomWidth: last ? 0 : 1,
+        background: "transparent",
+        border: "none",
+        cursor: onClick ? "pointer" : "default",
+        textAlign: "left",
+        position: "relative",
       }}
     >
-      <Icon name={icon as never} size={17} color={danger ? "#C0392B" : t.muted} />
-      <span style={{ flex: 1, fontSize: 15.5, letterSpacing: -0.2, color: danger ? "#C0392B" : t.text }}>{label}</span>
-      {valueDot && <span style={{ width: 8, height: 8, borderRadius: 999, background: valueDot }} />}
-      {value && <span style={{ fontSize: 14.5, letterSpacing: -0.2, color: t.faint }}>{value}</span>}
-      {chevron === "right" && <Icon name="chevRight" size={14} color={t.ghost} />}
-      {chevron === "menu" && (
-        <span style={{ display: "inline-flex", flexDirection: "column", gap: 1, alignItems: "center" }}>
-          <span style={{ display: "inline-flex", transform: "rotate(180deg)" }}>
-            <Icon name="chevDown" size={10} color={t.ghost} />
-          </span>
-          <Icon name="chevDown" size={10} color={t.ghost} />
-        </span>
-      )}
-    </div>
-  );
-}
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{ fontSize: 12.5, fontWeight: 600, letterSpacing: -0.1, color: t.faint, padding: "0 4px 8px" }}>
-      {children}
-    </div>
+      <Icon name={icon as never} size={19} color={danger ? "#C0392B" : t.ink} stroke={1.7} />
+      <span style={{ flex: 1, fontSize: 16, letterSpacing: -0.2, color }}>{label}</span>
+      {value && <span style={{ fontSize: 15, letterSpacing: -0.2, color: t.faint }}>{value}</span>}
+      {trailing === "chevron" && <Icon name="chevRight" size={15} color={t.ghost} />}
+      {trailing === "external" && <Icon name="arrowUpRight" size={15} color={t.ghost} />}
+    </Pressable>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Account A · Stats — the sheet earns its space with the user's own numbers
+// Account — ChatGPT exact
 // ─────────────────────────────────────────────────────────────────────────
 
-function AccountStats() {
+function AccountSheet() {
   return (
-    <div style={{ flex: 1, overflowY: "auto", padding: "18px 16px 120px" }}>
-      {/* profile */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 22 }}>
+    <div style={{ flex: 1, overflowY: "auto", padding: "14px 16px 120px" }}>
+      {/* avatar + name */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 26 }}>
         <div
           style={{
-            width: 68, height: 68, borderRadius: 999, background: tokens.color.bloom,
+            width: 84, height: 84, borderRadius: 999, background: tokens.color.bloom,
             display: "flex", alignItems: "center", justifyContent: "center",
           }}
         >
-          <span style={{ fontSize: 26, fontWeight: 600, color: t.plum }}>S</span>
+          <span style={{ fontSize: 32, fontWeight: 600, color: t.plum }}>S</span>
         </div>
-        <div style={{ fontSize: 15, color: t.muted, marginTop: 10 }}>srihari.scorp@gmail.com</div>
-        <div
-          style={{
-            display: "inline-flex", alignItems: "center", gap: 6, marginTop: 8,
-            padding: "5px 12px", background: t.surface, border: `1px solid ${t.border}`, borderRadius: 999,
-          }}
-        >
-          <Icon name="sparkle" size={11} color={t.plum} />
-          <span style={{ fontSize: 12.5, fontWeight: 600, color: t.text }}>Free · Beta</span>
+        <div style={{ fontSize: 19, fontWeight: 650, letterSpacing: -0.4, color: t.text, marginTop: 12 }}>
+          Srihari
         </div>
       </div>
 
-      {/* usage stats — the "not bare" ingredient: your library, quantified */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 18 }}>
-        {[
-          { n: "7", label: "collections" },
-          { n: "46", label: "sources" },
-          { n: "112", label: "questions" },
-        ].map((s) => (
-          <div
-            key={s.label}
-            style={{
-              background: t.surface, border: `1px solid ${t.border}`, borderRadius: 14,
-              padding: "14px 8px", textAlign: "center",
-            }}
-          >
-            <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.6, color: t.text }}>{s.n}</div>
-            <div style={{ fontSize: 11.5, letterSpacing: -0.1, color: t.faint, marginTop: 2 }}>{s.label}</div>
-          </div>
-        ))}
-      </div>
+      <SectionLabel>Account</SectionLabel>
+      <Card>
+        <Row icon="envelope" label="Email" value="srihari.scorp@gmail.com" />
+        <Row icon="sparkle" label="Subscription" value="Free · Beta" trailing="chevron" onClick={() => {}} last />
+      </Card>
 
-      {/* identity rows */}
-      <FlatCard>
-        <FlatRow icon="link" label="Signed in with" value="Email" chevron="none" />
-        <FlatRow icon="clock" label="Member since" value="Jun 2026" chevron="none" last />
-      </FlatCard>
+      <div style={{ height: 20 }} />
 
-      <div style={{ height: 18 }} />
+      {/* Log out — its own single-row card, red, door icon */}
+      <Card>
+        <Row icon="logout" label="Log out" danger onClick={() => {}} last />
+      </Card>
 
-      <FlatCard>
-        <FlatRow icon="chevRight" label="Sign out" chevron="none" />
-        <FlatRow icon="trash" label="Delete account" danger chevron="none" last />
-      </FlatCard>
+      {/* Delete account — separate button OUTSIDE the list */}
+      <button
+        onClick={() => {}}
+        style={{
+          display: "block",
+          width: "100%",
+          marginTop: 26,
+          padding: "14px 0",
+          background: "transparent",
+          border: "none",
+          fontSize: 15.5,
+          fontWeight: 500,
+          letterSpacing: -0.2,
+          color: "#C0392B",
+          cursor: "pointer",
+          fontFamily: "inherit",
+          textAlign: "center",
+        }}
+      >
+        Delete account
+      </button>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Account B · Flat list — everything as one ChatGPT-style card
+// Settings — ChatGPT exact (flat cards, native-menu Appearance, external links)
 // ─────────────────────────────────────────────────────────────────────────
 
-function AccountFlat() {
-  return (
-    <div style={{ flex: 1, overflowY: "auto", padding: "18px 16px 120px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 13, padding: "4px 4px 18px" }}>
-        <div
-          style={{
-            width: 52, height: 52, borderRadius: 999, background: tokens.color.bloom,
-            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-          }}
-        >
-          <span style={{ fontSize: 20, fontWeight: 600, color: t.plum }}>S</span>
-        </div>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 16.5, fontWeight: 650, letterSpacing: -0.3, color: t.text }}>Srihari</div>
-          <div style={{ fontSize: 13.5, color: t.faint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            srihari.scorp@gmail.com
-          </div>
-        </div>
-      </div>
-
-      <FlatCard>
-        <FlatRow icon="sparkle" label="Plan" value="Free · Beta" chevron="right" />
-        <FlatRow icon="link" label="Signed in with" value="Email" chevron="none" />
-        <FlatRow icon="clock" label="Member since" value="Jun 2026" chevron="none" />
-        <FlatRow icon="file" label="Export my data" chevron="right" last />
-      </FlatCard>
-
-      <div style={{ height: 18 }} />
-
-      <FlatCard>
-        <FlatRow icon="chevRight" label="Sign out" chevron="none" />
-        <FlatRow icon="trash" label="Delete account" danger chevron="none" last />
-      </FlatCard>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// Settings A · Flat list — ChatGPT grammar, native menu for Appearance
-// ─────────────────────────────────────────────────────────────────────────
-
-function SettingsFlat() {
+function SettingsSheet() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [appearance, setAppearance] = useState("Light");
+  const [appearance] = useState("Light");
 
   return (
-    <div style={{ flex: 1, overflowY: "auto", padding: "18px 16px 120px", position: "relative" }}>
+    <div style={{ flex: 1, overflowY: "auto", padding: "14px 16px 120px", position: "relative" }}>
       <SectionLabel>App</SectionLabel>
-      <FlatCard>
-        {/* Appearance opens a native-style menu anchored to the row */}
-        <div onClick={() => setMenuOpen(!menuOpen)} style={{ position: "relative" }}>
-          <FlatRow icon="sliders" label="Appearance" value={appearance} chevron="menu" />
+      <Card>
+        <div style={{ position: "relative" }}>
+          <Row icon="sliders" label="Appearance" value={appearance} trailing="chevron" onClick={() => setMenuOpen(!menuOpen)} />
           {menuOpen && (
             <div
               style={{
-                position: "absolute",
-                right: 10,
-                top: 44,
-                zIndex: 20,
-                width: 190,
-                padding: 5,
-                borderRadius: 16,
+                position: "absolute", right: 12, top: 46, zIndex: 20, width: 200, padding: 5, borderRadius: 16,
                 background: "rgba(255,255,255,0.72)",
-                backdropFilter: "blur(30px) saturate(185%)",
-                WebkitBackdropFilter: "blur(30px) saturate(185%)",
-                border: "1px solid rgba(255,255,255,0.65)",
-                boxShadow: "0 18px 44px rgba(19,14,26,0.18)",
-                animation: "nxPop .22s ease both",
+                backdropFilter: "blur(30px) saturate(185%)", WebkitBackdropFilter: "blur(30px) saturate(185%)",
+                border: "1px solid rgba(255,255,255,0.65)", boxShadow: "0 18px 44px rgba(19,14,26,0.18)",
+                animation: "nxPop .2s ease both",
               }}
             >
               {["Light", "Dark", "System"].map((mode, i) => (
                 <div
                   key={mode}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (mode === "Light") setAppearance(mode);
-                    setMenuOpen(false);
-                  }}
+                  onClick={() => setMenuOpen(false)}
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    padding: "10px 12px",
-                    borderRadius: 11,
-                    fontSize: 15,
-                    letterSpacing: -0.2,
-                    color: mode === "Light" ? t.text : t.ghost,
-                    cursor: "pointer",
+                    display: "flex", alignItems: "center", padding: "10px 12px", borderRadius: 11,
+                    fontSize: 15, letterSpacing: -0.2, color: mode === "Light" ? t.text : t.ghost, cursor: "pointer",
                     borderBottom: i < 2 ? `1px solid ${t.hair}` : "none",
                   }}
                 >
@@ -355,205 +271,141 @@ function SettingsFlat() {
             </div>
           )}
         </div>
-        <FlatRow icon="mic" label="Voice input" value="On" chevron="menu" />
-        <FlatRow icon="globe" label="Default research depth" value="Standard" chevron="menu" last />
-      </FlatCard>
+      </Card>
 
       <div style={{ height: 20 }} />
       <SectionLabel>Data</SectionLabel>
-      <FlatCard>
-        <FlatRow icon="file" label="Offline reading cache" value="24 MB" chevron="right" />
-        <FlatRow icon="trash" label="Clear cache" chevron="none" last />
-      </FlatCard>
+      <Card>
+        <Row icon="file" label="Offline reading cache" value="24 MB" />
+        <Row icon="trash" label="Clear cache" onClick={() => {}} last />
+      </Card>
 
       <div style={{ height: 20 }} />
       <SectionLabel>About</SectionLabel>
-      <FlatCard>
-        <FlatRow icon="nexus" label="Version" value="1.0 (1)" chevron="none" />
-        <FlatRow icon="note" label="Terms of Service" chevron="right" />
-        <FlatRow icon="note" label="Privacy Policy" chevron="right" last />
-      </FlatCard>
+      <Card>
+        <Row icon="nexus" label="Version" value="1.0 (1)" />
+        <Row icon="note" label="Terms of Service" trailing="external" onClick={() => {}} />
+        <Row icon="note" label="Privacy Policy" trailing="external" onClick={() => {}} last />
+      </Card>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Settings B · Cards — the current shipped style (baseline for comparison)
+// Feedback — ChatGPT "Report app issue" exact
 // ─────────────────────────────────────────────────────────────────────────
 
-function SettingsCards() {
-  return (
-    <div style={{ flex: 1, overflowY: "auto", padding: "18px 16px 120px" }}>
-      {[
-        { label: "Appearance", rows: [["Light", "✓"], ["Dark", "Soon"], ["System", "Soon"]] },
-        { label: "Data", rows: [["Offline reading cache", "24 MB"], ["Clear cache", ""]] },
-        { label: "About", rows: [["Version", "1.0 (1)"], ["Build stamp", "Jul 16 20:55"]] },
-        { label: "Legal", rows: [["Terms of Service", "↗"], ["Privacy Policy", "↗"]] },
-      ].map((section) => (
-        <div key={section.label} style={{ marginBottom: 20 }}>
-          <SectionLabel>{section.label}</SectionLabel>
-          <FlatCard>
-            {section.rows.map(([label, value], i) => (
-              <div
-                key={label}
-                style={{
-                  display: "flex", alignItems: "center", padding: "13px 14px",
-                  borderBottom: i < section.rows.length - 1 ? `1px solid ${t.hair}` : "none",
-                }}
-              >
-                <span style={{ flex: 1, fontSize: 15.5, letterSpacing: -0.2, color: value === "Soon" ? t.ghost : t.text }}>
-                  {label}
-                </span>
-                <span style={{ fontSize: 14, color: value === "✓" ? t.plum : t.faint }}>{value}</span>
-              </div>
-            ))}
-          </FlatCard>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// Feedback A · Form — structured, one screen, primary send
-// ─────────────────────────────────────────────────────────────────────────
-
-function FeedbackForm() {
-  const [category, setCategory] = useState("Bug");
+function FeedbackSheet() {
   const [text, setText] = useState("");
+  const [includeShot, setIncludeShot] = useState(true);
+  const [shake, setShake] = useState(true);
   const [sent, setSent] = useState(false);
 
   if (sent) return <FeedbackThanks onAgain={() => { setSent(false); setText(""); }} />;
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "18px 16px 120px" }}>
-      <div style={{ display: "flex", gap: 8 }}>
-        {["Bug", "Idea", "Other"].map((c) => (
-          <button
-            key={c}
-            onClick={() => setCategory(c)}
-            style={{
-              flex: 1, padding: "10px 0", borderRadius: 999,
-              border: `1px solid ${category === c ? t.plum : t.border}`,
-              background: category === c ? tokens.color.bloom : t.surface,
-              fontSize: 14, fontWeight: 600, letterSpacing: -0.2,
-              color: category === c ? t.plum : t.muted,
-              cursor: "pointer", fontFamily: "inherit", transition: "all .15s ease",
-            }}
-          >
-            {c}
-          </button>
-        ))}
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "18px 20px 0" }}>
+      <div style={{ fontSize: 17, fontWeight: 650, letterSpacing: -0.3, color: t.text, marginBottom: 12 }}>
+        What happened?
       </div>
 
-      <div
-        style={{
-          flex: 1, minHeight: 180, marginTop: 14, padding: 16,
-          background: t.surface, border: `1px solid ${t.border}`, borderRadius: 18,
-          position: "relative",
-        }}
-      >
+      {/* grey filled text area with counter inside */}
+      <div style={{ position: "relative", background: t.surface2, borderRadius: 16, padding: 16, minHeight: 180 }}>
         {text === "" && (
-          <span style={{ position: "absolute", fontSize: 15.5, color: t.ghost, pointerEvents: "none" }}>
-            What did you see? What did you expect?
+          <span style={{ position: "absolute", fontSize: 15.5, letterSpacing: -0.2, color: t.ghost, pointerEvents: "none" }}>
+            Tell us about the issue you encountered
           </span>
         )}
         <textarea
           value={text}
+          maxLength={2000}
           onChange={(e) => setText(e.target.value)}
           style={{
-            width: "100%", height: "100%", border: "none", outline: "none", resize: "none",
+            width: "100%", height: 148, border: "none", outline: "none", resize: "none",
             background: "transparent", fontSize: 15.5, lineHeight: 1.55, letterSpacing: -0.2,
             color: t.text, fontFamily: "inherit",
           }}
         />
-      </div>
-
-      {/* screenshot chip */}
-      <div style={{ display: "flex", alignItems: "center", gap: 9, marginTop: 12 }}>
-        <div
-          style={{
-            display: "inline-flex", alignItems: "center", gap: 7, padding: "8px 12px",
-            background: t.surface, border: `1px solid ${t.border}`, borderRadius: 999,
-          }}
-        >
-          <Icon name="photo" size={13} color={t.muted} />
-          <span style={{ fontSize: 12.5, fontWeight: 500, color: t.muted }}>Screenshot attached</span>
-          <Icon name="x" size={11} color={t.ghost} stroke={2.2} />
+        <div style={{ position: "absolute", right: 16, bottom: 12, fontSize: 13.5, color: t.faint }}>
+          {text.length} / 2000
         </div>
       </div>
 
-      <Pressable
-        scale={0.97}
-        onClick={() => text.trim() && setSent(true)}
-        style={{
-          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-          marginTop: 16, padding: "15px 0", width: "100%",
-          background: text.trim() ? t.plum : t.surface2, border: "none", borderRadius: 999,
-          fontSize: 15.5, fontWeight: 600, letterSpacing: -0.2,
-          color: text.trim() ? "#fff" : t.ghost, cursor: "pointer",
-          transition: "background .2s ease, color .2s ease",
-        }}
-      >
-        Send feedback
-      </Pressable>
+      {/* disclaimer */}
+      <div style={{ fontSize: 14, lineHeight: 1.5, letterSpacing: -0.15, color: t.muted, margin: "16px 2px 0" }}>
+        Any information you share may be reviewed to help improve Nexus. If you have additional questions,{" "}
+        <span style={{ color: t.plum, fontWeight: 500, cursor: "pointer" }}>contact support</span>.
+      </div>
+
+      {/* toggle rows with hairline separators */}
+      <div style={{ marginTop: 22 }}>
+        <div style={{ height: 1, background: t.hair }} />
+        <ToggleRow label="Include screenshot in report" on={includeShot} onToggle={() => setIncludeShot(!includeShot)} />
+        <div style={{ height: 1, background: t.hair }} />
+        <ToggleRow
+          label="Shake iPhone to report a bug"
+          subtitle="Toggle off to disable"
+          on={shake}
+          onToggle={() => setShake(!shake)}
+        />
+      </div>
+
+      <div style={{ flex: 1 }} />
+
+      {/* bottom full-width Send */}
+      <div style={{ padding: "0 0 max(env(safe-area-inset-bottom), 84px)" }}>
+        <Pressable
+          scale={0.98}
+          onClick={() => text.trim() && setSent(true)}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "center",
+            width: "100%", padding: "16px 0",
+            background: text.trim() ? t.ink : t.surface2, border: "none", borderRadius: 999,
+            fontSize: 16, fontWeight: 600, letterSpacing: -0.2,
+            color: text.trim() ? "#fff" : t.ghost, cursor: "pointer",
+            transition: "background .2s ease, color .2s ease",
+          }}
+        >
+          Send
+        </Pressable>
+      </div>
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// Feedback B · Chat — one conversational input, product voice
-// ─────────────────────────────────────────────────────────────────────────
-
-function FeedbackChat() {
-  const [text, setText] = useState("");
-  const [sent, setSent] = useState(false);
-
-  if (sent) return <FeedbackThanks onAgain={() => { setSent(false); setText(""); }} />;
-
+function ToggleRow({
+  label,
+  subtitle,
+  on,
+  onToggle,
+}: {
+  label: string;
+  subtitle?: string;
+  on: boolean;
+  onToggle: () => void;
+}) {
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "22px 22px 120px" }}>
-      <div style={{ fontSize: 17.5, fontWeight: 500, lineHeight: 1.55, letterSpacing: -0.25, color: t.text }}>
-        What&apos;s working? What&apos;s broken? What do you wish existed?
+    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "15px 2px" }}>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 16, letterSpacing: -0.2, color: t.text }}>{label}</div>
+        {subtitle && <div style={{ fontSize: 13, letterSpacing: -0.15, color: t.faint, marginTop: 2 }}>{subtitle}</div>}
       </div>
-      <div style={{ fontSize: 14, color: t.faint, letterSpacing: -0.15, marginTop: 8 }}>
-        Goes straight to Srihari with a screenshot of your last screen.
-      </div>
-
-      <div
+      <button
+        onClick={onToggle}
+        aria-label={label}
         style={{
-          flex: 1, minHeight: 220, marginTop: 18, padding: 16,
-          background: t.surface, border: `1px solid ${t.border}`, borderRadius: 22, position: "relative",
+          width: 51, height: 31, borderRadius: 999, border: "none", cursor: "pointer", padding: 0,
+          background: on ? t.plum : "#E4E1EC",
+          position: "relative", transition: "background .2s ease", flexShrink: 0,
         }}
       >
-        {text === "" && (
-          <span style={{ position: "absolute", fontSize: 16, color: t.ghost, pointerEvents: "none" }}>
-            Just type — no categories, no forms…
-          </span>
-        )}
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
+        <span
           style={{
-            width: "100%", height: "100%", border: "none", outline: "none", resize: "none",
-            background: "transparent", fontSize: 16, lineHeight: 1.6, letterSpacing: -0.2,
-            color: t.text, fontFamily: "inherit",
+            position: "absolute", top: 2, left: on ? 22 : 2, width: 27, height: 27, borderRadius: 999,
+            background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.2)", transition: "left .2s cubic-bezier(.4,.0,.2,1)",
           }}
         />
-        {text.trim() && (
-          <div
-            onClick={() => setSent(true)}
-            style={{
-              position: "absolute", right: 12, bottom: 12,
-              width: 42, height: 42, borderRadius: 999, background: t.plum,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              cursor: "pointer", animation: "nxPop .3s ease both",
-            }}
-          >
-            <Icon name="arrowUp" size={16} color="#fff" stroke={2.4} />
-          </div>
-        )}
-      </div>
+      </button>
     </div>
   );
 }
@@ -569,18 +421,13 @@ function FeedbackThanks({ onAgain }: { onAgain: () => void }) {
       >
         <Icon name="check" size={26} color={t.plum} stroke={2.4} />
       </div>
-      <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: -0.4, color: t.text, marginTop: 18 }}>
-        Thank you
-      </div>
+      <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: -0.4, color: t.text, marginTop: 18 }}>Thank you</div>
       <div style={{ fontSize: 14, color: t.muted, letterSpacing: -0.15, marginTop: 6, textAlign: "center" }}>
         We read every single one.
       </div>
       <button
         onClick={onAgain}
-        style={{
-          marginTop: 16, border: "none", background: "transparent",
-          fontSize: 13.5, fontWeight: 500, color: t.plum, cursor: "pointer", fontFamily: "inherit",
-        }}
+        style={{ marginTop: 16, border: "none", background: "transparent", fontSize: 13.5, fontWeight: 500, color: t.plum, cursor: "pointer", fontFamily: "inherit" }}
       >
         Send another
       </button>

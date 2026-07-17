@@ -22,13 +22,13 @@ const FLOWS: Array<{
   status: FlowStatus;
 }> = [
   { slug: "login", title: "Login", detail: "LOCKED — Claude-style; shipped to iOS", icon: "envelope", status: "locked" },
-  { slug: "fre", title: "FRE candidates", detail: "4 directions for the first-run screen — A·B·C·D switcher", icon: "sparkle", status: "in review" },
-  { slug: "onboarding", title: "FRE / Onboarding", detail: "Welcome → topics → first collection", icon: "sparkle", status: "draft" },
+  { slug: "onboarding", title: "FRE — onboarding tour", detail: "3 wizard candidates: pager · spotlight · learn-by-doing", icon: "sparkle", status: "in review" },
+  { slug: "fre", title: "New-collection candidates", detail: "4 directions for the create screen — A·B·C·D", icon: "plus", status: "draft" },
+  { slug: "settings", title: "Sheet variants", detail: "Account · Settings · Feedback — A/B designs", icon: "sliders", status: "in review" },
   { slug: "create", title: "Collection creation", detail: "Research a topic · start with a link", icon: "plus", status: "draft" },
   { slug: "home", title: "Home", detail: "Collection list · avatar bloom menu", icon: "layers", status: "draft" },
   { slug: "qa", title: "Q&A — Nexus tab", detail: "Chat · citations · Echo pulse · composer · live SSE", icon: "nexus", status: "in review" },
   { slug: "sources", title: "Sources + Reader", detail: "Source list · add sheet · reader variants", icon: "book", status: "draft" },
-  { slug: "settings", title: "Settings & account", detail: "Settings · account · feedback — variants", icon: "sliders", status: "draft" },
   { slug: "search", title: "Search", detail: "Parked until core flows lock", icon: "search", status: "parked" },
 ];
 

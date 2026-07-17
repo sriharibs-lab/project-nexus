@@ -22,6 +22,7 @@ const FLOWS: Array<{
   status: FlowStatus;
 }> = [
   { slug: "login", title: "Login", detail: "LOCKED — Claude-style; shipped to iOS", icon: "envelope", status: "locked" },
+  { slug: "fre", title: "FRE candidates", detail: "4 directions for the first-run screen — A·B·C·D switcher", icon: "sparkle", status: "in review" },
   { slug: "onboarding", title: "FRE / Onboarding", detail: "Welcome → topics → first collection", icon: "sparkle", status: "draft" },
   { slug: "create", title: "Collection creation", detail: "Research a topic · start with a link", icon: "plus", status: "draft" },
   { slug: "home", title: "Home", detail: "Collection list · avatar bloom menu", icon: "layers", status: "draft" },

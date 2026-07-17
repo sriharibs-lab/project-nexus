@@ -4,10 +4,17 @@ import UIKit
 
 // MARK: - Settings
 
+// APP BEHAVIOR only (approved IA tree 2026-07-16): Appearance, Data, About,
+// Legal, DEBUG developer tools. Identity lives in Account; Feedback is its
+// own top-level menu row. Sheet chrome: X-circle + swipe down.
+
 struct SettingsView: View {
-    @ObservedObject private var authManager = AuthManager.shared
-    @State private var pendingScreenshot: UIImage?
-    @State private var showFeedback = false
+    @Environment(\.dismiss) private var dismiss
+    /// Recorded preference; the app currently forces Light (dark palette is
+    /// undesigned — Dark/System rows are visible but disabled).
+    @AppStorage("nx_appearance") private var appearance = "Light"
+    @State private var cacheBytes: Int = 0
+    @State private var confirmingClearCache = false
 
     var body: some View {
         NavigationStack {
@@ -15,55 +22,145 @@ struct SettingsView: View {
                 NexusBackground()
 
                 List {
-                    Section {
-                        Button {
-                            captureAndOpenFeedback()
-                        } label: {
-                            Text("Send Feedback")
+                    Section("Appearance") {
+                        appearanceRow("Light", enabled: true)
+                        appearanceRow("Dark", enabled: false)
+                        appearanceRow("System", enabled: false)
+                    }
+
+                    Section("Data") {
+                        HStack {
+                            Text("Offline reading cache")
                                 .foregroundColor(.Nexus.ink)
+                            Spacer()
+                            Text(cacheSizeLabel)
+                                .foregroundColor(.Nexus.muted)
+                                .font(.Nexus.bodySmall)
+                        }
+                        Button("Clear cache", role: .destructive) {
+                            confirmingClearCache = true
+                        }
+                        .disabled(cacheBytes == 0)
+                    }
+
+                    Section("About") {
+                        HStack {
+                            Text("Version").foregroundColor(.Nexus.ink)
+                            Spacer()
+                            Text(versionLabel)
+                                .foregroundColor(.Nexus.muted)
+                                .font(.Nexus.bodySmall)
+                        }
+                        #if DEBUG
+                        HStack {
+                            Text("Build stamp").foregroundColor(.Nexus.ink)
+                            Spacer()
+                            Text(BuildStamp.short)
+                                .foregroundColor(.Nexus.muted)
+                                .font(.system(size: 13, design: .monospaced))
+                        }
+                        #endif
+                    }
+
+                    // Stub pages tracked in PARKING_LOT.md — rows are the
+                    // permanent home; destinations go live with the domain.
+                    Section("Legal") {
+                        Link(destination: URL(string: "https://nexus.app/terms")!) {
+                            legalRow("Terms of Service")
+                        }
+                        Link(destination: URL(string: "https://nexus.app/privacy")!) {
+                            legalRow("Privacy Policy")
                         }
                     }
 
                     #if DEBUG
-                    Section("Debug") {
+                    Section("Developer") {
                         NavigationLink("Glass Playground") {
                             GlassPlaygroundView()
                         }
                     }
                     #endif
-
-                    Section {
-                        Button("Sign Out", role: .destructive) {
-                            authManager.signOut()
-                        }
-                    }
                 }
                 .scrollContentBackground(.hidden)
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
-            .navigationDestination(isPresented: $showFeedback) {
-                FeedbackView(preloadedScreenshot: pendingScreenshot)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    SheetCloseButton { dismiss() }
+                }
+            }
+            .task {
+                cacheBytes = await OfflineContentCache.shared.diskUsageBytes()
+            }
+            .confirmationDialog(
+                "Clear offline reading cache?",
+                isPresented: $confirmingClearCache,
+                titleVisibility: .visible
+            ) {
+                Button("Clear \(cacheSizeLabel)", role: .destructive) {
+                    Task {
+                        await OfflineContentCache.shared.clearAll()
+                        cacheBytes = await OfflineContentCache.shared.diskUsageBytes()
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Saved articles will re-download when you open them.")
             }
         }
     }
 
-    /// Capture the current screen contents before navigating, so the
-    /// screenshot shows the Settings screen (or whatever was visible)
-    /// rather than a blank feedback form.
-    private func captureAndOpenFeedback() {
-        guard let scene = UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene })
-            .first(where: { $0.activationState == .foregroundActive }),
-              let window = scene.windows.first(where: { $0.isKeyWindow }) else {
-            showFeedback = true
-            return
+    // MARK: - Rows
+
+    private func appearanceRow(_ name: String, enabled: Bool) -> some View {
+        Button {
+            appearance = name
+        } label: {
+            HStack {
+                Text(name)
+                    .foregroundColor(enabled ? .Nexus.ink : .Nexus.ghost)
+                Spacer()
+                if !enabled {
+                    Text("Soon")
+                        .font(.Nexus.overline)
+                        .foregroundColor(.Nexus.ghost)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(Color.Nexus.surface2)
+                        .clipShape(Capsule())
+                } else if appearance == name {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.Nexus.accent)
+                }
+            }
         }
-        let renderer = UIGraphicsImageRenderer(bounds: window.bounds)
-        pendingScreenshot = renderer.image { ctx in
-            window.layer.render(in: ctx.cgContext)
+        .disabled(!enabled)
+    }
+
+    private func legalRow(_ title: String) -> some View {
+        HStack {
+            Text(title).foregroundColor(.Nexus.ink)
+            Spacer()
+            Image(systemName: "arrow.up.right")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.Nexus.ghost)
         }
-        showFeedback = true
+    }
+
+    // MARK: - Helpers
+
+    private var cacheSizeLabel: String {
+        cacheBytes == 0
+            ? "Empty"
+            : ByteCountFormatter.string(fromByteCount: Int64(cacheBytes), countStyle: .file)
+    }
+
+    private var versionLabel: String {
+        let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let b = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+        return "\(v) (\(b))"
     }
 }
 
@@ -93,6 +190,9 @@ struct FeedbackView: View {
         .navigationTitle("Send Feedback")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                SheetCloseButton { dismiss() }
+            }
             ToolbarItem(placement: .navigationBarTrailing) {
                 if !vm.didSubmit {
                     submitButton

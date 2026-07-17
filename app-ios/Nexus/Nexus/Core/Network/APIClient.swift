@@ -59,6 +59,11 @@ final class APIClient {
         try await delete(.collection(id: id))
     }
 
+    /// Permanently delete the account + all data (App Store 5.1.1(v)).
+    func deleteAccount() async throws {
+        try await delete(.authMe)
+    }
+
     func ingest(url: String, collectionId: UUID, contentType: String = "article") async throws -> IngestResponse {
         let body = IngestRequest(url: url, collectionId: collectionId, contentType: contentType)
         return try await post(.ingest, body: body)

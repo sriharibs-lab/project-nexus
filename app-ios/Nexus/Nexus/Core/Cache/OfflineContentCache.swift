@@ -65,6 +65,32 @@ actor OfflineContentCache {
         try cacheDirectory().appendingPathComponent("\(itemId.uuidString).txt")
     }
 
+    // MARK: - Maintenance (Settings → Data)
+
+    /// Total bytes on disk for cached article text.
+    func diskUsageBytes() -> Int {
+        guard let dir = try? cacheDirectory(),
+              let files = try? FileManager.default.contentsOfDirectory(
+                  at: dir, includingPropertiesForKeys: [.fileSizeKey]
+              )
+        else { return 0 }
+        return files.reduce(0) { total, url in
+            total + ((try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+        }
+    }
+
+    /// Remove every cached entry (memory + disk).
+    func clearAll() {
+        memoryStore.removeAll()
+        memoryOrder.removeAll()
+        guard let dir = try? cacheDirectory(),
+              let files = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
+        else { return }
+        for url in files {
+            try? FileManager.default.removeItem(at: url)
+        }
+    }
+
     // MARK: - Read
 
     /// Returns cached raw_content for `itemId`, checking memory then disk.

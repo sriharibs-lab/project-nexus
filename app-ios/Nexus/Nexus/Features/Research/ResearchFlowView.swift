@@ -223,7 +223,7 @@ private struct FREInputScreen: View {
         // (1F-004; this exact regression has been reintroduced twice).
         .sheet(isPresented: $showAccount) { AccountView() }
         .sheet(isPresented: $showSettings) { SettingsView() }
-        .sheet(isPresented: $showFeedback) { FeedbackView(preloadedScreenshot: nil) }
+        .sheet(isPresented: $showFeedback) { NavigationStack { FeedbackView(preloadedScreenshot: nil) } }
         // Link URL sheet — presented when user taps Website / PDF / YouTube
         .sheet(item: $linkSheetContentType) { contentType in
             LinkURLSheetView(

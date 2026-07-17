@@ -98,7 +98,7 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showingAccount) { AccountView() }
         .sheet(isPresented: $showingSettings) { SettingsView() }
-        .sheet(isPresented: $showingFeedback) { FeedbackView(preloadedScreenshot: nil) }
+        .sheet(isPresented: $showingFeedback) { NavigationStack { FeedbackView(preloadedScreenshot: nil) } }
         .alert("Couldn't delete collection", isPresented: Binding(
             get: { vm.deleteError != nil },
             set: { if !$0 { vm.deleteError = nil } }
@@ -186,16 +186,17 @@ struct HomeView: View {
                 Button {
                     navPath.append(NewCollectionRoute())
                 } label: {
+                    // Claude "+ New chat" proportions (device review 2026-07-16)
                     HStack(spacing: 7) {
                         Image(systemName: "plus")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(size: 15, weight: .semibold))
                         Text("New collection")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(size: 15.5, weight: .semibold))
                             .kerning(-0.2)
                     }
                     .foregroundColor(.white)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 12)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 15)
                     .background(Color.Nexus.ink)
                     .clipShape(Capsule())
                     .shadow(color: .black.opacity(0.22), radius: 12, y: 4)

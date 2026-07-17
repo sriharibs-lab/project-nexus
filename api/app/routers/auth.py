@@ -642,6 +642,33 @@ async def dev_login(db: AsyncSession = Depends(get_db)) -> OTPVerifyResponse:
     )
 
 
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_account(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """
+    Permanently delete the authenticated user's account and ALL their data
+    (collections, sources, tags, embeddings, telemetry). App Store guideline
+    5.1.1(v) requires in-app account deletion — this backs that flow.
+    """
+    result = await db.execute(select(User).where(User.supabase_id == current_user["supabase_id"]))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    # ai_telemetry has a plain FK (no ORM relationship/cascade) — clear first
+    from sqlalchemy import delete as sa_delete
+
+    from app.models.ai_telemetry import AiTelemetry
+
+    await db.execute(sa_delete(AiTelemetry).where(AiTelemetry.user_id == user.id))
+    # ORM cascades handle collections, items, tags, embeddings, profiles
+    await db.delete(user)
+    await db.commit()
+    logger.info("Account deleted: user=%s", user.id)
+
+
 @router.get("/me", response_model=UserProfile, status_code=status.HTTP_200_OK)
 async def get_me(
     current_user: dict = Depends(get_current_user),

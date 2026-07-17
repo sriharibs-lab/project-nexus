@@ -70,6 +70,10 @@ private struct RootView: View {
             return AnyView(AuthView())
         case "glass":
             return AnyView(NavigationStack { GlassPlaygroundView() })
+        case "account":
+            return AnyView(AccountView().environmentObject(AuthManager.shared))
+        case "settings":
+            return AnyView(SettingsView().environmentObject(AuthManager.shared))
         case "home":
             return AnyView(
                 HomeView(viewModel: HomeViewModel(previewCollections: NexusCollection.previewList))

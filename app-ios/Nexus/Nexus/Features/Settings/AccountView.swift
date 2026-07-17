@@ -2,16 +2,17 @@ import SwiftUI
 
 // MARK: - AccountView
 //
-// Presented as a sheet from the avatar button in HomeView.
-// Shows: avatar circle with user initials, display name (if available),
-// email (if available), and a Sign Out button.
-//
-// Design: inline surface (solid card + hairline) — not Liquid Glass.
-// Liquid Glass is for floating menus; a sheet is a full-screen surface.
+// IDENTITY & ACCESS only (approved IA tree 2026-07-16): profile header,
+// plan row, sign out, delete account. App behavior lives in Settings.
+// Sheet chrome: iOS-native X-circle dismiss + swipe down.
 
 struct AccountView: View {
     @ObservedObject private var authManager = AuthManager.shared
     @Environment(\.dismiss) private var dismiss
+
+    @State private var confirmingDelete = false
+    @State private var deleting = false
+    @State private var deleteError: String?
 
     var body: some View {
         NavigationStack {
@@ -22,12 +23,22 @@ struct AccountView: View {
                     profileSection
                         .padding(.top, NexusSpacing.xxxl)
 
-                    settingsSection
+                    planRow
                         .padding(.top, NexusSpacing.xxl)
 
                     Spacer()
 
-                    signOutSection
+                    if let deleteError {
+                        Text(deleteError)
+                            .font(.Nexus.caption)
+                            .foregroundColor(.Nexus.destructive)
+                            .multilineTextAlignment(.center)
+                            .padding(.bottom, NexusSpacing.sm)
+                    }
+
+                    signOutButton
+                    deleteAccountButton
+                        .padding(.top, NexusSpacing.sm)
                         .padding(.bottom, NexusSpacing.safeBottom + NexusSpacing.lg)
                 }
                 .padding(.horizontal, NexusSpacing.standard)
@@ -36,22 +47,30 @@ struct AccountView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { dismiss() }
-                        .font(.Nexus.labelLarge)
-                        .foregroundColor(.Nexus.accent)
+                    SheetCloseButton { dismiss() }
                 }
+            }
+            .confirmationDialog(
+                "Delete your account?",
+                isPresented: $confirmingDelete,
+                titleVisibility: .visible
+            ) {
+                Button("Delete account and all data", role: .destructive) {
+                    Task { await deleteAccount() }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This permanently deletes your collections, sources, and account. It cannot be undone.")
             }
         }
     }
 
-    // MARK: - Profile section
+    // MARK: - Profile
 
     private var profileSection: some View {
         VStack(spacing: NexusSpacing.lg) {
-            // Avatar circle
             AvatarCircle(initials: initials, size: 72)
 
-            // Name + email
             VStack(spacing: NexusSpacing.xs) {
                 if !authManager.displayName.isEmpty {
                     Text(authManager.displayName)
@@ -73,65 +92,93 @@ struct AccountView: View {
         }
     }
 
-    // MARK: - Settings section
-    //
-    // SettingsView (incl. Glass Playground) became unreachable when the
-    // avatar bloom menu was replaced by this sheet (1G-001) — this row
-    // restores the path: avatar → Account → Settings.
+    // MARK: - Plan (inert placeholder — subscription slot post-beta)
 
-    private var settingsSection: some View {
-        NavigationLink {
-            SettingsView()
-        } label: {
-            HStack(spacing: NexusSpacing.sm) {
-                Image(systemName: "gearshape")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(.Nexus.muted)
-                Text("Settings")
-                    .font(.Nexus.labelLarge)
-                    .foregroundColor(.Nexus.ink)
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.Nexus.ghost)
-            }
-            .padding(.horizontal, NexusSpacing.standard)
-            .frame(height: NexusSpacing.buttonHeight)
-            .background(Color.Nexus.cardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: NexusRadius.md, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: NexusRadius.md, style: .continuous)
-                    .stroke(Color.Nexus.border, lineWidth: NexusBorder.hair)
-            )
+    private var planRow: some View {
+        HStack(spacing: NexusSpacing.sm) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundColor(.Nexus.accent)
+            Text("Plan")
+                .font(.Nexus.labelLarge)
+                .foregroundColor(.Nexus.ink)
+            Spacer()
+            Text("Free · Beta")
+                .font(.Nexus.bodySmall)
+                .foregroundColor(.Nexus.muted)
         }
-        .buttonStyle(PressableCardStyle())
+        .padding(.horizontal, NexusSpacing.standard)
+        .frame(height: NexusSpacing.buttonHeight)
+        .background(Color.Nexus.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: NexusRadius.md, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: NexusRadius.md, style: .continuous)
+                .stroke(Color.Nexus.border, lineWidth: NexusBorder.hair)
+        )
     }
 
-    // MARK: - Sign Out section
+    // MARK: - Sign out / delete
 
-    private var signOutSection: some View {
-        Button(role: .destructive) {
+    private var signOutButton: some View {
+        Button {
             authManager.signOut()
             dismiss()
         } label: {
             Text("Sign Out")
                 .font(.Nexus.labelLarge)
-                .foregroundColor(.Nexus.destructive)
+                .foregroundColor(.Nexus.ink)
                 .frame(maxWidth: .infinity)
                 .frame(height: NexusSpacing.buttonHeight)
-                .background(Color.Nexus.destructive.opacity(0.07))
+                .background(Color.Nexus.cardBackground)
                 .clipShape(RoundedRectangle(cornerRadius: NexusRadius.md, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: NexusRadius.md, style: .continuous)
-                        .stroke(Color.Nexus.destructive.opacity(0.18), lineWidth: NexusBorder.hair)
+                        .stroke(Color.Nexus.border, lineWidth: NexusBorder.hair)
                 )
+        }
+        .buttonStyle(PressableCardStyle())
+    }
+
+    private var deleteAccountButton: some View {
+        Button(role: .destructive) {
+            confirmingDelete = true
+        } label: {
+            ZStack {
+                if deleting {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .Nexus.destructive))
+                } else {
+                    Text("Delete Account")
+                        .font(.Nexus.labelLarge)
+                        .foregroundColor(.Nexus.destructive)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: NexusSpacing.buttonHeight)
+            .background(Color.Nexus.destructive.opacity(0.07))
+            .clipShape(RoundedRectangle(cornerRadius: NexusRadius.md, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: NexusRadius.md, style: .continuous)
+                    .stroke(Color.Nexus.destructive.opacity(0.18), lineWidth: NexusBorder.hair)
+            )
+        }
+        .disabled(deleting)
+    }
+
+    private func deleteAccount() async {
+        deleting = true
+        defer { deleting = false }
+        do {
+            try await APIClient.shared.deleteAccount()
+            authManager.signOut()
+            dismiss()
+        } catch {
+            deleteError = "Couldn't delete your account. Please try again."
         }
     }
 
     // MARK: - Helpers
 
-    /// Up to two initials derived from displayName, falling back to email prefix,
-    /// then "?" if neither is available.
     private var initials: String {
         if !authManager.displayName.isEmpty {
             let parts = authManager.displayName.split(separator: " ").prefix(2)
@@ -141,6 +188,30 @@ struct AccountView: View {
             return String(first).uppercased()
         }
         return "?"
+    }
+}
+
+// MARK: - Sheet close button (shared chrome)
+//
+// The iOS-native grey X-in-circle (Maps/Weather sheets). Swipe-down still
+// works — this is the explicit affordance.
+
+struct SheetCloseButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Circle()
+                    .fill(Color.Nexus.surface2)
+                    .frame(width: 30, height: 30)
+                Image(systemName: "xmark")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.Nexus.muted)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Close")
     }
 }
 

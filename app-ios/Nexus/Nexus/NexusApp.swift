@@ -79,7 +79,8 @@ private struct RootView: View {
             return AnyView(
                 ResearchFlowView(
                     onComplete: { _ in },
-                    showsBackButton: args.contains("-back")
+                    showsBackButton: args.contains("-back"),
+                    showsAvatar: !args.contains("-back")
                 )
                 .environmentObject(AuthManager.shared)
             )

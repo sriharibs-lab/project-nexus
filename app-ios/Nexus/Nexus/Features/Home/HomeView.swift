@@ -16,13 +16,14 @@ struct HomeView: View {
     @StateObject private var vm: HomeViewModel
     @ObservedObject private var authManager = AuthManager.shared
 
-    @State private var showingResearchFlow = false
     @State private var showingAccount = false
     @State private var showingSettings = false
     @State private var showingFeedback = false
-    @State private var showAvatarMenu = false
     @State private var navPath = NavigationPath()
     @FocusState private var searchFocused: Bool
+
+    /// Route token for the pushed New-collection screen.
+    private struct NewCollectionRoute: Hashable {}
 
     @MainActor
     init(viewModel: HomeViewModel? = nil) {
@@ -62,55 +63,42 @@ struct HomeView: View {
             .navigationDestination(for: NexusCollection.self) { collection in
                 CollectionView(collection: collection)
             }
-        }
-        .task { await vm.load() }
-        #if DEBUG
-        // `-preview home -menu`: open the avatar menu for screenshots
-        .onAppear {
-            if ProcessInfo.processInfo.arguments.contains("-menu") {
-                showAvatarMenu = true
+            // New collection PUSHES from the side (device review 2026-07-16 —
+            // the bottom-sheet cover felt wrong). Pushed instance: back button,
+            // no avatar (avatar lives on landing pages only).
+            .navigationDestination(for: NewCollectionRoute.self) { _ in
+                ResearchFlowView(
+                    onComplete: { collectionId in
+                        Task {
+                            await vm.load()
+                            if let found = vm.collections.first(where: { $0.id == collectionId }) {
+                                navPath.append(found)
+                            }
+                        }
+                    },
+                    showsBackButton: true,
+                    showsAvatar: false
+                )
+                .toolbar(.hidden, for: .navigationBar)
             }
         }
-        #endif
+        .task { await vm.load() }
     }
 
     // MARK: - Collections screen
 
     private var collectionsScreen: some View {
-        ZStack(alignment: .topTrailing) {
+        ZStack {
             NexusBackground()
 
             VStack(spacing: 0) {
                 header
                 collectionList
             }
-
-            // Shared bloom menu (scrim + top-right bloom, locked 3-row card)
-            AvatarBloomOverlay(
-                isPresented: showAvatarMenu,
-                topInset: 52,
-                onDismiss: closeAvatarMenu
-            ) {
-                NexusAvatarMenuCard(
-                    onAccount: { closeAvatarMenu(); presentAfterMenu { showingAccount = true } },
-                    onSettings: { closeAvatarMenu(); presentAfterMenu { showingSettings = true } },
-                    onFeedback: { closeAvatarMenu(); presentAfterMenu { showingFeedback = true } }
-                )
-            }
         }
         .sheet(isPresented: $showingAccount) { AccountView() }
         .sheet(isPresented: $showingSettings) { SettingsView() }
         .sheet(isPresented: $showingFeedback) { FeedbackView(preloadedScreenshot: nil) }
-        .fullScreenCover(isPresented: $showingResearchFlow) {
-            ResearchFlowView(onComplete: { collectionId in
-                Task {
-                    await vm.load()
-                    if let found = vm.collections.first(where: { $0.id == collectionId }) {
-                        navPath.append(found)
-                    }
-                }
-            }, showsBackButton: true)
-        }
         .alert("Couldn't delete collection", isPresented: Binding(
             get: { vm.deleteError != nil },
             set: { if !$0 { vm.deleteError = nil } }
@@ -121,7 +109,7 @@ struct HomeView: View {
         }
     }
 
-    // Header: title left, avatar right (locked mock)
+    // Header: title left, avatar right (locked mock; native menu = Weather style)
     private var header: some View {
         HStack {
             Text("Nexus")
@@ -129,25 +117,15 @@ struct HomeView: View {
                 .kerning(-0.5)
                 .foregroundColor(.Nexus.ink)
             Spacer()
-            NexusAvatarButton(active: showAvatarMenu) {
-                withAnimation(.spring(response: 0.22, dampingFraction: 0.86)) {
-                    showAvatarMenu = true
-                }
-            }
+            NexusAvatarMenu(
+                onAccount: { showingAccount = true },
+                onSettings: { showingSettings = true },
+                onFeedback: { showingFeedback = true }
+            )
         }
         .padding(.horizontal, NexusSpacing.sideGutter)
         .padding(.top, 8)
         .padding(.bottom, 4)
-    }
-
-    private func closeAvatarMenu() {
-        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
-            showAvatarMenu = false
-        }
-    }
-
-    private func presentAfterMenu(_ present: @escaping () -> Void) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22, execute: present)
     }
 
     // MARK: - Collection list (native List for Weather-style swipe delete)
@@ -206,7 +184,7 @@ struct HomeView: View {
             HStack {
                 Spacer()
                 Button {
-                    showingResearchFlow = true
+                    navPath.append(NewCollectionRoute())
                 } label: {
                     HStack(spacing: 7) {
                         Image(systemName: "plus")

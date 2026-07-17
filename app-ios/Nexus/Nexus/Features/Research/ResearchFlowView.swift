@@ -35,6 +35,9 @@ struct ResearchFlowView: View {
     /// back button. The zero-collections landing keeps it hidden (nothing
     /// to go back to).
     var showsBackButton = false
+    /// Avatar lives on LANDING pages only (zero-collections FRE, Home).
+    /// The pushed New-collection instance hides it (device review 2026-07-16).
+    var showsAvatar = true
     @Environment(\.dismiss) private var dismiss
 
     private var sheetVisible: Bool {
@@ -48,7 +51,12 @@ struct ResearchFlowView: View {
         GeometryReader { geo in
             ZStack(alignment: .bottom) {
                 // ── Input screen — scales back when the sheet rises ──
-                FREInputScreen(vm: vm, showsBackButton: showsBackButton, onBack: { dismiss() })
+                FREInputScreen(
+                    vm: vm,
+                    showsBackButton: showsBackButton,
+                    showsAvatar: showsAvatar,
+                    onBack: { dismiss() }
+                )
                     .scaleEffect(sheetVisible ? 0.945 : 1.0)
                     .clipShape(RoundedRectangle(cornerRadius: sheetVisible ? 22 : 0, style: .continuous))
                     .animation(.spring(response: 0.52, dampingFraction: 0.86), value: sheetVisible)
@@ -103,24 +111,12 @@ struct ResearchFlowView: View {
 private struct FREInputScreen: View {
     @ObservedObject var vm: ResearchViewModel
     var showsBackButton = false
+    var showsAvatar = true
     var onBack: () -> Void = {}
     @EnvironmentObject private var authManager: AuthManager
-    @State private var showAvatarMenu = false
     @State private var showAccount = false
     @State private var showSettings = false
     @State private var showFeedback = false
-
-    private func closeAvatarMenu() {
-        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
-            showAvatarMenu = false
-        }
-    }
-
-    /// Presenting a sheet in the same tick as the bloom-close animation makes
-    /// the menu vanish without its collapse; stagger slightly (June review).
-    private func presentAfterMenu(_ present: @escaping () -> Void) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22, execute: present)
-    }
     // Local state scopes TextField rerenders to FREComposer only — avoids
     // rerendering the entire screen on every keystroke.
     @State private var composerText = ""
@@ -211,27 +207,16 @@ private struct FREInputScreen: View {
                     .padding(.leading, NexusSpacing.standard)
                 }
                 Spacer()
-                NexusAvatarButton(active: showAvatarMenu) {
-                    withAnimation(.spring(response: 0.22, dampingFraction: 0.86)) {
-                        showAvatarMenu = true
-                    }
+                if showsAvatar {
+                    NexusAvatarMenu(
+                        onAccount: { showAccount = true },
+                        onSettings: { showSettings = true },
+                        onFeedback: { showFeedback = true }
+                    )
+                    .padding(.trailing, NexusSpacing.standard)
                 }
-                .padding(.trailing, NexusSpacing.standard)
             }
             .padding(.top, NexusSpacing.safeTop + 6)
-
-            // Shared bloom menu (scrim + top-right bloom, locked 3-row card)
-            AvatarBloomOverlay(
-                isPresented: showAvatarMenu,
-                topInset: NexusSpacing.safeTop + 6 + 36 + 8,
-                onDismiss: closeAvatarMenu
-            ) {
-                NexusAvatarMenuCard(
-                    onAccount: { closeAvatarMenu(); presentAfterMenu { showAccount = true } },
-                    onSettings: { closeAvatarMenu(); presentAfterMenu { showSettings = true } },
-                    onFeedback: { closeAvatarMenu(); presentAfterMenu { showFeedback = true } }
-                )
-            }
         }
         // NOTE: never attach a screen-wide simultaneous resignFirstResponder
         // gesture here — it steals TextField taps and freezes the keyboard

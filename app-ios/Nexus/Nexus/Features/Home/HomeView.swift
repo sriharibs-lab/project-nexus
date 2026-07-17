@@ -63,9 +63,9 @@ struct HomeView: View {
             .navigationDestination(for: NexusCollection.self) { collection in
                 CollectionView(collection: collection)
             }
-            // New collection PUSHES from the side (device review 2026-07-16 —
-            // the bottom-sheet cover felt wrong). Pushed instance: back button,
-            // no avatar (avatar lives on landing pages only).
+            // New collection PUSHES from the side (device review 2026-07-16).
+            // Native nav bar back button (glass + swipe-back) — NOT a custom
+            // circular chevron. No avatar (avatar = landing pages only).
             .navigationDestination(for: NewCollectionRoute.self) { _ in
                 ResearchFlowView(
                     onComplete: { collectionId in
@@ -76,10 +76,11 @@ struct HomeView: View {
                             }
                         }
                     },
-                    showsBackButton: true,
+                    showsBackButton: false,
                     showsAvatar: false
                 )
-                .toolbar(.hidden, for: .navigationBar)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbarBackground(.hidden, for: .navigationBar)
             }
         }
         .task { await vm.load() }

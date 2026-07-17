@@ -20,13 +20,14 @@ struct SettingsSectionLabel: View {
 }
 
 /// White rounded container, no border — a soft shadow reads it on the bloom bg.
+/// Metrics tuned to ChatGPT iOS (2026-07-16): radius 12, near-flat.
 struct SettingsCard<Content: View>: View {
     @ViewBuilder let content: Content
     var body: some View {
         VStack(spacing: 0) { content }
             .background(Color.Nexus.cardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 1)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .shadow(color: .black.opacity(0.04), radius: 2, x: 0, y: 1)
     }
 }
 
@@ -52,11 +53,12 @@ struct SettingsRow: View {
             action?()
         } label: {
             VStack(spacing: 0) {
-                HStack(spacing: 13) {
+                HStack(spacing: 14) {
+                    // ChatGPT-matched: thin line icon, ~16pt (was reading too big)
                     Image(systemName: icon)
-                        .font(.system(size: 18, weight: .regular))
+                        .font(.system(size: 16, weight: .regular))
                         .foregroundColor(tint)
-                        .frame(width: 22, alignment: .center)
+                        .frame(width: 24, alignment: .center)
 
                     Text(label)
                         .font(.system(size: 16))
@@ -67,7 +69,7 @@ struct SettingsRow: View {
 
                     if let value {
                         Text(value)
-                            .font(.system(size: 15))
+                            .font(.system(size: 16))
                             .kerning(-0.2)
                             .foregroundColor(.Nexus.faint)
                             .lineLimit(1)
@@ -75,7 +77,7 @@ struct SettingsRow: View {
                     switch trailing {
                     case .chevron:
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(.Nexus.ghost)
                     case .external:
                         Image(systemName: "arrow.up.right")
@@ -85,8 +87,8 @@ struct SettingsRow: View {
                         EmptyView()
                     }
                 }
-                .padding(.horizontal, 15)
-                .padding(.vertical, 13)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
                 .contentShape(Rectangle())
 
                 // inset separator — aligns under the label, ChatGPT-style
@@ -94,7 +96,7 @@ struct SettingsRow: View {
                     Rectangle()
                         .fill(Color.Nexus.hair)
                         .frame(height: NexusBorder.hair)
-                        .padding(.leading, 50)
+                        .padding(.leading, 54)
                 }
             }
         }

@@ -15,7 +15,6 @@ struct SettingsView: View {
     /// undesigned — Dark/System rows are visible but disabled).
     @AppStorage("nx_appearance") private var appearance = "Light"
     @State private var cacheBytes: Int = 0
-    @State private var confirmingClearCache = false
 
     var body: some View {
         NavigationStack {
@@ -30,15 +29,19 @@ struct SettingsView: View {
                             appearanceMenuRow
                         }
 
-                        // ── Data ──
+                        // ── Data ── Offline reading cache pushes a detail where
+                        // the red Clear-cache action lives (device review 2026-07-16)
                         SettingsSectionLabel(text: "Data")
                             .padding(.top, NexusSpacing.lg)
                         SettingsCard {
-                            SettingsRow(icon: "internaldrive", label: "Offline reading cache",
-                                        value: cacheSizeLabel)
-                            SettingsRow(icon: "trash", label: "Clear cache",
-                                        showsDivider: false,
-                                        action: cacheBytes == 0 ? nil : { confirmingClearCache = true })
+                            NavigationLink {
+                                OfflineCacheDetailView(bytes: $cacheBytes)
+                            } label: {
+                                SettingsRow(icon: "internaldrive", label: "Offline reading cache",
+                                            value: cacheSizeLabel, trailing: .chevron, showsDivider: false)
+                                    .allowsHitTesting(false)
+                            }
+                            .buttonStyle(.plain)
                         }
 
                         // ── About ──
@@ -87,21 +90,6 @@ struct SettingsView: View {
             .task {
                 cacheBytes = await OfflineContentCache.shared.diskUsageBytes()
             }
-            .confirmationDialog(
-                "Clear offline reading cache?",
-                isPresented: $confirmingClearCache,
-                titleVisibility: .visible
-            ) {
-                Button("Clear \(cacheSizeLabel)", role: .destructive) {
-                    Task {
-                        await OfflineContentCache.shared.clearAll()
-                        cacheBytes = await OfflineContentCache.shared.diskUsageBytes()
-                    }
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("Saved articles will re-download when you open them.")
-            }
         }
     }
 
@@ -109,36 +97,36 @@ struct SettingsView: View {
 
     private var appearanceMenuRow: some View {
         Menu {
-            Button {
-                appearance = "Light"
-            } label: {
-                Label("Light", systemImage: appearance == "Light" ? "checkmark" : "")
-            }
-            Button {} label: { Text("Dark  ·  Soon") }.disabled(true)
-            Button {} label: { Text("System  ·  Soon") }.disabled(true)
+            // No empty systemImage — an invalid symbol made the popover render
+            // detached/centered (device review 2026-07-16). Selected item gets
+            // the checkmark; Dark/System are disabled until the palette exists.
+            Button { appearance = "Light" } label: { Label("Light", systemImage: "checkmark") }
+            Button {} label: { Text("Dark (soon)") }.disabled(true)
+            Button {} label: { Text("System (soon)") }.disabled(true)
         } label: {
-            HStack(spacing: 13) {
+            HStack(spacing: 14) {
                 Image(systemName: "circle.lefthalf.filled")
-                    .font(.system(size: 18, weight: .regular))
+                    .font(.system(size: 16, weight: .regular))
                     .foregroundColor(.Nexus.ink)
-                    .frame(width: 22)
+                    .frame(width: 24, alignment: .center)
                 Text("Appearance")
                     .font(.system(size: 16))
                     .kerning(-0.2)
                     .foregroundColor(.Nexus.ink)
                 Spacer(minLength: NexusSpacing.sm)
                 Text(appearance)
-                    .font(.system(size: 15))
+                    .font(.system(size: 16))
                     .kerning(-0.2)
                     .foregroundColor(.Nexus.faint)
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.Nexus.ghost)
             }
-            .padding(.horizontal, 15)
-            .padding(.vertical, 13)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
             .contentShape(Rectangle())
         }
+        .menuStyle(.button)
         .buttonStyle(.plain)
     }
 
@@ -154,6 +142,62 @@ struct SettingsView: View {
         let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
         let b = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
         return "\(v) (\(b))"
+    }
+}
+
+// MARK: - Offline cache detail (Data → Offline reading cache)
+//
+// The red Clear-cache action lives HERE, inside the setting (device review
+// 2026-07-16), not as a loose row in the Settings list.
+
+private struct OfflineCacheDetailView: View {
+    @Binding var bytes: Int
+    @State private var clearing = false
+
+    private var sizeLabel: String {
+        bytes == 0 ? "Empty" : ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)
+    }
+
+    var body: some View {
+        ZStack {
+            NexusBackground()
+
+            VStack(spacing: 0) {
+                SettingsCard {
+                    SettingsRow(icon: "internaldrive", label: "Cached articles",
+                                value: sizeLabel, showsDivider: false)
+                }
+                .padding(.top, NexusSpacing.md)
+
+                Text("Nexus keeps saved articles on your device so you can read them offline. Clearing this frees space — articles re-download when you next open them.")
+                    .font(.Nexus.bodySmall)
+                    .foregroundColor(.Nexus.muted)
+                    .padding(.horizontal, 18)
+                    .padding(.top, NexusSpacing.md)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if bytes > 0 {
+                    SettingsCard {
+                        SettingsRow(icon: "trash", label: clearing ? "Clearing…" : "Clear cache",
+                                    danger: true, showsDivider: false) {
+                            guard !clearing else { return }
+                            clearing = true
+                            Task {
+                                await OfflineContentCache.shared.clearAll()
+                                bytes = await OfflineContentCache.shared.diskUsageBytes()
+                                clearing = false
+                            }
+                        }
+                    }
+                    .padding(.top, NexusSpacing.lg)
+                }
+
+                Spacer()
+            }
+            .padding(.horizontal, NexusSpacing.standard)
+        }
+        .navigationTitle("Offline reading")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

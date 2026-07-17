@@ -19,29 +19,47 @@ struct AccountView: View {
             ZStack {
                 NexusBackground()
 
-                VStack(spacing: 0) {
-                    profileSection
-                        .padding(.top, NexusSpacing.xxxl)
+                ScrollView {
+                    VStack(spacing: 0) {
+                        profileSection
+                            .padding(.top, NexusSpacing.md)
+                            .padding(.bottom, NexusSpacing.xl)
 
-                    planRow
-                        .padding(.top, NexusSpacing.xxl)
+                        SettingsSectionLabel(text: "Account")
+                        SettingsCard {
+                            SettingsRow(icon: "envelope", label: "Email",
+                                        value: authManager.email.isEmpty ? "—" : authManager.email)
+                            SettingsRow(icon: "sparkles", label: "Subscription",
+                                        value: "Free · Beta", trailing: .chevron,
+                                        showsDivider: false, action: {})
+                        }
 
-                    Spacer()
+                        // Log out — its own red single-row card, door icon
+                        SettingsCard {
+                            SettingsRow(icon: "rectangle.portrait.and.arrow.right",
+                                        label: "Log out", danger: true,
+                                        showsDivider: false) {
+                                authManager.signOut()
+                                dismiss()
+                            }
+                        }
+                        .padding(.top, NexusSpacing.lg)
 
-                    if let deleteError {
-                        Text(deleteError)
-                            .font(.Nexus.caption)
-                            .foregroundColor(.Nexus.destructive)
-                            .multilineTextAlignment(.center)
-                            .padding(.bottom, NexusSpacing.sm)
+                        if let deleteError {
+                            Text(deleteError)
+                                .font(.Nexus.caption)
+                                .foregroundColor(.Nexus.destructive)
+                                .multilineTextAlignment(.center)
+                                .padding(.top, NexusSpacing.md)
+                        }
+
+                        // Delete account — separate text button OUTSIDE the list
+                        deleteAccountButton
+                            .padding(.top, NexusSpacing.xl)
                     }
-
-                    signOutButton
-                    deleteAccountButton
-                        .padding(.top, NexusSpacing.sm)
-                        .padding(.bottom, NexusSpacing.safeBottom + NexusSpacing.lg)
+                    .padding(.horizontal, NexusSpacing.standard)
+                    .padding(.bottom, NexusSpacing.xxxl)
                 }
-                .padding(.horizontal, NexusSpacing.standard)
             }
             .navigationTitle("Account")
             .navigationBarTitleDisplayMode(.inline)
@@ -68,79 +86,28 @@ struct AccountView: View {
     // MARK: - Profile
 
     private var profileSection: some View {
-        VStack(spacing: NexusSpacing.lg) {
-            AvatarCircle(initials: initials, size: 72)
+        VStack(spacing: NexusSpacing.md) {
+            AvatarCircle(initials: initials, size: 84)
 
-            VStack(spacing: NexusSpacing.xs) {
-                if !authManager.displayName.isEmpty {
-                    Text(authManager.displayName)
-                        .font(.Nexus.headingSmall)
-                        .foregroundColor(.Nexus.ink)
-                        .kerning(NexusKerning.tighter)
-                }
-
-                if !authManager.email.isEmpty {
-                    Text(authManager.email)
-                        .font(.Nexus.bodySmall)
-                        .foregroundColor(.Nexus.muted)
-                } else {
-                    Text("Apple ID")
-                        .font(.Nexus.bodySmall)
-                        .foregroundColor(.Nexus.ghost)
-                }
+            if !authManager.displayName.isEmpty {
+                Text(authManager.displayName)
+                    .font(.system(size: 19, weight: .semibold))
+                    .kerning(-0.4)
+                    .foregroundColor(.Nexus.ink)
+            } else if !authManager.email.isEmpty {
+                Text(authManager.email)
+                    .font(.system(size: 17, weight: .semibold))
+                    .kerning(-0.3)
+                    .foregroundColor(.Nexus.ink)
             }
         }
+        .frame(maxWidth: .infinity)
     }
 
-    // MARK: - Plan (inert placeholder — subscription slot post-beta)
-
-    private var planRow: some View {
-        HStack(spacing: NexusSpacing.sm) {
-            Image(systemName: "sparkles")
-                .font(.system(size: 15, weight: .medium))
-                .foregroundColor(.Nexus.accent)
-            Text("Plan")
-                .font(.Nexus.labelLarge)
-                .foregroundColor(.Nexus.ink)
-            Spacer()
-            Text("Free · Beta")
-                .font(.Nexus.bodySmall)
-                .foregroundColor(.Nexus.muted)
-        }
-        .padding(.horizontal, NexusSpacing.standard)
-        .frame(height: NexusSpacing.buttonHeight)
-        .background(Color.Nexus.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: NexusRadius.md, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: NexusRadius.md, style: .continuous)
-                .stroke(Color.Nexus.border, lineWidth: NexusBorder.hair)
-        )
-    }
-
-    // MARK: - Sign out / delete
-
-    private var signOutButton: some View {
-        Button {
-            authManager.signOut()
-            dismiss()
-        } label: {
-            Text("Sign Out")
-                .font(.Nexus.labelLarge)
-                .foregroundColor(.Nexus.ink)
-                .frame(maxWidth: .infinity)
-                .frame(height: NexusSpacing.buttonHeight)
-                .background(Color.Nexus.cardBackground)
-                .clipShape(RoundedRectangle(cornerRadius: NexusRadius.md, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: NexusRadius.md, style: .continuous)
-                        .stroke(Color.Nexus.border, lineWidth: NexusBorder.hair)
-                )
-        }
-        .buttonStyle(PressableCardStyle())
-    }
+    // MARK: - Delete (separate button)
 
     private var deleteAccountButton: some View {
-        Button(role: .destructive) {
+        Button {
             confirmingDelete = true
         } label: {
             ZStack {
@@ -148,20 +115,17 @@ struct AccountView: View {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: .Nexus.destructive))
                 } else {
-                    Text("Delete Account")
-                        .font(.Nexus.labelLarge)
+                    Text("Delete account")
+                        .font(.system(size: 15.5, weight: .medium))
+                        .kerning(-0.2)
                         .foregroundColor(.Nexus.destructive)
                 }
             }
             .frame(maxWidth: .infinity)
-            .frame(height: NexusSpacing.buttonHeight)
-            .background(Color.Nexus.destructive.opacity(0.07))
-            .clipShape(RoundedRectangle(cornerRadius: NexusRadius.md, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: NexusRadius.md, style: .continuous)
-                    .stroke(Color.Nexus.destructive.opacity(0.18), lineWidth: NexusBorder.hair)
-            )
+            .padding(.vertical, NexusSpacing.md)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
         .disabled(deleting)
     }
 

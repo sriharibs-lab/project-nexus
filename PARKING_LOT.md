@@ -1,6 +1,7 @@
 # Parking Lot
 
 - [ ] **Account screen completion** — per approved IA tree (2026-07-16): plan row ("Free · Beta" placeholder), Sign out, **Delete account (red, confirmed) — App Store guideline 5.1.1(v) REQUIRES in-app account deletion; needs a backend endpoint too. Submission blocker.**
+- [ ] **Shake-to-report gesture** — Feedback sheet has a "Shake iPhone to report a bug" toggle (ChatGPT parity), stored in `nx_shake_feedback` AppStorage, but the actual motion detection (UIWindow.motionEnded → present FeedbackView) isn't wired yet. (added 2026-07-16)
 - [ ] **Settings contents build-out** — per approved tree: Appearance (Light live; Dark/System "soon" until dark palette designed), Data (clear offline reading cache w/ size), About (version + build stamp), Legal (Terms/Privacy — resolves login stub links), DEBUG-only Developer section (Glass Playground). (added 2026-07-16)
 
 Accumulated follow-ups that must not block current work but must not be forgotten.

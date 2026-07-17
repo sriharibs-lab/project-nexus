@@ -10,6 +10,7 @@ import UIKit
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     /// Recorded preference; the app currently forces Light (dark palette is
     /// undesigned — Dark/System rows are visible but disabled).
     @AppStorage("nx_appearance") private var appearance = "Light"
@@ -21,67 +22,60 @@ struct SettingsView: View {
             ZStack {
                 NexusBackground()
 
-                List {
-                    Section("Appearance") {
-                        appearanceRow("Light", enabled: true)
-                        appearanceRow("Dark", enabled: false)
-                        appearanceRow("System", enabled: false)
-                    }
+                ScrollView {
+                    VStack(spacing: 0) {
+                        // ── App ──
+                        SettingsSectionLabel(text: "App")
+                        SettingsCard {
+                            appearanceMenuRow
+                        }
 
-                    Section("Data") {
-                        HStack {
-                            Text("Offline reading cache")
-                                .foregroundColor(.Nexus.ink)
-                            Spacer()
-                            Text(cacheSizeLabel)
-                                .foregroundColor(.Nexus.muted)
-                                .font(.Nexus.bodySmall)
+                        // ── Data ──
+                        SettingsSectionLabel(text: "Data")
+                            .padding(.top, NexusSpacing.lg)
+                        SettingsCard {
+                            SettingsRow(icon: "internaldrive", label: "Offline reading cache",
+                                        value: cacheSizeLabel)
+                            SettingsRow(icon: "trash", label: "Clear cache",
+                                        showsDivider: false,
+                                        action: cacheBytes == 0 ? nil : { confirmingClearCache = true })
                         }
-                        Button("Clear cache", role: .destructive) {
-                            confirmingClearCache = true
-                        }
-                        .disabled(cacheBytes == 0)
-                    }
 
-                    Section("About") {
-                        HStack {
-                            Text("Version").foregroundColor(.Nexus.ink)
-                            Spacer()
-                            Text(versionLabel)
-                                .foregroundColor(.Nexus.muted)
-                                .font(.Nexus.bodySmall)
+                        // ── About ──
+                        SettingsSectionLabel(text: "About")
+                            .padding(.top, NexusSpacing.lg)
+                        SettingsCard {
+                            SettingsRow(icon: "info.circle", label: "Version", value: versionLabel)
+                            SettingsRow(icon: "doc.text", label: "Terms of Service", trailing: .external) {
+                                openURL(URL(string: "https://nexus.app/terms")!)
+                            }
+                            SettingsRow(icon: "hand.raised", label: "Privacy Policy", trailing: .external,
+                                        showsDivider: false) {
+                                openURL(URL(string: "https://nexus.app/privacy")!)
+                            }
                         }
+
                         #if DEBUG
-                        HStack {
-                            Text("Build stamp").foregroundColor(.Nexus.ink)
-                            Spacer()
-                            Text(BuildStamp.short)
-                                .foregroundColor(.Nexus.muted)
-                                .font(.system(size: 13, design: .monospaced))
+                        SettingsSectionLabel(text: "Developer")
+                            .padding(.top, NexusSpacing.lg)
+                        SettingsCard {
+                            SettingsRow(icon: "sparkle", label: "Build stamp", value: BuildStamp.short,
+                                        showsDivider: true, action: nil)
+                            NavigationLink {
+                                GlassPlaygroundView()
+                            } label: {
+                                SettingsRow(icon: "circle.hexagongrid", label: "Glass Playground",
+                                            trailing: .chevron, showsDivider: false)
+                                    .allowsHitTesting(false)
+                            }
+                            .buttonStyle(.plain)
                         }
                         #endif
                     }
-
-                    // Stub pages tracked in PARKING_LOT.md — rows are the
-                    // permanent home; destinations go live with the domain.
-                    Section("Legal") {
-                        Link(destination: URL(string: "https://nexus.app/terms")!) {
-                            legalRow("Terms of Service")
-                        }
-                        Link(destination: URL(string: "https://nexus.app/privacy")!) {
-                            legalRow("Privacy Policy")
-                        }
-                    }
-
-                    #if DEBUG
-                    Section("Developer") {
-                        NavigationLink("Glass Playground") {
-                            GlassPlaygroundView()
-                        }
-                    }
-                    #endif
+                    .padding(.horizontal, NexusSpacing.standard)
+                    .padding(.top, NexusSpacing.md)
+                    .padding(.bottom, NexusSpacing.xxxl)
                 }
-                .scrollContentBackground(.hidden)
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
@@ -111,42 +105,41 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Rows
+    // MARK: - Appearance (native Menu — Light active, Dark/System "Soon")
 
-    private func appearanceRow(_ name: String, enabled: Bool) -> some View {
-        Button {
-            appearance = name
-        } label: {
-            HStack {
-                Text(name)
-                    .foregroundColor(enabled ? .Nexus.ink : .Nexus.ghost)
-                Spacer()
-                if !enabled {
-                    Text("Soon")
-                        .font(.Nexus.overline)
-                        .foregroundColor(.Nexus.ghost)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                        .background(Color.Nexus.surface2)
-                        .clipShape(Capsule())
-                } else if appearance == name {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.Nexus.accent)
-                }
+    private var appearanceMenuRow: some View {
+        Menu {
+            Button {
+                appearance = "Light"
+            } label: {
+                Label("Light", systemImage: appearance == "Light" ? "checkmark" : "")
             }
+            Button {} label: { Text("Dark  ·  Soon") }.disabled(true)
+            Button {} label: { Text("System  ·  Soon") }.disabled(true)
+        } label: {
+            HStack(spacing: 13) {
+                Image(systemName: "circle.lefthalf.filled")
+                    .font(.system(size: 18, weight: .regular))
+                    .foregroundColor(.Nexus.ink)
+                    .frame(width: 22)
+                Text("Appearance")
+                    .font(.system(size: 16))
+                    .kerning(-0.2)
+                    .foregroundColor(.Nexus.ink)
+                Spacer(minLength: NexusSpacing.sm)
+                Text(appearance)
+                    .font(.system(size: 15))
+                    .kerning(-0.2)
+                    .foregroundColor(.Nexus.faint)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.Nexus.ghost)
+            }
+            .padding(.horizontal, 15)
+            .padding(.vertical, 13)
+            .contentShape(Rectangle())
         }
-        .disabled(!enabled)
-    }
-
-    private func legalRow(_ title: String) -> some View {
-        HStack {
-            Text(title).foregroundColor(.Nexus.ink)
-            Spacer()
-            Image(systemName: "arrow.up.right")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.Nexus.ghost)
-        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Helpers
@@ -171,7 +164,12 @@ struct FeedbackView: View {
 
     @StateObject private var vm = FeedbackViewModel()
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     @FocusState private var textFieldFocused: Bool
+    // Preference slot — actual shake-to-report gesture is a parked follow-up.
+    @AppStorage("nx_shake_feedback") private var shakeToReport = true
+
+    private let maxChars = 2000
 
     init(preloadedScreenshot: UIImage? = nil) {
         self.preloadedScreenshot = preloadedScreenshot
@@ -180,211 +178,194 @@ struct FeedbackView: View {
     var body: some View {
         ZStack {
             NexusBackground()
-
             if vm.didSubmit {
                 thanksView
             } else {
                 formView
             }
         }
-        .navigationTitle("Send Feedback")
+        .navigationTitle("Send feedback")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            // X standardized to TRAILING on every sheet (2026-07-16);
-            // submit lives beside it while the form is active.
             ToolbarItem(placement: .navigationBarTrailing) {
-                HStack(spacing: 14) {
-                    if !vm.didSubmit {
-                        submitButton
-                    }
-                    SheetCloseButton { dismiss() }
-                }
+                SheetCloseButton { dismiss() }
             }
         }
-        .onAppear {
-            vm.screenshot = preloadedScreenshot
-        }
-        .onTapGesture {
-            textFieldFocused = false
-        }
+        .onAppear { vm.screenshot = preloadedScreenshot }
     }
 
-    // MARK: - Form
+    // MARK: - Form (ChatGPT "Report app issue" layout)
 
     private var formView: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: NexusSpacing.xl) {
-                // Category picker
-                categorySection
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("What happened?")
+                        .font(.system(size: 17, weight: .semibold))
+                        .kerning(-0.3)
+                        .foregroundColor(.Nexus.ink)
+                        .padding(.bottom, NexusSpacing.md)
 
-                // Text input
-                textSection
+                    // grey filled text area with live counter inside
+                    ZStack(alignment: .topLeading) {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(Color.Nexus.surface2)
 
-                // Screenshot section
-                if vm.screenshot != nil {
-                    screenshotSection
-                }
+                        if vm.text.isEmpty {
+                            Text("Tell us about the issue you encountered")
+                                .font(.system(size: 15.5))
+                                .kerning(-0.2)
+                                .foregroundColor(.Nexus.ghost)
+                                .padding(.horizontal, 20)
+                                .padding(.top, 22)
+                                .allowsHitTesting(false)
+                        }
 
-                // Error
-                if let error = vm.error {
-                    Text(error)
-                        .font(.Nexus.caption)
-                        .foregroundColor(.red)
-                        .padding(.horizontal, NexusSpacing.standard)
-                }
-            }
-            .padding(.top, NexusSpacing.lg)
-            .padding(.bottom, NexusSpacing.xxxl)
-        }
-    }
+                        TextEditor(text: $vm.text)
+                            .focused($textFieldFocused)
+                            .font(.system(size: 15.5))
+                            .foregroundColor(.Nexus.ink)
+                            .scrollContentBackground(.hidden)
+                            .padding(.horizontal, 15)
+                            .padding(.vertical, 14)
+                            .frame(height: 180)
+                            .onChange(of: vm.text) { _, new in
+                                if new.count > maxChars { vm.text = String(new.prefix(maxChars)) }
+                            }
 
-    private var categorySection: some View {
-        VStack(alignment: .leading, spacing: NexusSpacing.sm) {
-            Text("Category")
-                .font(.Nexus.labelMedium)
-                .foregroundColor(.Nexus.muted)
-                .kerning(NexusKerning.normal)
-                .padding(.horizontal, NexusSpacing.standard)
-
-            Picker("Category", selection: $vm.category) {
-                ForEach(FeedbackViewModel.FeedbackCategory.allCases) { cat in
-                    Text(cat.label).tag(cat)
-                }
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, NexusSpacing.standard)
-        }
-    }
-
-    private var textSection: some View {
-        VStack(alignment: .leading, spacing: NexusSpacing.sm) {
-            Text("Your feedback")
-                .font(.Nexus.labelMedium)
-                .foregroundColor(.Nexus.muted)
-                .kerning(NexusKerning.normal)
-                .padding(.horizontal, NexusSpacing.standard)
-
-            TextEditor(text: $vm.text)
-                .focused($textFieldFocused)
-                .font(.Nexus.bodyMedium)
-                .foregroundColor(.Nexus.ink)
-                .frame(minHeight: 140)
-                .padding(NexusSpacing.md)
-                .background(Color.Nexus.cardBackground)
-                .clipShape(RoundedRectangle(cornerRadius: NexusRadius.base))
-                .overlay(
-                    RoundedRectangle(cornerRadius: NexusRadius.base)
-                        .stroke(
-                            textFieldFocused ? Color.Nexus.accent : Color.Nexus.border,
-                            lineWidth: textFieldFocused ? NexusBorder.medium : NexusBorder.hair
-                        )
-                )
-                .padding(.horizontal, NexusSpacing.standard)
-                .overlay(alignment: .topLeading) {
-                    if vm.text.isEmpty {
-                        Text("Describe what you saw, expected, or wish existed…")
-                            .font(.Nexus.bodyMedium)
-                            .foregroundColor(.Nexus.ghost)
-                            .padding(.horizontal, NexusSpacing.standard + NexusSpacing.md + 4)
-                            .padding(.top, NexusSpacing.md + 8)
+                        Text("\(vm.text.count) / \(maxChars)")
+                            .font(.system(size: 13.5))
+                            .foregroundColor(.Nexus.faint)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 12)
                             .allowsHitTesting(false)
                     }
-                }
-        }
-    }
+                    .frame(height: 180)
 
-    private var screenshotSection: some View {
-        VStack(alignment: .leading, spacing: NexusSpacing.sm) {
-            HStack {
-                Text("Screenshot")
-                    .font(.Nexus.labelMedium)
-                    .foregroundColor(.Nexus.muted)
-                    .kerning(NexusKerning.normal)
-                Spacer()
-                Toggle("", isOn: $vm.includeScreenshot)
-                    .labelsHidden()
-                    .tint(.Nexus.accent)
-            }
-            .padding(.horizontal, NexusSpacing.standard)
-
-            if vm.includeScreenshot, let img = vm.screenshot {
-                Image(uiImage: img)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .clipShape(RoundedRectangle(cornerRadius: NexusRadius.base))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: NexusRadius.base)
-                            .stroke(Color.Nexus.border, lineWidth: NexusBorder.hair)
+                    // disclaimer + contact support
+                    (
+                        Text("Any information you share may be reviewed to help improve Nexus. If you have additional questions, ")
+                            .foregroundColor(.Nexus.muted)
+                        + Text("contact support")
+                            .foregroundColor(.Nexus.accent)
                     )
-                    .padding(.horizontal, NexusSpacing.standard)
-                    .transition(.opacity.combined(with: .scale(scale: 0.97)))
-                    .animation(.easeInOut(duration: 0.2), value: vm.includeScreenshot)
-            } else {
-                HStack {
-                    Image(systemName: "photo.slash")
-                        .font(.system(size: 15))
-                        .foregroundColor(.Nexus.ghost)
-                    Text("Screenshot excluded")
-                        .font(.Nexus.caption)
-                        .foregroundColor(.Nexus.ghost)
+                    .font(.system(size: 14))
+                    .kerning(-0.15)
+                    .lineSpacing(2)
+                    .padding(.top, NexusSpacing.md)
+                    .padding(.horizontal, 2)
+                    .onTapGesture { openURL(URL(string: "mailto:srihari.scorp@gmail.com")!) }
+
+                    // native toggle rows — Toggle carries Liquid Glass on iOS 26
+                    VStack(spacing: 0) {
+                        Rectangle().fill(Color.Nexus.hair).frame(height: NexusBorder.hair)
+                        toggleRow("Include screenshot in report", subtitle: nil, isOn: $vm.includeScreenshot)
+                        Rectangle().fill(Color.Nexus.hair).frame(height: NexusBorder.hair)
+                        toggleRow("Shake iPhone to report a bug", subtitle: "Toggle off to disable", isOn: $shakeToReport)
+                    }
+                    .padding(.top, NexusSpacing.lg)
+
+                    if let error = vm.error {
+                        Text(error)
+                            .font(.Nexus.caption)
+                            .foregroundColor(.Nexus.destructive)
+                            .padding(.top, NexusSpacing.md)
+                    }
                 }
-                .padding(.horizontal, NexusSpacing.standard)
-                .transition(.opacity)
-                .animation(.easeInOut(duration: 0.2), value: vm.includeScreenshot)
+                .padding(.horizontal, NexusSpacing.standard + 2)
+                .padding(.top, NexusSpacing.lg)
+                .padding(.bottom, NexusSpacing.xl)
             }
+            .scrollDismissesKeyboard(.interactively)
+
+            // bottom full-width Send
+            sendButton
+                .padding(.horizontal, NexusSpacing.standard)
+                .padding(.bottom, NexusSpacing.safeBottom + NexusSpacing.sm)
         }
     }
 
-    // MARK: - Submit button (toolbar)
+    private func toggleRow(_ label: String, subtitle: String?, isOn: Binding<Bool>) -> some View {
+        HStack(spacing: NexusSpacing.md) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(.system(size: 16))
+                    .kerning(-0.2)
+                    .foregroundColor(.Nexus.ink)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.system(size: 13))
+                        .kerning(-0.15)
+                        .foregroundColor(.Nexus.faint)
+                }
+            }
+            Spacer()
+            Toggle("", isOn: isOn)
+                .labelsHidden()
+                .tint(.Nexus.accent)
+        }
+        .padding(.vertical, 15)
+        .padding(.horizontal, 2)
+    }
 
-    private var submitButton: some View {
+    private var sendButton: some View {
         Button {
             textFieldFocused = false
             Task { await vm.submit() }
         } label: {
-            if vm.isSubmitting {
-                ProgressView()
-                    .tint(.Nexus.accent)
-            } else {
-                Text("Send")
-                    .font(.Nexus.labelLarge)
-                    .foregroundColor(vm.canSubmit ? .Nexus.accent : .Nexus.ghost)
+            ZStack {
+                if vm.isSubmitting {
+                    ProgressView().tint(.white)
+                } else {
+                    Text("Send")
+                        .font(.system(size: 16, weight: .semibold))
+                        .kerning(-0.2)
+                        .foregroundColor(vm.canSubmit ? .white : .Nexus.ghost)
+                }
             }
+            .frame(maxWidth: .infinity)
+            .frame(height: 52)
+            .background(vm.canSubmit ? Color.Nexus.ink : Color.Nexus.surface2)
+            .clipShape(Capsule())
         }
+        .buttonStyle(PressableCardStyle())
         .disabled(!vm.canSubmit)
+        .animation(NexusAnimation.element, value: vm.canSubmit)
     }
 
     // MARK: - Thanks
 
     private var thanksView: some View {
         VStack(spacing: NexusSpacing.lg) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 44))
-                .foregroundColor(.Nexus.accent)
+            ZStack {
+                Circle().fill(Color.Nexus.bloom).frame(width: 62, height: 62)
+                Image(systemName: "checkmark")
+                    .font(.system(size: 26, weight: .semibold))
+                    .foregroundColor(.Nexus.accent)
+            }
 
             VStack(spacing: NexusSpacing.sm) {
                 Text("Thank you")
-                    .font(.Nexus.headingSmall)
+                    .font(.system(size: 18, weight: .bold))
+                    .kerning(-0.4)
                     .foregroundColor(.Nexus.ink)
-                    .kerning(NexusKerning.tighter)
-
-                Text("Your feedback helps Nexus improve.")
+                Text("We read every single one.")
                     .font(.Nexus.bodyMedium)
                     .foregroundColor(.Nexus.muted)
                     .multilineTextAlignment(.center)
             }
 
-            Button {
-                dismiss()
-            } label: {
+            Button { dismiss() } label: {
                 Text("Done")
-                    .font(.Nexus.labelLarge)
-                    .foregroundColor(.Nexus.white)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
-                    .frame(height: NexusSpacing.buttonHeight)
-                    .background(Color.Nexus.accent)
-                    .clipShape(RoundedRectangle(cornerRadius: NexusRadius.md))
+                    .frame(height: 52)
+                    .background(Color.Nexus.ink)
+                    .clipShape(Capsule())
             }
+            .buttonStyle(PressableCardStyle())
             .padding(.horizontal, NexusSpacing.standard)
             .padding(.top, NexusSpacing.md)
         }

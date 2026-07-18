@@ -81,7 +81,7 @@ struct CollectionView: View {
                 }
             )
             .presentationDetents([.large])
-            .presentationDragIndicator(.hidden)
+            .presentationDragIndicator(.visible)
         }
     }
 

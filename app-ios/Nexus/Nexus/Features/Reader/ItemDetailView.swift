@@ -209,7 +209,7 @@ struct ItemDetailView: View {
                     .foregroundColor(.Nexus.accent)
                     .kerning(NexusKerning.wide)
                     .textCase(.uppercase)
-                    .labelStyle(IconLeadingLabelStyle())
+                    .labelStyle(.titleAndIcon)
 
                 Text(summary)
                     .font(.Nexus.bodyMedium)
@@ -242,7 +242,7 @@ struct ItemDetailView: View {
                     .foregroundColor(.Nexus.faint)
                     .kerning(NexusKerning.wide)
                     .textCase(.uppercase)
-                    .labelStyle(IconLeadingLabelStyle())
+                    .labelStyle(.titleAndIcon)
 
                 VStack(alignment: .leading, spacing: NexusSpacing.sm) {
                     ForEach(Array(insights.enumerated()), id: \.offset) { index, insight in
@@ -375,7 +375,7 @@ struct ItemDetailView: View {
         Label("Offline", systemImage: "wifi.slash")
             .font(.Nexus.caption)
             .foregroundColor(.Nexus.ghost)
-            .labelStyle(IconLeadingLabelStyle())
+            .labelStyle(.titleAndIcon)
     }
 
     // MARK: - Open original footer
@@ -514,13 +514,7 @@ private struct RemoveHighlightSheet: View {
 
     var body: some View {
         VStack(spacing: NexusSpacing.lg) {
-            // Handle
-            RoundedRectangle(cornerRadius: 2)
-                .fill(Color.Nexus.ghost.opacity(0.5))
-                .frame(width: 36, height: 4)
-                .padding(.top, NexusSpacing.sm)
-
-            // Highlighted text snippet
+            // Highlighted text snippet (native drag indicator provides the grabber)
             Text("\"\(snippet)\"")
                 .font(.Nexus.bodySmall)
                 .foregroundColor(.Nexus.muted)
@@ -555,6 +549,7 @@ private struct RemoveHighlightSheet: View {
 
             Spacer()
         }
+        .padding(.top, NexusSpacing.lg)
         .background(Color.Nexus.pageBackground)
     }
 
@@ -616,17 +611,6 @@ private struct OpenInSafariButton: View {
                     .foregroundColor(.Nexus.accent)
                     .frame(width: NexusSpacing.hitTarget, height: NexusSpacing.hitTarget)
             }
-        }
-    }
-}
-
-// MARK: - Icon-leading label style (icon + title, no background)
-
-private struct IconLeadingLabelStyle: LabelStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        HStack(spacing: 5) {
-            configuration.icon
-            configuration.title
         }
     }
 }

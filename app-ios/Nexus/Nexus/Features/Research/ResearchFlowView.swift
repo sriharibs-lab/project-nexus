@@ -238,7 +238,7 @@ private struct FREInputScreen: View {
                 }
             )
             .presentationDetents([.large])
-            .presentationDragIndicator(.hidden) // custom grabber rendered in the sheet
+            .presentationDragIndicator(.visible)
         }
     }
 }

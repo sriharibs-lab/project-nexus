@@ -147,7 +147,7 @@ struct LinkURLSheetView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // ── Grabber + header ────────────────────────────────────────────
+            // ── Header (native drag indicator sits above) ──────────────────
             sheetHeader
                 .padding(.horizontal, NexusSpacing.standard)
                 .padding(.top, NexusSpacing.md)
@@ -207,42 +207,33 @@ struct LinkURLSheetView: View {
     // MARK: - Header
 
     private var sheetHeader: some View {
-        HStack(spacing: 0) {
-            // Grabber pill (centred at top of sheet)
-            VStack(spacing: NexusSpacing.sm) {
-                Capsule()
-                    .fill(Color.Nexus.borderStrong.opacity(0.8))
-                    .frame(width: 36, height: 5)
-                    .frame(maxWidth: .infinity)
+        // Grabber is the native drag indicator now (.presentationDragIndicator).
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Add a source")
+                    .font(.Nexus.headingSmall)
+                    .foregroundColor(.Nexus.ink)
+                    .kerning(NexusKerning.tighter)
+                Text("Paste a link to save it to your collection")
+                    .font(.Nexus.caption)
+                    .foregroundColor(.Nexus.ghost)
+                    .kerning(NexusKerning.normal)
+            }
 
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Add a source")
-                            .font(.Nexus.headingSmall)
-                            .foregroundColor(.Nexus.ink)
-                            .kerning(NexusKerning.tighter)
-                        Text("Paste a link to save it to your collection")
-                            .font(.Nexus.caption)
-                            .foregroundColor(.Nexus.ghost)
-                            .kerning(NexusKerning.normal)
-                    }
+            Spacer()
 
-                    Spacer()
-
-                    // Close button
-                    Button(action: { dismiss() }) {
-                        ZStack {
-                            Circle()
-                                .fill(Color.Nexus.surface2)
-                                .frame(width: 30, height: 30)
-                            Image(systemName: "xmark")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.Nexus.muted)
-                        }
-                    }
-                    .buttonStyle(.plain)
+            // Close button
+            Button(action: { dismiss() }) {
+                ZStack {
+                    Circle()
+                        .fill(Color.Nexus.surface2)
+                        .frame(width: 30, height: 30)
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.Nexus.muted)
                 }
             }
+            .buttonStyle(.plain)
         }
     }
 

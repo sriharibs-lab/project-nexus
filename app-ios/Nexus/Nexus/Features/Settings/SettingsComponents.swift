@@ -53,13 +53,13 @@ struct SettingsRow: View {
             action?()
         } label: {
             VStack(spacing: 0) {
-                HStack(spacing: 13) {
-                    // ChatGPT-matched: thin line icon (.light weight reads like
-                    // ChatGPT's line art, not SF Symbols' heavier regular)
+                HStack(spacing: 15) {
+                    // ChatGPT-matched: thin line icon (.light reads like ChatGPT's
+                    // line art, not SF Symbols' heavier regular), 20pt
                     Image(systemName: icon)
-                        .font(.system(size: 18, weight: .light))
+                        .font(.system(size: 20, weight: .light))
                         .foregroundColor(tint)
-                        .frame(width: 27, alignment: .center)
+                        .frame(width: 29, alignment: .center)
 
                     Text(label)
                         .font(.system(size: 17))
@@ -70,8 +70,8 @@ struct SettingsRow: View {
 
                     if let value {
                         Text(value)
-                            .font(.system(size: 16))
-                            .kerning(-0.2)
+                            .font(.system(size: 17))
+                            .kerning(-0.3)
                             .foregroundColor(.Nexus.faint)
                             .lineLimit(1)
                     }
@@ -82,14 +82,14 @@ struct SettingsRow: View {
                             .foregroundColor(.Nexus.ghost)
                     case .external:
                         Image(systemName: "arrow.up.right")
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(.Nexus.ghost)
                     case .none:
                         EmptyView()
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 15.5)
+                .padding(.horizontal, 17)
+                .padding(.vertical, 17)   // taller rows — ChatGPT-spacious
                 .contentShape(Rectangle())
 
                 // inset separator — aligns under the label, ChatGPT-style
@@ -97,7 +97,7 @@ struct SettingsRow: View {
                     Rectangle()
                         .fill(Color.Nexus.hair)
                         .frame(height: NexusBorder.hair)
-                        .padding(.leading, 56)
+                        .padding(.leading, 61)
                 }
             }
         }

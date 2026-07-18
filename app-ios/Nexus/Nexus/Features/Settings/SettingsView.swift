@@ -97,11 +97,13 @@ struct SettingsView: View {
     // MARK: - Appearance (native Menu — Light active, Dark/System "Soon")
 
     private var appearanceMenuRow: some View {
-        HStack(spacing: 13) {
+        // Metrics MUST mirror SettingsRow (icon 20/frame 29, spacing 15,
+        // vpad 17, value 17) — this row is hand-rolled to host the Menu.
+        HStack(spacing: 15) {
             Image(systemName: "circle.lefthalf.filled")
-                .font(.system(size: 18, weight: .light))
+                .font(.system(size: 20, weight: .light))
                 .foregroundColor(.Nexus.ink)
-                .frame(width: 27, alignment: .center)
+                .frame(width: 29, alignment: .center)
             Text("Appearance")
                 .font(.system(size: 17))
                 .kerning(-0.3)
@@ -118,8 +120,8 @@ struct SettingsView: View {
             } label: {
                 HStack(spacing: 4) {
                     Text(appearance)
-                        .font(.system(size: 16))
-                        .kerning(-0.2)
+                        .font(.system(size: 17))
+                        .kerning(-0.3)
                         .foregroundColor(.Nexus.faint)
                     Image(systemName: "chevron.up.chevron.down")
                         .font(.system(size: 12, weight: .semibold))
@@ -128,8 +130,8 @@ struct SettingsView: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 15.5)
+        .padding(.horizontal, 17)
+        .padding(.vertical, 17)
     }
 
     // MARK: - Helpers

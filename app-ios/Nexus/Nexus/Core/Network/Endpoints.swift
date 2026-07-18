@@ -16,7 +16,7 @@ enum Endpoint {
         }
         #if DEBUG
         // Srihari's dev Mac — update if the Mac's IP changes (ipconfig getifaddr en0)
-        return "http://10.0.0.31:8000"
+        return "http://10.0.0.174:8000"
         #else
         return "http://localhost:8000"
         #endif

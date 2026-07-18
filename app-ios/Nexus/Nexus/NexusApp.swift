@@ -74,6 +74,11 @@ private struct RootView: View {
             return AnyView(AccountView().environmentObject(AuthManager.shared))
         case "settings":
             return AnyView(SettingsView().environmentObject(AuthManager.shared))
+        case "settingsplayground":
+            let v = args.firstIndex(of: "-variant").flatMap { i in
+                i + 1 < args.count ? Int(args[i + 1]) : nil
+            }.flatMap { SettingsPlaygroundView.Variant(rawValue: $0) } ?? .ios
+            return AnyView(SettingsPlaygroundView(variant: v).environmentObject(AuthManager.shared))
         case "feedback":
             return AnyView(NavigationStack { FeedbackView(preloadedScreenshot: nil) }.environmentObject(AuthManager.shared))
         case "home":

@@ -20,66 +20,66 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                NexusBackground()
+                NexusBackground().ignoresSafeArea()
 
-                ScrollView {
-                    VStack(spacing: 0) {
-                        // ── App ──
-                        SettingsSectionLabel(text: "App")
-                        SettingsCard {
-                            appearanceMenuRow
-                        }
-
-                        // ── Data ── Offline reading cache pushes a detail where
-                        // the red Clear-cache action lives (device review 2026-07-16)
-                        SettingsSectionLabel(text: "Data")
-                            .padding(.top, NexusSpacing.lg)
-                        SettingsCard {
-                            NavigationLink {
-                                OfflineCacheDetailView(bytes: $cacheBytes)
-                            } label: {
-                                SettingsRow(icon: "internaldrive", label: "Offline reading cache",
-                                            value: cacheSizeLabel, trailing: .chevron, showsDivider: false)
-                                    .allowsHitTesting(false)
-                            }
-                            .buttonStyle(.plain)
-                        }
-
-                        // ── About ──
-                        SettingsSectionLabel(text: "About")
-                            .padding(.top, NexusSpacing.lg)
-                        SettingsCard {
-                            SettingsRow(icon: "info.circle", label: "Version", value: versionLabel)
-                            SettingsRow(icon: "doc.text", label: "Terms of Service", trailing: .external) {
-                                openURL(URL(string: "https://nexus.app/terms")!)
-                            }
-                            SettingsRow(icon: "hand.raised", label: "Privacy Policy", trailing: .external,
-                                        showsDivider: false) {
-                                openURL(URL(string: "https://nexus.app/privacy")!)
-                            }
-                        }
-
-                        #if DEBUG
-                        SettingsSectionLabel(text: "Developer")
-                            .padding(.top, NexusSpacing.lg)
-                        SettingsCard {
-                            SettingsRow(icon: "sparkle", label: "Build stamp", value: BuildStamp.short,
-                                        showsDivider: true, action: nil)
-                            NavigationLink {
-                                GlassPlaygroundView()
-                            } label: {
-                                SettingsRow(icon: "circle.hexagongrid", label: "Glass Playground",
-                                            trailing: .chevron, showsDivider: false)
-                                    .allowsHitTesting(false)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                        #endif
+                List {
+                    Section("App") {
+                        appearanceRow
                     }
-                    .padding(.horizontal, NexusSpacing.standard)
-                    .padding(.top, NexusSpacing.md)
-                    .padding(.bottom, NexusSpacing.xxxl)
+
+                    // Offline reading cache pushes a detail where the red
+                    // Clear-cache action lives (device review 2026-07-16).
+                    Section("Data") {
+                        NavigationLink {
+                            OfflineCacheDetailView(bytes: $cacheBytes)
+                        } label: {
+                            SettingsRow(icon: "internaldrive", label: "Offline reading cache") {
+                                SettingsValue(cacheSizeLabel)
+                            }
+                        }
+                    }
+
+                    Section("About") {
+                        SettingsRow(icon: "info.circle", label: "Version") {
+                            SettingsValue(versionLabel)
+                        }
+                        Button {
+                            openURL(URL(string: "https://nexus.app/terms")!)
+                        } label: {
+                            SettingsRow(icon: "doc.text", label: "Terms of Service") {
+                                SettingsExternalArrow()
+                            }
+                        }
+                        .tint(.primary)
+                        Button {
+                            openURL(URL(string: "https://nexus.app/privacy")!)
+                        } label: {
+                            SettingsRow(icon: "hand.raised", label: "Privacy Policy") {
+                                SettingsExternalArrow()
+                            }
+                        }
+                        .tint(.primary)
+                    }
+
+                    #if DEBUG
+                    Section("Developer") {
+                        SettingsRow(icon: "sparkle", label: "Build stamp") {
+                            SettingsValue(BuildStamp.short)
+                        }
+                        NavigationLink {
+                            GlassPlaygroundView()
+                        } label: {
+                            SettingsRow(icon: "circle.hexagongrid", label: "Glass Playground")
+                        }
+                        NavigationLink {
+                            SettingsPlaygroundView()
+                        } label: {
+                            SettingsRow(icon: "slider.horizontal.3", label: "Settings Playground")
+                        }
+                    }
+                    #endif
                 }
+                .nexusInsetGrouped()
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
@@ -94,44 +94,25 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Appearance (native Menu — Light active, Dark/System "Soon")
+    // MARK: - Appearance (native Menu — Light active, Dark/System "soon")
 
-    private var appearanceMenuRow: some View {
-        // Metrics MUST mirror SettingsRow (icon 20/frame 29, spacing 15,
-        // vpad 17, value 17) — this row is hand-rolled to host the Menu.
-        HStack(spacing: 15) {
-            Image(systemName: "circle.lefthalf.filled")
-                .font(.system(size: 20, weight: .light))
-                .foregroundColor(.Nexus.ink)
-                .frame(width: 29, alignment: .center)
-            Text("Appearance")
-                .font(.system(size: 17))
-                .kerning(-0.3)
-                .foregroundColor(.Nexus.ink)
-            Spacer(minLength: NexusSpacing.sm)
-
-            // The Menu wraps ONLY the trailing cluster → the popover anchors to
-            // the RIGHT of the screen, not centered under a full-width label
-            // (device review 2026-07-18).
+    private var appearanceRow: some View {
+        SettingsRow(icon: "circle.lefthalf.filled", label: "Appearance") {
             Menu {
                 Button { appearance = "Light" } label: { Label("Light", systemImage: "checkmark") }
                 Button {} label: { Text("Dark (soon)") }.disabled(true)
                 Button {} label: { Text("System (soon)") }.disabled(true)
             } label: {
-                HStack(spacing: 4) {
+                HStack(spacing: 3) {
                     Text(appearance)
-                        .font(.system(size: 17))
-                        .kerning(-0.3)
-                        .foregroundColor(.Nexus.faint)
                     Image(systemName: "chevron.up.chevron.down")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.Nexus.ghost)
                 }
+                .foregroundStyle(.secondary)
             }
-            .buttonStyle(.plain)
+            // grey (iOS detail value), not the accent-blue a Menu label defaults to
+            .tint(Color(uiColor: .secondaryLabel))
         }
-        .padding(.horizontal, 17)
-        .padding(.vertical, 17)
     }
 
     // MARK: - Helpers
@@ -164,26 +145,20 @@ private struct OfflineCacheDetailView: View {
 
     var body: some View {
         ZStack {
-            NexusBackground()
+            NexusBackground().ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                SettingsCard {
-                    SettingsRow(icon: "internaldrive", label: "Cached articles",
-                                value: sizeLabel, showsDivider: false)
+            List {
+                Section {
+                    SettingsRow(icon: "internaldrive", label: "Cached articles") {
+                        SettingsValue(sizeLabel)
+                    }
+                } footer: {
+                    Text("Nexus keeps saved articles on your device so you can read them offline. Clearing this frees space — articles re-download when you next open them.")
                 }
-                .padding(.top, NexusSpacing.md)
-
-                Text("Nexus keeps saved articles on your device so you can read them offline. Clearing this frees space — articles re-download when you next open them.")
-                    .font(.Nexus.bodySmall)
-                    .foregroundColor(.Nexus.muted)
-                    .padding(.horizontal, 18)
-                    .padding(.top, NexusSpacing.md)
-                    .fixedSize(horizontal: false, vertical: true)
 
                 if bytes > 0 {
-                    SettingsCard {
-                        SettingsRow(icon: "trash", label: clearing ? "Clearing…" : "Clear cache",
-                                    danger: true, showsDivider: false) {
+                    Section {
+                        Button {
                             guard !clearing else { return }
                             clearing = true
                             Task {
@@ -191,14 +166,17 @@ private struct OfflineCacheDetailView: View {
                                 bytes = await OfflineContentCache.shared.diskUsageBytes()
                                 clearing = false
                             }
+                        } label: {
+                            SettingsRow(icon: "trash",
+                                        label: clearing ? "Clearing…" : "Clear cache",
+                                        danger: true)
                         }
+                        .tint(.primary)
+                        .disabled(clearing)
                     }
-                    .padding(.top, NexusSpacing.lg)
                 }
-
-                Spacer()
             }
-            .padding(.horizontal, NexusSpacing.standard)
+            .nexusInsetGrouped()
         }
         .navigationTitle("Offline reading")
         .navigationBarTitleDisplayMode(.inline)

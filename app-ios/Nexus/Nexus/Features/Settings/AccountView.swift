@@ -17,49 +17,72 @@ struct AccountView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                NexusBackground()
+                NexusBackground().ignoresSafeArea()
 
-                ScrollView {
-                    VStack(spacing: 0) {
-                        profileSection
-                            .padding(.top, NexusSpacing.md)
-                            .padding(.bottom, NexusSpacing.xl)
+                List {
+                    // Profile header — sits on the bloom, no card chrome
+                    Section {
+                        profileHeader
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 20, trailing: 0))
+                    }
 
-                        SettingsSectionLabel(text: "Account")
-                        SettingsCard {
-                            SettingsRow(icon: "envelope", label: "Email",
-                                        value: authManager.email.isEmpty ? "—" : authManager.email)
-                            SettingsRow(icon: "sparkles", label: "Subscription",
-                                        value: "Free · Beta", trailing: .chevron,
-                                        showsDivider: false, action: {})
+                    Section("Account") {
+                        SettingsRow(icon: "envelope", label: "Email") {
+                            SettingsValue(authManager.email.isEmpty ? "—" : authManager.email)
                         }
-
-                        // Log out — its own red single-row card, door icon
-                        SettingsCard {
-                            SettingsRow(icon: "rectangle.portrait.and.arrow.right",
-                                        label: "Log out", danger: true,
-                                        showsDivider: false) {
-                                authManager.signOut()
-                                dismiss()
+                        Button {
+                            // Subscription management — no destination yet
+                        } label: {
+                            SettingsRow(icon: "sparkles", label: "Subscription") {
+                                HStack(spacing: 8) {
+                                    SettingsValue("Free · Beta")
+                                    SettingsChevron()
+                                }
                             }
                         }
-                        .padding(.top, NexusSpacing.lg)
+                        .tint(.primary)
+                    }
 
+                    // Log out — its own red row, door icon
+                    Section {
+                        Button {
+                            authManager.signOut()
+                            dismiss()
+                        } label: {
+                            SettingsRow(icon: "rectangle.portrait.and.arrow.right",
+                                        label: "Log out", danger: true)
+                        }
+                        .tint(.primary)
+                    }
+
+                    // Delete account — plain red text OUTSIDE a card (clear row)
+                    Section {
+                        Button {
+                            confirmingDelete = true
+                        } label: {
+                            Group {
+                                if deleting {
+                                    ProgressView().tint(.Nexus.destructive)
+                                } else {
+                                    Text("Delete account")
+                                        .foregroundStyle(Color.Nexus.destructive)
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                        .disabled(deleting)
+                        .listRowBackground(Color.clear)
+                    } footer: {
                         if let deleteError {
                             Text(deleteError)
-                                .font(.Nexus.caption)
-                                .foregroundColor(.Nexus.destructive)
-                                .multilineTextAlignment(.center)
-                                .padding(.top, NexusSpacing.md)
+                                .foregroundStyle(Color.Nexus.destructive)
+                                .frame(maxWidth: .infinity, alignment: .center)
                         }
-
-                        // Delete account — separate text button OUTSIDE the list
-                        deleteAccountButton
-                            .padding(.top, NexusSpacing.xl)
                     }
-                    .padding(.horizontal, NexusSpacing.standard)
-                    .padding(.bottom, NexusSpacing.xxxl)
                 }
+                .nexusInsetGrouped()
             }
             .navigationTitle("Account")
             .navigationBarTitleDisplayMode(.inline)
@@ -85,7 +108,7 @@ struct AccountView: View {
 
     // MARK: - Profile
 
-    private var profileSection: some View {
+    private var profileHeader: some View {
         VStack(spacing: NexusSpacing.md) {
             AvatarCircle(initials: initials, size: 84)
 
@@ -102,31 +125,6 @@ struct AccountView: View {
             }
         }
         .frame(maxWidth: .infinity)
-    }
-
-    // MARK: - Delete (separate button)
-
-    private var deleteAccountButton: some View {
-        Button {
-            confirmingDelete = true
-        } label: {
-            ZStack {
-                if deleting {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .Nexus.destructive))
-                } else {
-                    Text("Delete account")
-                        .font(.system(size: 15.5, weight: .medium))
-                        .kerning(-0.2)
-                        .foregroundColor(.Nexus.destructive)
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, NexusSpacing.md)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .disabled(deleting)
     }
 
     private func deleteAccount() async {

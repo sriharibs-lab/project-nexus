@@ -8,7 +8,9 @@ final class FeedbackViewModel: ObservableObject {
 
     @Published var text: String = ""
     @Published var category: FeedbackCategory = .other
-    @Published var includeScreenshot: Bool = true
+    // OFF by default — user opts in and browses for their own screenshot
+    // (device review 2026-07-18).
+    @Published var includeScreenshot: Bool = false
 
     // MARK: - Screenshot
 

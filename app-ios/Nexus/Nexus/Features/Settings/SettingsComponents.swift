@@ -10,23 +10,23 @@ struct SettingsSectionLabel: View {
     let text: String
     var body: some View {
         Text(text)
-            .font(.system(size: 13, weight: .medium))
-            .kerning(-0.1)
-            .foregroundColor(.Nexus.faint)
+            .font(.system(size: 15, weight: .regular))
+            .kerning(-0.2)
+            .foregroundColor(.Nexus.muted)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 18)
-            .padding(.bottom, 7)
+            .padding(.bottom, 9)
     }
 }
 
 /// White rounded container, no border — a soft shadow reads it on the bloom bg.
-/// Metrics tuned to ChatGPT iOS (2026-07-16): radius 12, near-flat.
+/// Metrics tuned to ChatGPT iOS (2026-07-18).
 struct SettingsCard<Content: View>: View {
     @ViewBuilder let content: Content
     var body: some View {
         VStack(spacing: 0) { content }
             .background(Color.Nexus.cardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             .shadow(color: .black.opacity(0.04), radius: 2, x: 0, y: 1)
     }
 }
@@ -53,16 +53,17 @@ struct SettingsRow: View {
             action?()
         } label: {
             VStack(spacing: 0) {
-                HStack(spacing: 14) {
-                    // ChatGPT-matched: thin line icon, ~16pt (was reading too big)
+                HStack(spacing: 13) {
+                    // ChatGPT-matched: thin line icon (.light weight reads like
+                    // ChatGPT's line art, not SF Symbols' heavier regular)
                     Image(systemName: icon)
-                        .font(.system(size: 16, weight: .regular))
+                        .font(.system(size: 18, weight: .light))
                         .foregroundColor(tint)
-                        .frame(width: 24, alignment: .center)
+                        .frame(width: 27, alignment: .center)
 
                     Text(label)
-                        .font(.system(size: 16))
-                        .kerning(-0.2)
+                        .font(.system(size: 17))
+                        .kerning(-0.3)
                         .foregroundColor(danger ? .Nexus.destructive : .Nexus.ink)
 
                     Spacer(minLength: NexusSpacing.sm)
@@ -88,7 +89,7 @@ struct SettingsRow: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.vertical, 14)
+                .padding(.vertical, 15.5)
                 .contentShape(Rectangle())
 
                 // inset separator — aligns under the label, ChatGPT-style
@@ -96,7 +97,7 @@ struct SettingsRow: View {
                     Rectangle()
                         .fill(Color.Nexus.hair)
                         .frame(height: NexusBorder.hair)
-                        .padding(.leading, 54)
+                        .padding(.leading, 56)
                 }
             }
         }

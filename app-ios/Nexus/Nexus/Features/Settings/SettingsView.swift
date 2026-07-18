@@ -1,4 +1,5 @@
 import Combine
+import PhotosUI
 import SwiftUI
 import UIKit
 
@@ -96,38 +97,39 @@ struct SettingsView: View {
     // MARK: - Appearance (native Menu — Light active, Dark/System "Soon")
 
     private var appearanceMenuRow: some View {
-        Menu {
-            // No empty systemImage — an invalid symbol made the popover render
-            // detached/centered (device review 2026-07-16). Selected item gets
-            // the checkmark; Dark/System are disabled until the palette exists.
-            Button { appearance = "Light" } label: { Label("Light", systemImage: "checkmark") }
-            Button {} label: { Text("Dark (soon)") }.disabled(true)
-            Button {} label: { Text("System (soon)") }.disabled(true)
-        } label: {
-            HStack(spacing: 14) {
-                Image(systemName: "circle.lefthalf.filled")
-                    .font(.system(size: 16, weight: .regular))
-                    .foregroundColor(.Nexus.ink)
-                    .frame(width: 24, alignment: .center)
-                Text("Appearance")
-                    .font(.system(size: 16))
-                    .kerning(-0.2)
-                    .foregroundColor(.Nexus.ink)
-                Spacer(minLength: NexusSpacing.sm)
-                Text(appearance)
-                    .font(.system(size: 16))
-                    .kerning(-0.2)
-                    .foregroundColor(.Nexus.faint)
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.Nexus.ghost)
+        HStack(spacing: 13) {
+            Image(systemName: "circle.lefthalf.filled")
+                .font(.system(size: 18, weight: .light))
+                .foregroundColor(.Nexus.ink)
+                .frame(width: 27, alignment: .center)
+            Text("Appearance")
+                .font(.system(size: 17))
+                .kerning(-0.3)
+                .foregroundColor(.Nexus.ink)
+            Spacer(minLength: NexusSpacing.sm)
+
+            // The Menu wraps ONLY the trailing cluster → the popover anchors to
+            // the RIGHT of the screen, not centered under a full-width label
+            // (device review 2026-07-18).
+            Menu {
+                Button { appearance = "Light" } label: { Label("Light", systemImage: "checkmark") }
+                Button {} label: { Text("Dark (soon)") }.disabled(true)
+                Button {} label: { Text("System (soon)") }.disabled(true)
+            } label: {
+                HStack(spacing: 4) {
+                    Text(appearance)
+                        .font(.system(size: 16))
+                        .kerning(-0.2)
+                        .foregroundColor(.Nexus.faint)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.Nexus.ghost)
+                }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
         }
-        .menuStyle(.button)
-        .buttonStyle(.plain)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 15.5)
     }
 
     // MARK: - Helpers
@@ -210,8 +212,7 @@ struct FeedbackView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @FocusState private var textFieldFocused: Bool
-    // Preference slot — actual shake-to-report gesture is a parked follow-up.
-    @AppStorage("nx_shake_feedback") private var shakeToReport = true
+    @State private var pickerItem: PhotosPickerItem?
 
     private let maxChars = 2000
 
@@ -235,7 +236,77 @@ struct FeedbackView: View {
                 SheetCloseButton { dismiss() }
             }
         }
-        .onAppear { vm.screenshot = preloadedScreenshot }
+        .animation(.easeInOut(duration: 0.22), value: vm.includeScreenshot)
+        .animation(.easeInOut(duration: 0.22), value: vm.screenshot != nil)
+        // Load the picked screenshot into the VM
+        .onChange(of: pickerItem) { _, item in
+            guard let item else { return }
+            Task {
+                if let data = try? await item.loadTransferable(type: Data.self),
+                   let img = UIImage(data: data) {
+                    vm.screenshot = img
+                }
+            }
+        }
+        // Toggling off clears any attached screenshot
+        .onChange(of: vm.includeScreenshot) { _, on in
+            if !on { vm.screenshot = nil; pickerItem = nil }
+        }
+    }
+
+    // MARK: - Screenshot picker (revealed when the toggle is on)
+
+    @ViewBuilder
+    private var screenshotPicker: some View {
+        if let shot = vm.screenshot {
+            HStack(spacing: NexusSpacing.md) {
+                Image(uiImage: shot)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 46, height: 46)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color.Nexus.border, lineWidth: NexusBorder.hair)
+                    )
+                Text("Screenshot attached")
+                    .font(.system(size: 15))
+                    .kerning(-0.2)
+                    .foregroundColor(.Nexus.ink)
+                Spacer()
+                Button {
+                    vm.screenshot = nil
+                    pickerItem = nil
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(.Nexus.ghost)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 4)
+        } else {
+            PhotosPicker(selection: $pickerItem, matching: .screenshots) {
+                HStack(spacing: 9) {
+                    Image(systemName: "photo.on.rectangle")
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundColor(.Nexus.accent)
+                    Text("Choose a screenshot")
+                        .font(.system(size: 15, weight: .medium))
+                        .kerning(-0.2)
+                        .foregroundColor(.Nexus.accent)
+                    Spacer()
+                }
+                .padding(.vertical, 13)
+                .padding(.horizontal, 14)
+                .background(Color.Nexus.cardBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(Color.Nexus.accent.opacity(0.3), lineWidth: NexusBorder.base)
+                )
+            }
+        }
     }
 
     // MARK: - Form (ChatGPT "Report app issue" layout)
@@ -301,14 +372,20 @@ struct FeedbackView: View {
                     .padding(.horizontal, 2)
                     .onTapGesture { openURL(URL(string: "mailto:srihari.scorp@gmail.com")!) }
 
-                    // native toggle rows — Toggle carries Liquid Glass on iOS 26
+                    // screenshot: OFF by default; ON reveals a Photos browse
+                    // button (user picks the screenshot they already took)
                     VStack(spacing: 0) {
                         Rectangle().fill(Color.Nexus.hair).frame(height: NexusBorder.hair)
                         toggleRow("Include screenshot in report", subtitle: nil, isOn: $vm.includeScreenshot)
                         Rectangle().fill(Color.Nexus.hair).frame(height: NexusBorder.hair)
-                        toggleRow("Shake iPhone to report a bug", subtitle: "Toggle off to disable", isOn: $shakeToReport)
                     }
                     .padding(.top, NexusSpacing.lg)
+
+                    if vm.includeScreenshot {
+                        screenshotPicker
+                            .padding(.top, NexusSpacing.md)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
 
                     if let error = vm.error {
                         Text(error)

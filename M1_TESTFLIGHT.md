@@ -2,7 +2,7 @@
 
 **Goal:** a functioning Nexus build on Srihari's iPhone via internal TestFlight, hitting a **live deployed backend** (not the Mac's LAN IP). Internal only — no Beta App Review, no legal pages, no polish bar. That's Milestone 2.
 
-**The bottleneck:** the Release build points at a public backend URL that doesn't exist yet. Deploy the backend → everything else is quick.
+**Live backend:** **https://nexus-api-bwrh.onrender.com** ✅ (Render, smoke-tested green 2026-07-18: `/health` DB-connected, prod-config confirmed). The deploy bottleneck is **cleared** — remaining work is Apple signing + upload.
 
 _Owner key:_ 🤖 Claude · 🙋 Srihari · 🤝 together · Last updated: 2026-07-18
 
@@ -14,12 +14,12 @@ _Owner key:_ 🤖 Claude · 🙋 Srihari · 🤝 together · Last updated: 2026-
 |---|------|-------|--------|
 | 1 | Backend deploy-ready (Dockerfile, render.yaml, .dockerignore) | 🤖 | ✅ done |
 | 2 | Env-var list for the host dashboard | 🤖 | ✅ done (below) |
-| 3 | Pick host + create account + connect repo + deploy | 🙋 | ⏳ **you're here** |
-| 4 | Set backend secrets in the host dashboard | 🙋 | ⬜ |
-| 5 | Keep-alive ping (UptimeRobot → /health) | 🙋 | ⬜ |
-| 6 | Point Release `API_BASE_URL` at the deployed URL | 🤖 | ⬜ (needs the URL) |
-| 7 | Smoke-test the live backend (curl) | 🤖 | ⬜ |
-| 8 | Enroll in Apple Developer Program | 🙋 | ⬜ |
+| 3 | Pick host + create account + connect repo + deploy | 🙋 | ✅ done — Render |
+| 4 | Set backend secrets in the host dashboard | 🙋 | ✅ done |
+| 5 | Keep-alive ping (UptimeRobot → /health) | 🙋 | ⏳ **do this** (Render free sleeps ~15min idle) |
+| 6 | Point Release `API_BASE_URL` at the deployed URL | 🤖 | ✅ done → onrender URL |
+| 7 | Smoke-test the live backend (curl) | 🤖 | ✅ done — all green |
+| 8 | Enroll in Apple Developer Program | 🙋 | ⏳ **you're here** |
 | 9 | Configure signing + archive-ready build | 🤝 | ⬜ |
 | 10 | Archive + upload + ASC record + internal tester | 🙋 | ⬜ |
 

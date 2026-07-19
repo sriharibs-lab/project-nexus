@@ -18,7 +18,8 @@ enum Endpoint {
         // Srihari's dev Mac — update if the Mac's IP changes (ipconfig getifaddr en0)
         return "http://10.0.0.174:8000"
         #else
-        return "http://localhost:8000"
+        // Production backend (Render). TestFlight/App Store builds hit this.
+        return "https://nexus-api-bwrh.onrender.com"
         #endif
     }
 

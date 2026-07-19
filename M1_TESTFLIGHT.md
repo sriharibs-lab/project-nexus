@@ -16,12 +16,12 @@ _Owner key:_ 🤖 Claude · 🙋 Srihari · 🤝 together · Last updated: 2026-
 | 2 | Env-var list for the host dashboard | 🤖 | ✅ done (below) |
 | 3 | Pick host + create account + connect repo + deploy | 🙋 | ✅ done — Render |
 | 4 | Set backend secrets in the host dashboard | 🙋 | ✅ done |
-| 5 | Keep-alive ping (UptimeRobot → /health) | 🙋 | ⏳ **do this** (Render free sleeps ~15min idle) |
+| 5 | Keep-alive (GitHub Actions hourly → Supabase-safe; UptimeRobot optional for Render-warm) | 🤖 | ✅ done |
 | 6 | Point Release `API_BASE_URL` at the deployed URL | 🤖 | ✅ done → onrender URL |
 | 7 | Smoke-test the live backend (curl) | 🤖 | ✅ done — all green |
-| 8 | Enroll in Apple Developer Program | 🙋 | ⏳ **you're here** |
-| 9 | Configure signing + archive-ready build | 🤝 | ⬜ |
-| 10 | Archive + upload + ASC record + internal tester | 🙋 | ⬜ |
+| 8 | Enroll in Apple Developer Program | 🙋 | ✅ done — approved |
+| 9 | Signing + archive-ready build | 🤝 | ✅ done — team C7FA8XLN5P, auto, `app.nexus`, 1.0(1) |
+| 10 | Archive + upload + ASC record + internal tester | 🙋 | ⏳ **final step — you're here** |
 
 ---
 

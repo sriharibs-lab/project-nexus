@@ -1,0 +1,31 @@
+name: keep-alive
+
+# Pings the Render backend to keep the DB active so Supabase free-tier doesn't
+# auto-pause (~7 idle days) — that's the failure that actually kills the backend
+# and needs manual recovery. HOURLY, because this is a PRIVATE repo (2000 free
+# Actions min/month); hourly crushes the 7-day pause with a tiny budget.
+#
+# This does NOT keep Render warm (it sleeps after ~15 min idle → ~40s cold start
+# on first open, self-recovering). For zero cold-starts, add a free UptimeRobot
+# HTTPS monitor on /health at 5 min — external, no Actions budget. Or if you
+# don't care about Actions minutes, bump the cron below to "*/10 * * * *".
+on:
+  schedule:
+    - cron: "0 * * * *"       # hourly (UTC) — budget-safe on a private repo
+  workflow_dispatch: {}       # allow manual runs
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /health (with cold-start retries)
+        run: |
+          URL="https://nexus-api-bwrh.onrender.com/health"
+          for i in 1 2 3 4; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 70 "$URL") || code=000
+            echo "attempt $i -> HTTP $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 20
+          done
+          echo "::warning::health did not return 200 after retries (cold start may be slow)"
+          exit 0   # never fail the workflow — a missed ping shouldn't spam notifications

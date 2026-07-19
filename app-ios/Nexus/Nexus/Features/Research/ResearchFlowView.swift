@@ -97,11 +97,28 @@ struct ResearchFlowView: View {
             .ignoresSafeArea(.keyboard)
         }
         .ignoresSafeArea()
+        // Hide the host nav bar (native back button) while the sheet is up so it
+        // doesn't float above the rising sheet (device E2E 2026-07-18).
+        .modifier(NavBarHidden(hidden: sheetVisible))
         .onChange(of: vm.phase) { _, phase in
             if case .done(let id) = phase {
                 dismiss()
                 onComplete(id)
             }
+        }
+    }
+}
+
+/// Applies `.toolbar(.hidden)` to the nav bar only when `hidden` is true, so the
+/// parent's toolbar config is untouched otherwise (the pushed New-collection
+/// route keeps its native back button when idle).
+private struct NavBarHidden: ViewModifier {
+    let hidden: Bool
+    func body(content: Content) -> some View {
+        if hidden {
+            content.toolbar(.hidden, for: .navigationBar)
+        } else {
+            content
         }
     }
 }
@@ -120,8 +137,18 @@ private struct FREInputScreen: View {
     // Local state scopes TextField rerenders to FREComposer only — avoids
     // rerendering the entire screen on every keystroke.
     @State private var composerText = ""
+    @FocusState private var composerFocused: Bool
     // Link sheet presentation
     @State private var linkSheetContentType: DetectedContentType? = nil
+
+    // Sheet up (searching/reviewing/confirming): hide the input-screen chrome
+    // (avatar) so it doesn't bleed above the rising sheet.
+    private var sheetUp: Bool {
+        switch vm.phase {
+        case .searching, .reviewing, .confirming: return true
+        default: return false
+        }
+    }
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -155,9 +182,10 @@ private struct FREInputScreen: View {
                     .padding(.bottom, 24)
 
                     // Composer — driven by local state; syncs to vm only on submit
-                    FREComposer(text: $composerText) {
+                    FREComposer(text: $composerText, focused: $composerFocused) {
                         let trimmed = composerText.trimmingCharacters(in: .whitespacesAndNewlines)
                         guard !trimmed.isEmpty else { return }
+                        composerFocused = false   // dismiss keyboard as the sheet rises
                         vm.topic = trimmed
                         vm.startResearch()
                     }
@@ -168,6 +196,7 @@ private struct FREInputScreen: View {
 
                     // Trending chips
                     FRETrendingChips(onSelect: { topic in
+                        composerFocused = false
                         vm.topic = topic
                         vm.startResearch()
                     })
@@ -217,6 +246,8 @@ private struct FREInputScreen: View {
                 }
             }
             .padding(.top, NexusSpacing.safeTop + 6)
+            .opacity(sheetUp ? 0 : 1)
+            .animation(.easeInOut(duration: 0.25), value: sheetUp)
         }
         // NOTE: never attach a screen-wide simultaneous resignFirstResponder
         // gesture here — it steals TextField taps and freezes the keyboard
@@ -305,8 +336,8 @@ private struct FRERotatingWord: View {
 
 private struct FREComposer: View {
     @Binding var text: String
+    @FocusState.Binding var focused: Bool
     let onSubmit: () -> Void
-    @FocusState private var focused: Bool
 
     private var hasText: Bool {
         !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty

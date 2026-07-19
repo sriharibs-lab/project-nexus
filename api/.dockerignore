@@ -1,0 +1,15 @@
+# NEVER ship secrets or local cruft into the image.
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+*.log
+.git/
+.gitignore
+alembic/__pycache__/

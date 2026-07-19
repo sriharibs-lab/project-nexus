@@ -1,0 +1,42 @@
+# Render Blueprint — Nexus API (Milestone 1: TestFlight backend).
+# Deploy: render.com → New → Blueprint → connect this repo → Apply.
+# Secrets (sync:false) are entered in the Render dashboard, never committed.
+services:
+  - type: web
+    name: nexus-api
+    runtime: docker
+    dockerfilePath: api/Dockerfile
+    dockerContext: api
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # Non-secret config
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      # Secrets — set values in the Render dashboard (copy from local api/.env)
+      - key: DATABASE_URL          # use the Supabase SESSION POOLER URI (see M1_TESTFLIGHT.md)
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: FIREWORKS_API_KEY
+        sync: false
+      - key: APPLE_APP_BUNDLE_ID
+        sync: false
+      # Optional (leave unset to skip the feature)
+      - key: DEEPGRAM_API_KEY      # podcast transcription
+        sync: false
+      - key: JINA_API_KEY          # higher article-reader rate limit
+        sync: false
+      - key: YOUTUBE_API_KEY       # video metadata
+        sync: false

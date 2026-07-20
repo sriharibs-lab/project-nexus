@@ -50,6 +50,11 @@ struct ResearchFlowView: View {
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .bottom) {
+                // Bloom backdrop — the input screen scales back when the sheet
+                // rises; without this, its shrunk edges revealed the window
+                // background as a hard L/R border (device E2E #3).
+                NexusBackground().ignoresSafeArea()
+
                 // ── Input screen — scales back when the sheet rises ──
                 FREInputScreen(
                     vm: vm,

@@ -268,23 +268,18 @@ private struct MessageBubble: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 10)
-                        .background(Color.Nexus.surface2)
+                        .background(Color.Nexus.accent.opacity(0.12))
                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(Color.Nexus.hair, lineWidth: NexusBorder.hair)
+                                .stroke(Color.Nexus.accent.opacity(0.22), lineWidth: NexusBorder.hair)
                         )
-                } else if message.isStreaming {
-                    // Plain text while streaming — parsing markdown per token
-                    // rebuilt regexes for every line of the growing answer and
-                    // pegged the main thread (the Ask-tab freeze, 2026-07-15).
-                    Text(strippedContent)
-                        .font(.system(size: 15))
-                        .kerning(-0.2)
-                        .lineSpacing(6)
-                        .foregroundColor(.Nexus.ink)
-                        .fixedSize(horizontal: false, vertical: true)
                 } else {
+                    // Render markdown LIVE while streaming. The old per-token
+                    // freeze came from recompiling regexes each token — the block
+                    // parser now uses static compiled regexes, and inline() falls
+                    // back to plain text on an unclosed ** mid-stream. So bold and
+                    // bullets render as they arrive, no raw markdown flashes (#8).
                     AssistantMarkdown(content: strippedContent)
                 }
 

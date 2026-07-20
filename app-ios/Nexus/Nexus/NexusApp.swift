@@ -26,8 +26,29 @@ struct NexusApp: App {
 /// Authenticated → HomeView (handles empty state by showing FRE inline)
 private struct RootView: View {
     @EnvironmentObject var authManager: AuthManager
+    @State private var showSplash = true
 
     var body: some View {
+        ZStack {
+            rootContent
+            if showSplash {
+                SplashView()
+                    .transition(.opacity)
+                    .zIndex(10)
+            }
+        }
+        .task {
+            #if DEBUG
+            // Skip the splash for the screenshot/preview harness.
+            if previewScreen != nil { showSplash = false; return }
+            #endif
+            try? await Task.sleep(nanoseconds: 1_400_000_000)
+            withAnimation(.easeOut(duration: 0.45)) { showSplash = false }
+        }
+    }
+
+    @ViewBuilder
+    private var rootContent: some View {
         #if DEBUG
         if let preview = previewScreen {
             preview
@@ -68,6 +89,8 @@ private struct RootView: View {
             )
         case "auth":
             return AnyView(AuthView())
+        case "splash":
+            return AnyView(SplashView())
         case "glass":
             return AnyView(NavigationStack { GlassPlaygroundView() })
         case "account":

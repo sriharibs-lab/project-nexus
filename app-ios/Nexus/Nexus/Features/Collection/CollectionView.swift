@@ -1,5 +1,6 @@
 import Combine
 import SwiftUI
+import UIKit
 
 // Navigation value for pushing ItemDetailView from the Sources list.
 // Wrapped in a dedicated struct so it is Hashable without polluting Item.
@@ -14,6 +15,9 @@ struct CollectionView: View {
     @State private var selectedTab: String = "ask"
     // Link URL sheet — presented by the + toolbar button on the Sources tab
     @State private var linkSheetContentType: DetectedContentType? = nil
+    // Tab bar hides while the keyboard is up (composer/search). Riding up with
+    // the keyboard looked broken (#7); hiding beats a half-covered capsule.
+    @State private var keyboardUp = false
 
     private static let tabs: [GlassTabItem] = [
         // Composite glyphs (review 2026-07-14): Ask = sparkle-on-chat-bubble,
@@ -41,6 +45,9 @@ struct CollectionView: View {
             GlassTabBar(tabs: Self.tabs, selection: $selectedTab)
                 .padding(.bottom, 24)
                 .ignoresSafeArea(.keyboard, edges: .bottom)
+                .opacity(keyboardUp ? 0 : 1)
+                .allowsHitTesting(!keyboardUp)
+                .animation(.easeInOut(duration: 0.22), value: keyboardUp)
         }
         .navigationTitle(vm.collection.name)
         .navigationBarTitleDisplayMode(.inline)
@@ -60,6 +67,12 @@ struct CollectionView: View {
             }
         }
         .task { await vm.load() }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            keyboardUp = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            keyboardUp = false
+        }
         // Non-fatal delete error: show an alert if the API call fails.
         .alert("Couldn't delete source", isPresented: Binding(
             get: { vm.deleteError != nil },

@@ -174,8 +174,8 @@ struct NexusTabView: View {
             HStack(spacing: NexusSpacing.sm) {
                 ProgressView().scaleEffect(0.7)
                 Text(readyCount > 0
-                     ? "\(readyCount) of \(items.count) sources ready — more arriving…"
-                     : "Reading your sources…")
+                     ? "\(readyCount) of \(items.count) ready — ask away, more arriving…"
+                     : "Reading your sources — ready in a few seconds…")
                     .font(.Nexus.bodySmall)
                     .foregroundColor(.Nexus.muted)
             }

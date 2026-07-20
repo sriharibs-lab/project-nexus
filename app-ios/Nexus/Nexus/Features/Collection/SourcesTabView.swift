@@ -43,9 +43,9 @@ struct SourcesTabView: View {
                 sourcesList
             }
         }
-        .navigationDestination(for: ItemDetailRoute.self) { route in
-            ItemDetailView(item: route.item, collectionId: route.collectionId)
-        }
+        // navigationDestination for ItemDetailRoute is registered in CollectionView
+        // (always present) — not here, since this tab unmounts when you switch tabs,
+        // which left the source→reader link dead (#10).
     }
 
     // MARK: - Empty state

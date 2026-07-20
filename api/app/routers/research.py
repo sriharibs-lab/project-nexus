@@ -73,15 +73,24 @@ _URL_CHECK_UA = (
 
 
 async def _url_alive(client: httpx.AsyncClient, url: str) -> bool:
-    """True if the URL resolves to a non-error response. HEAD first (cheap),
-    GET on 403/405 (some servers reject HEAD)."""
+    """True unless the URL is *genuinely gone*. We drop ONLY hard-dead links —
+    a confirmed 404/410, a DNS failure, or a refused connection. A 403/429/5xx or
+    a timeout means the site is up but blocking our bare probe (bot protection,
+    rate limits); the real extractor (Jina / browser UA) can usually still fetch
+    it, so keeping it beats losing a good source.
+
+    The old logic ("any non-2xx/3xx → drop") threw away most real sources —
+    FIFA.com, news sites, etc. all bot-block a raw HEAD (#4: FIFA kept 1 of 8)."""
     try:
         resp = await client.head(url, follow_redirects=True)
-        if resp.status_code in (403, 405):
+        # Retry GET where servers reject or oddly answer HEAD (incl. a HEAD-only 404).
+        if resp.status_code in (403, 404, 405, 429, 501):
             resp = await client.get(url, follow_redirects=True)
-        return resp.status_code < 400
+        return resp.status_code not in (404, 410)
+    except httpx.ConnectError:
+        return False   # DNS failure / connection refused → fabricated or dead host
     except Exception:
-        return False
+        return True    # read/connect timeout, protocol quirk → up but slow; keep it
 
 
 async def _filter_live_sources(sources: list) -> list:

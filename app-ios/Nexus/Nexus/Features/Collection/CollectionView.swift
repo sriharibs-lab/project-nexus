@@ -51,6 +51,11 @@ struct CollectionView: View {
         }
         .navigationTitle(vm.collection.name)
         .navigationBarTitleDisplayMode(.inline)
+        // Source row → reader. Registered here (always mounted) so the link stays
+        // alive regardless of which tab is showing (#10).
+        .navigationDestination(for: ItemDetailRoute.self) { route in
+            ItemDetailView(item: route.item, collectionId: route.collectionId)
+        }
         .toolbar {
             // "+" button in Sources tab → open link sheet pre-scoped to this collection
             if selectedTab == "sources" {

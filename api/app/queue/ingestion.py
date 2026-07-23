@@ -18,6 +18,7 @@ import json
 import logging
 import time
 import uuid
+from decimal import Decimal
 
 import asyncpg
 from pgqueuer import PgQueuer
@@ -462,8 +463,29 @@ async def _process_job(
                     col_res = await db.execute(select(Collection).where(Collection.id == coll_id))
                     col = col_res.scalar_one_or_none()
                     if col and not col.framing_paragraph:
-                        from ai.pipeline import build_collection_framing
-                        col.framing_paragraph = await build_collection_framing(col.name, item.summary)
+                        from ai.pipeline import (
+                            _HAIKU_INPUT_COST,
+                            _HAIKU_OUTPUT_COST,
+                            build_collection_framing,
+                        )
+                        framing_result = await build_collection_framing(col.name, item.summary)
+                        col.framing_paragraph = framing_result.sentence
+                        framing_cost = (
+                            Decimal(framing_result.input_tokens) * _HAIKU_INPUT_COST
+                            + Decimal(framing_result.output_tokens) * _HAIKU_OUTPUT_COST
+                        )
+                        db.add(AiTelemetry(
+                            id=uuid.uuid4(),
+                            user_id=item.user_id,
+                            collection_id=coll_id,
+                            correlation_id=job_id,
+                            operation="collection_framing",
+                            model="claude-haiku-4-5",
+                            input_tokens=framing_result.input_tokens,
+                            output_tokens=framing_result.output_tokens,
+                            cache_read_tokens=0,
+                            cost_usd=framing_cost,
+                        ))
                         await db.commit()
             except Exception as framing_exc:
                 logger.warning("Framing generation failed for collection %s: %s", coll_id, framing_exc)

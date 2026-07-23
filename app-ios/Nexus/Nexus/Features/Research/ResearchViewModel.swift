@@ -40,6 +40,15 @@ let freDefaultTopics: [String] = [
     "anything you're curious about",
 ]
 
+/// Static fallback shown in the FRE "Trending" chip row when the backend is
+/// unreachable. Must exactly match the static list in api/app/routers/trending.py.
+let freStaticTrendingTopics: [String] = [
+    "US–Iran conflict",
+    "AI platform shifts",
+    "Ozempic & longevity",
+    "Vision Pro 2",
+]
+
 // MARK: - ViewModel
 
 @MainActor
@@ -51,6 +60,11 @@ final class ResearchViewModel: ObservableObject {
     /// replaced by personalised topics once the API call completes.
     @Published private(set) var freTopics: [String] = freDefaultTopics
 
+    /// Up to 4 trending topics fetched from the backend for the FRE trending
+    /// chip row. Starts nil (loading state) → populated live or static fallback.
+    @Published private(set) var trendingTopics: [String]? = nil
+    private var isFetchingTrending = false
+
     /// collection_id received in the SSE "done" event — set before transitioning to .done
     private var pendingCollectionId: UUID?
 
@@ -61,6 +75,7 @@ final class ResearchViewModel: ObservableObject {
 
     init() {
         Task { await loadInterestTopics() }
+        Task { await fetchTrendingTopics() }
     }
 
     // MARK: - Load interest topics from user profile
@@ -76,6 +91,24 @@ final class ResearchViewModel: ObservableObject {
             // those noisy logs by only logging unexpected error types.
             if case APIError.unauthorized = error { return }
             if case APIError.networkError = error { return }
+        }
+    }
+
+    // MARK: - Load trending topics (mirrors OnboardingViewModel.fetchTrendingTopics)
+
+    /// Fetches trending topics from the backend for the FRE chip row.
+    /// On any failure (network, server, timeout) or empty response, falls
+    /// back to the curated static list. Never throws.
+    func fetchTrendingTopics() async {
+        guard !isFetchingTrending else { return }
+        isFetchingTrending = true
+        defer { isFetchingTrending = false }
+
+        if let response = await APIClient.shared.fetchTrendingTopics(),
+           !response.topics.isEmpty {
+            trendingTopics = Array(response.topics.prefix(4))
+        } else {
+            trendingTopics = freStaticTrendingTopics
         }
     }
 

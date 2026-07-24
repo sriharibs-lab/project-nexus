@@ -1,30 +1,29 @@
 """
-GET /v1/trending — Top trending topics for FRE onboarding chip row.
+GET /v1/trending — Curated trending topics for the FRE new-collection chips.
 
-Fetches the top 4 trending search queries from the Google Trends RSS daily
-trending feed for the US (no API key required, publicly available XML feed).
+Google Trends' public RSS is deprecated/dead, and raw trending feeds surface
+noise (movies, obituaries, disambiguation pages) that make poor "start a research
+collection" seeds. So we combine two free, no-key real-time signals —
 
-The response is intentionally unauthenticated: it is called at FRE load time,
-before the user has signed in. All fields are safe to return to any caller.
+    1. Wikipedia most-read articles (yesterday)          — what people look up
+    2. Hacker News top stories                           — what people discuss
 
-Response:
-    {"topics": ["AI Agents", "Weight Loss Drug", ...], "source": "trends|static"}
+— and pass them through ONE cheap Claude Haiku call that drops the junk and
+reframes the rest into sharp, research-worthy topics. Result is cached ~12h, so
+the cost is a fraction of a cent per day.
 
-Fallback chain:
-    1. Google Trends RSS (rss.google.com) — real-time, no key
-    2. Static curated list — if RSS unreachable, malformed, or times out
+Unauthenticated: called at FRE load, before sign-in. All fields are safe.
 
-Caching: a simple in-process TTL cache reduces latency for concurrent FRE
-sessions (default 15 minutes, tunable via TRENDING_CACHE_TTL env var).
-Resets on process restart — good enough for FRE.
+Response: {"topics": ["Nolan's Odyssey adaptation", ...], "source": "curated|static"}
+Fallback: a curated static list if the signals or Haiku curation are unavailable.
 """
 
 from __future__ import annotations
 
 import asyncio
+import datetime
 import logging
 import time
-import xml.etree.ElementTree as ET
 from typing import Literal
 
 import httpx
@@ -37,21 +36,27 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/trending", tags=["trending"])
 
-# ── Google Trends RSS ─────────────────────────────────────────────────────────
-# Daily trending searches for the US, no API key.
-# Format: RSS 2.0 XML, <item><title>...</title></item> per trend
-_TRENDS_RSS_URL = "https://trends.google.com/trends/trendingsearches/daily/rss?geo=US"
-_TRENDS_TOP_N = 4
-_FETCH_TIMEOUT = 5.0  # seconds — must be fast; FRE must not feel slow
+# ── Real-time signal sources (free, no API key) ───────────────────────────────
+_WIKI_URL = "https://wikimedia.org/api/rest_v1/metrics/pageviews/top/en.wikipedia/all-access/{y}/{m:02d}/{d:02d}"
+_HN_TOP_URL = "https://hacker-news.firebaseio.com/v0/topstories.json"
+_HN_ITEM_URL = "https://hacker-news.firebaseio.com/v0/item/{id}.json"
+
+# Wikipedia noise filters — drop non-article namespaces and meta/list pages.
+_WIKI_SKIP_PREFIX = (
+    "Main_Page", "Special:", "Wikipedia:", "Portal:", "Help:", "Category:",
+    "Template:", "File:", "Talk:", "User:", "Draft:",
+)
+_WIKI_SKIP_SUBSTR = ("Deaths_in_", "List_of_", "_(disambiguation)")
+
+_FETCH_TIMEOUT = 8.0                 # cold-cache fetch budget (cached 12h after)
+_CACHE_TTL_SECONDS = 12 * 60 * 60    # curate at most ~2x/day
 
 # ── In-process TTL cache ──────────────────────────────────────────────────────
 _cache_lock = asyncio.Lock()
 _cached_topics: list[str] | None = None
-_cached_at: float = 0.0  # epoch seconds
+_cached_at: float = 0.0  # time.monotonic()
 
-# ── Static fallback ───────────────────────────────────────────────────────────
-# Curated list: broad enough to be relevant for most users.
-# These are shown only when RSS is unavailable.
+# ── Static fallback (shown only if signals/curation unavailable) ──────────────
 _STATIC_TOPICS: list[str] = [
     "Artificial Intelligence",
     "Climate & Sustainability",
@@ -60,125 +65,117 @@ _STATIC_TOPICS: list[str] = [
 ]
 
 
-# ── Response model ────────────────────────────────────────────────────────────
-
 class TrendingResponse(BaseModel):
     topics: list[str]
-    source: Literal["trends", "static"]
+    source: Literal["curated", "static"]
 
 
-# ── Fetch helpers ─────────────────────────────────────────────────────────────
+# ── Signal fetchers ───────────────────────────────────────────────────────────
 
-
-def _parse_rss(xml_text: str) -> list[str]:
-    """
-    Extract trend titles from Google Trends RSS XML.
-
-    Returns up to _TRENDS_TOP_N topic strings, stripping trailing numbers
-    that the RSS sometimes appends (e.g. "Taylor Swift 500,000+").
-    Raises ValueError / ET.ParseError on malformed input so the caller
-    can fall back gracefully.
-    """
-    root = ET.fromstring(xml_text)
-
-    # Namespace used by Google Trends for the ht:* extensions
-    ns = {"ht": "https://trends.google.com/trends/trendingsearches/daily"}
-
-    topics: list[str] = []
-
-    # Standard RSS: <channel><item><title>...</title></item></channel>
-    # Google Trends also has <ht:title> but plain <title> works fine.
-    for item in root.iter("item"):
-        if len(topics) >= _TRENDS_TOP_N:
+async def _fetch_wikipedia_top(client: httpx.AsyncClient, limit: int = 22) -> list[str]:
+    """Yesterday's most-read English Wikipedia articles (today's data is partial),
+    filtered to real article titles."""
+    d = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)
+    resp = await client.get(_WIKI_URL.format(y=d.year, m=d.month, d=d.day))
+    resp.raise_for_status()
+    articles = resp.json()["items"][0]["articles"]
+    out: list[str] = []
+    for a in articles:
+        title = a.get("article", "")
+        if not title or title.startswith(_WIKI_SKIP_PREFIX):
+            continue
+        if ":" in title or any(s in title for s in _WIKI_SKIP_SUBSTR):
+            continue
+        out.append(title.replace("_", " "))
+        if len(out) >= limit:
             break
-        title_el = item.find("title")
-        if title_el is not None and title_el.text:
-            topic = title_el.text.strip()
-            if topic:
-                topics.append(topic)
-
-    if not topics:
-        raise ValueError("No topics found in RSS feed")
-
-    return topics
+    return out
 
 
-async def _fetch_from_google_trends() -> list[str]:
-    """
-    Fetch trending topics from Google Trends RSS.
+async def _fetch_hn_top(client: httpx.AsyncClient, limit: int = 12) -> list[str]:
+    """Top Hacker News story titles (tech/ideas signal)."""
+    resp = await client.get(_HN_TOP_URL)
+    resp.raise_for_status()
+    ids = resp.json()[:limit]
 
-    Returns up to _TRENDS_TOP_N topics.
-    Raises on network error, timeout, parse error, or HTTP error.
-    All exceptions are expected and should be caught by the caller.
-    """
-    async with httpx.AsyncClient(
-        timeout=httpx.Timeout(connect=3.0, read=_FETCH_TIMEOUT, write=3.0, pool=3.0),
-        follow_redirects=True,
-        headers={"User-Agent": "Nexus/1.0 (content-curation; +https://nexus.app)"},
-    ) as client:
-        resp = await client.get(_TRENDS_RSS_URL)
-        resp.raise_for_status()
-        return _parse_rss(resp.text)
+    async def _title(story_id: int) -> str | None:
+        try:
+            r = await client.get(_HN_ITEM_URL.format(id=story_id))
+            return (r.json() or {}).get("title")
+        except Exception:
+            return None
+
+    titles = await asyncio.gather(*(_title(i) for i in ids))
+    return [t for t in titles if t]
 
 
-async def _get_trending_topics() -> tuple[list[str], Literal["trends", "static"]]:
-    """
-    Return (topics, source) with TTL cache.
+async def _gather_signals(client: httpx.AsyncClient) -> list[str]:
+    """Pull both signal sources concurrently; a failure in one is non-fatal."""
+    wiki, hn = await asyncio.gather(
+        _fetch_wikipedia_top(client),
+        _fetch_hn_top(client),
+        return_exceptions=True,
+    )
+    signals: list[str] = []
+    if isinstance(wiki, list):
+        signals += wiki
+    else:
+        logger.warning("trending: wikipedia signal failed: %s", wiki)
+    if isinstance(hn, list):
+        signals += hn
+    else:
+        logger.warning("trending: hacker news signal failed: %s", hn)
+    return signals
 
-    Cache TTL is controlled by settings.trending_cache_ttl_seconds (default 900s / 15 min).
-    Concurrent requests that arrive during a cold cache all wait for the single
-    fetch (async lock) rather than stampeding Google Trends.
-    """
+
+async def _get_trending_topics() -> tuple[list[str], Literal["curated", "static"]]:
+    """Return (topics, source) with a 12h TTL cache. Concurrent cold-cache
+    callers share one fetch via the async lock."""
     global _cached_topics, _cached_at
 
-    ttl = settings.trending_cache_ttl_seconds
     now = time.monotonic()
+    if _cached_topics is not None and (now - _cached_at) < _CACHE_TTL_SECONDS:
+        return _cached_topics, "curated"
 
-    # Fast path: cache hit (no lock needed for a read if still valid)
-    if _cached_topics is not None and (now - _cached_at) < ttl:
-        return _cached_topics, "trends"
-
-    # Slow path: acquire lock, re-check (another coroutine may have refreshed)
     async with _cache_lock:
-        if _cached_topics is not None and (now - _cached_at) < ttl:
-            return _cached_topics, "trends"
+        now = time.monotonic()
+        if _cached_topics is not None and (now - _cached_at) < _CACHE_TTL_SECONDS:
+            return _cached_topics, "curated"
 
         try:
-            topics = await _fetch_from_google_trends()
-            _cached_topics = topics
-            _cached_at = time.monotonic()
-            logger.info("trending: refreshed from Google Trends RSS, topics=%r", topics)
-            return topics, "trends"
-        except Exception as exc:
-            # Network / parse failure: log and fall back
-            logger.warning("trending: RSS fetch failed (%s), using static fallback", exc)
-            # Intentionally do NOT update _cached_topics — a future request may
-            # succeed once the error clears (e.g. transient network hiccup).
+            async with httpx.AsyncClient(
+                timeout=_FETCH_TIMEOUT,
+                follow_redirects=True,
+                headers={"User-Agent": "Nexus/1.0 (content-curation; +https://nexus.app)"},
+            ) as client:
+                signals = await _gather_signals(client)
+
+            if signals:
+                from ai.pipeline import curate_trending_topics
+                topics = await curate_trending_topics(signals)
+                if topics:
+                    _cached_topics = topics
+                    _cached_at = time.monotonic()
+                    logger.info("trending: curated %d topics from %d signals", len(topics), len(signals))
+                    return topics, "curated"
+
+            logger.warning("trending: no curated topics (signals=%d) — static fallback", len(signals))
             return _STATIC_TOPICS, "static"
-
-
-# ── Route ─────────────────────────────────────────────────────────────────────
+        except Exception as exc:
+            logger.warning("trending: fetch/curation failed (%s) — static fallback", exc)
+            return _STATIC_TOPICS, "static"
 
 
 @router.get(
     "",
-    summary="Top trending topics for FRE onboarding",
+    summary="Curated trending topics for the FRE new-collection chips",
     description=(
-        "Returns up to 4 trending search topics from Google Trends RSS. "
-        "Falls back to a curated static list if the feed is unavailable. "
-        "No authentication required — safe to call before sign-in."
+        "Returns ~6 research-worthy trending topics, distilled by Claude Haiku "
+        "from Wikipedia most-read + Hacker News top stories. Falls back to a "
+        "curated static list. No authentication required."
     ),
     response_model=TrendingResponse,
 )
 async def get_trending_topics() -> TrendingResponse:
-    """
-    GET /v1/trending
-
-    No auth required. Called at FRE load time before the user signs in.
-
-    Response:
-        {"topics": ["AI Agents", "Weight Loss", ...], "source": "trends"}
-        {"topics": ["Artificial Intelligence", ...],  "source": "static"}
-    """
     topics, source = await _get_trending_topics()
     return TrendingResponse(topics=topics, source=source)

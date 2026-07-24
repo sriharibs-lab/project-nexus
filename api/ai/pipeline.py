@@ -316,6 +316,50 @@ async def build_collection_framing(collection_name: str, first_summary: str) -> 
     )
 
 
+_TRENDING_SYSTEM = """You turn raw "what's popular right now" signals into sharp, \
+research-worthy topics for a curious person to start a collection on.
+
+You'll receive today's most-read Wikipedia articles and top Hacker News stories. \
+Pick and REFRAME the best into exactly 6 collection topics.
+
+Rules:
+- DROP noise: obituaries ("Deaths in 2026"), disambiguation/list pages, adult \
+content, raw sports scores, and low-substance celebrity gossip.
+- REFRAME into a clean, compelling 2-5 word topic. Examples: "The Odyssey (2026 \
+film)" -> "Nolan's Odyssey adaptation"; "ChatGPT" -> "The state of AI assistants".
+- Favor SUBSTANCE and VARIETY: mix current events, science/tech, ideas, and \
+culture — never 6 of the same kind.
+- Each must be something you could genuinely research and build a collection about.
+
+Return ONLY a JSON array of exactly 6 short strings. No prose, no markdown."""
+
+
+async def curate_trending_topics(signals: list[str]) -> list[str]:
+    """Reframe raw trending signals (Wikipedia most-read + HN top) into 6 clean,
+    research-worthy collection topics via Haiku. Returns [] on any failure so the
+    caller falls back to a static list. Cheap: one small Haiku call, cached upstream."""
+    if not settings.anthropic_api_key or not signals:
+        return []
+    try:
+        response = await _client.messages.create(
+            model="claude-haiku-4-5",
+            max_tokens=256,
+            system=_TRENDING_SYSTEM,
+            messages=[{
+                "role": "user",
+                "content": "Today's signals:\n" + "\n".join(f"- {s}" for s in signals[:40]),
+            }],
+        )
+        text = response.content[0].text.strip()
+        if text.startswith("```"):                 # strip accidental code fences
+            text = text.strip("`")
+            text = text[4:].strip() if text.startswith("json") else text.strip()
+        topics = json.loads(text)
+        return [str(t).strip() for t in topics if str(t).strip()][:6]
+    except Exception:
+        return []
+
+
 async def compute_embedding(content: str) -> EmbeddingResult:
     """Embed content via Fireworks nomic-embed-text-v1.5 (768-dim, pgvector-ready)."""
     _EMBED_COST = Decimal("0.000000008")  # $0.008 / 1M tokens (Fireworks pricing)

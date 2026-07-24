@@ -11,13 +11,6 @@ private let freTopics = [
     "anything you're curious about",
 ]
 
-private let freTrending = [
-    "US–Iran conflict",
-    "AI platform shifts",
-    "Ozempic & longevity",
-    "Vision Pro 2",
-]
-
 private let frePhrasesSearching = [
     "Researching…",
     "Finding authoritative sources…",
@@ -178,7 +171,7 @@ private struct FREInputScreen: View {
                             .font(.system(size: 29, weight: .bold))
                             .foregroundColor(.Nexus.muted)
                             .kerning(-0.8)
-                        FRERotatingWord(words: freTopics)
+                        FRERotatingWord(words: vm.freTopics.isEmpty ? freTopics : vm.freTopics)
                             .font(.system(size: 29, weight: .bold))
                             .foregroundColor(.Nexus.ink)
                             .kerning(-0.8)
@@ -199,12 +192,15 @@ private struct FREInputScreen: View {
                         if newTopic.isEmpty { composerText = "" }
                     }
 
-                    // Trending chips
-                    FRETrendingChips(onSelect: { topic in
-                        composerFocused = false
-                        vm.topic = topic
-                        vm.startResearch()
-                    })
+                    // Trending chips — live from GET /v1/trending, static fallback
+                    FRETrendingChips(
+                        topics: vm.trendingTopics ?? freStaticTrendingTopics,
+                        onSelect: { topic in
+                            composerFocused = false
+                            vm.topic = topic
+                            vm.startResearch()
+                        }
+                    )
                     .padding(.bottom, 26)
 
                     // Or start with a link
@@ -463,12 +459,13 @@ private struct TrendingIcon: View {
 // MARK: - Trending chips
 
 private struct FRETrendingChips: View {
+    var topics: [String]
     var onSelect: (String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            let rows = stride(from: 0, to: freTrending.count, by: 2).map {
-                Array(freTrending[$0..<min($0 + 2, freTrending.count)])
+            let rows = stride(from: 0, to: topics.count, by: 2).map {
+                Array(topics[$0..<min($0 + 2, topics.count)])
             }
             ForEach(rows, id: \.first) { row in
                 HStack(spacing: 8) {

@@ -136,6 +136,14 @@ class ResearchResult:
 
 
 @dataclass
+class FramingResult:
+    """Return value of build_collection_framing — sentence + actual token usage."""
+    sentence: str
+    input_tokens: int
+    output_tokens: int
+
+
+@dataclass
 class EmbeddingResult:
     """pgvector-ready: 768-dim float32 vector stored as list[float] (Fireworks nomic-embed-text-v1.5)."""
     vector: list[float]
@@ -280,10 +288,13 @@ async def research_topic_with_usage(topic: str) -> ResearchResult:
     return ResearchResult(sources=sources, input_tokens=input_tokens, output_tokens=output_tokens, cache_read_tokens=cache_tokens)
 
 
-async def build_collection_framing(collection_name: str, first_summary: str) -> str:
+async def build_collection_framing(collection_name: str, first_summary: str) -> FramingResult:
     """
     Generate the Nexus-tab hero sentence shown after the first source ingests.
     Called once per collection; result stored in Collection.framing_paragraph.
+
+    Returns FramingResult with the sentence and actual token usage so callers
+    can write accurate AiTelemetry records (operation="collection_framing").
     """
     response = await _client.messages.create(
         model="claude-haiku-4-5",
@@ -298,7 +309,11 @@ async def build_collection_framing(collection_name: str, first_summary: str) -> 
             ),
         }],
     )
-    return response.content[0].text.strip()
+    return FramingResult(
+        sentence=response.content[0].text.strip(),
+        input_tokens=response.usage.input_tokens,
+        output_tokens=response.usage.output_tokens,
+    )
 
 
 async def compute_embedding(content: str) -> EmbeddingResult:

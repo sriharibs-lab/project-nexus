@@ -133,7 +133,12 @@ async def _stream_research(
     All DB work is done after streaming completes — we never hold a DB
     connection open while waiting on Claude.
     """
-    from ai.pipeline import build_collection_framing, research_topic_with_usage
+    from ai.pipeline import (
+        _HAIKU_INPUT_COST,
+        _HAIKU_OUTPUT_COST,
+        build_collection_framing,
+        research_topic_with_usage,
+    )
 
     # Gate: if no API key, yield error event immediately
     if not settings.anthropic_api_key:
@@ -199,10 +204,15 @@ async def _stream_research(
 
     # ── Generate framing_paragraph ────────────────────────────────────────────
     framing: str | None = None
+    framing_input_tokens = 0
+    framing_output_tokens = 0
     if sources_collected and settings.anthropic_api_key:
         try:
             first_summary = sources_collected[0].rationale or sources_collected[0].title
-            framing = await build_collection_framing(collection_name, first_summary)
+            framing_result = await build_collection_framing(collection_name, first_summary)
+            framing = framing_result.sentence
+            framing_input_tokens = framing_result.input_tokens
+            framing_output_tokens = framing_result.output_tokens
         except Exception:
             logger.warning(
                 "framing_paragraph generation failed for collection=%r; proceeding without it",
@@ -243,6 +253,24 @@ async def _stream_research(
                 cost_usd=actual_cost,
                 duration_ms=duration_ms,
             ))
+
+            if framing is not None:
+                framing_cost = (
+                    Decimal(framing_input_tokens) * _HAIKU_INPUT_COST
+                    + Decimal(framing_output_tokens) * _HAIKU_OUTPUT_COST
+                )
+                db.add(AiTelemetry(
+                    id=uuid.uuid4(),
+                    user_id=user_id,
+                    collection_id=collection_id,
+                    correlation_id=correlation_id,
+                    operation="collection_framing",
+                    model="claude-haiku-4-5",
+                    input_tokens=framing_input_tokens,
+                    output_tokens=framing_output_tokens,
+                    cache_read_tokens=0,
+                    cost_usd=framing_cost,
+                ))
 
             await db.commit()
 

@@ -33,7 +33,7 @@ import anthropic
 from fastapi import APIRouter, Body, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -41,6 +41,7 @@ from app.core.database import get_db
 from app.core.rag import RagChunk, build_context_block, retrieve_recent_chunks, retrieve_similar_chunks
 from app.middleware.auth import get_current_user
 from app.models.collection import Collection, CollectionCreatedBy
+from app.models.item import collection_items
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
@@ -124,12 +125,26 @@ async def list_collections(
     db: AsyncSession = Depends(get_db),
 ) -> List[CollectionResponse]:
     user = await _resolve_user(current_user["supabase_id"], db)
+    # source_count is a denormalized counter bumped only when a source *finishes
+    # ingesting*, so it read 0 while a fresh collection's sources were still
+    # processing (and drifts on partial/failed ingests). Count LINKED items live
+    # instead — matches exactly what the Sources tab shows.
+    live_count = (
+        select(func.count())
+        .select_from(collection_items)
+        .where(collection_items.c.collection_id == Collection.id)
+        .scalar_subquery()
+    )
     result = await db.execute(
-        select(Collection)
+        select(Collection, live_count.label("n"))
         .where(Collection.user_id == user.id)
         .order_by(Collection.created_at.desc())
     )
-    return list(result.scalars().all())
+    out = []
+    for coll, n in result.all():
+        coll.source_count = n or 0   # response-only override; not committed
+        out.append(coll)
+    return out
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=CollectionResponse)
@@ -159,7 +174,13 @@ async def get_collection(
     db: AsyncSession = Depends(get_db),
 ) -> CollectionResponse:
     user = await _resolve_user(current_user["supabase_id"], db)
-    return await _get_owned_collection(collection_id, user, db)
+    coll = await _get_owned_collection(collection_id, user, db)
+    coll.source_count = await db.scalar(
+        select(func.count())
+        .select_from(collection_items)
+        .where(collection_items.c.collection_id == coll.id)
+    ) or 0
+    return coll
 
 
 @router.patch("/{collection_id}", response_model=CollectionResponse)

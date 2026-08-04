@@ -6,6 +6,8 @@ struct NexusCollection: Codable, Identifiable, Hashable {
     let name: String
     let description: String?
     let framingParagraph: String?
+    /// AI-generated, collection-specific starter questions (nil for older collections).
+    var suggestedQuestions: [String]? = nil
     let createdBy: CreatedBy
     let sourceCount: Int
     let createdAt: Date

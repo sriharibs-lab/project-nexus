@@ -197,6 +197,13 @@ struct NexusTabView: View {
         return "This collection has \(countStr). Ask me anything about what you've saved here."
     }
 
+    // Per-collection, AI-generated starter chips shown on creation; falls back to
+    // the generic defaults for older collections that predate the feature (#D).
+    private var heroStarters: [String] {
+        if let q = collection.suggestedQuestions, !q.isEmpty { return q }
+        return vm.starterPrompts
+    }
+
     private var heroBlock: some View {
         VStack(alignment: .leading, spacing: 0) {
             EchoMark(color: Color.Nexus.ink, size: 27)
@@ -217,7 +224,7 @@ struct NexusTabView: View {
                     .kerning(NexusKerning.wide)
                     .padding(.top, 28)
 
-                StarterPromptsRow(prompts: vm.starterPrompts) { vm.sendStarter($0) }
+                StarterPromptsRow(prompts: heroStarters) { vm.sendStarter($0) }
                     .padding(.top, 12)
             }
         }

@@ -297,18 +297,27 @@ private struct MessageBubble: View {
         .animation(NexusAnimation.element, value: message.isStreaming)
     }
 
-    // Strip [Source N] tokens from displayed text so chips handle them visually
+    // Strip citation tokens from the displayed text so the chips carry them
+    // visually. Handles every form the model emits — [Source 4], [Source 4,
+    // Source 5], [Sources 4, 5], [Source 4 and 5] — then cleans the punctuation
+    // the removal leaves behind (empty "()", orphaned commas/spaces). Runs
+    // unconditionally: raw tokens must never leak, even mid-stream or when no
+    // chip resolved (device dogfood #B).
     private var strippedContent: String {
-        guard !message.citedSources.isEmpty else { return message.content }
-        guard let regex = try? NSRegularExpression(pattern: #"\[Source \d+\]"#) else {
-            return message.content
+        var s = message.content
+        let subs: [(String, String)] = [
+            (#"\s*\[Sources?[^\]]*\]"#, ""),   // any [Source ...] citation token
+            (#"\(\s*[,;]?\s*\)"#, ""),          // empty "()" / "( , )" left behind
+            (#"\s+([.,;:!?])"#, "$1"),          // space before punctuation
+            (#"\s{2,}"#, " "),                   // collapsed double spaces
+        ]
+        for (pattern, template) in subs {
+            guard let rx = try? NSRegularExpression(pattern: pattern) else { continue }
+            s = rx.stringByReplacingMatches(
+                in: s, range: NSRange(s.startIndex..., in: s), withTemplate: template
+            )
         }
-        let range = NSRange(message.content.startIndex..., in: message.content)
-        return regex.stringByReplacingMatches(
-            in: message.content,
-            range: range,
-            withTemplate: ""
-        ).trimmingCharacters(in: .whitespacesAndNewlines)
+        return s.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
 }

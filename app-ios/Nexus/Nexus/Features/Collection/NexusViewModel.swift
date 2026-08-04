@@ -170,22 +170,24 @@ final class NexusViewModel: ObservableObject {
     /// Finds all [Source N] references in `text` and returns CitedSource values
     /// for each unique index that exists in retrievedSources.
     private func parseCitations(from text: String) -> [CitedSource] {
-        // Match [Source 1], [Source 12], etc.
-        guard let regex = try? NSRegularExpression(pattern: #"\[Source (\d+)\]"#) else { return [] }
-        let range = NSRange(text.startIndex..., in: text)
-        let matches = regex.matches(in: text, range: range)
+        // Match a whole citation token — [Source 4], [Source 4, Source 5],
+        // [Sources 4, 5], [Source 4 and 5] — then pull every number out of it.
+        guard let bracketRx = try? NSRegularExpression(pattern: #"\[Sources?[^\]]*\]"#),
+              let numRx = try? NSRegularExpression(pattern: #"\d+"#) else { return [] }
+        let ns = text as NSString
         var seen = Set<Int>()
         var result: [CitedSource] = []
-        for match in matches {
-            if let r = Range(match.range(at: 1), in: text),
-               let idx = Int(text[r]),
-               !seen.contains(idx),
-               let src = retrievedSources.first(where: { $0.index == idx }) {
+        for m in bracketRx.matches(in: text, range: NSRange(location: 0, length: ns.length)) {
+            let token = ns.substring(with: m.range)
+            let tns = token as NSString
+            for nm in numRx.matches(in: token, range: NSRange(location: 0, length: tns.length)) {
+                guard let idx = Int(tns.substring(with: nm.range)), !seen.contains(idx),
+                      let src = retrievedSources.first(where: { $0.index == idx }) else { continue }
                 seen.insert(idx)
                 result.append(src)
             }
         }
-        return result
+        return result.sorted { $0.index < $1.index }   // stable chip order
     }
 
     // MARK: - History builder

@@ -124,102 +124,92 @@ struct SourcesTabView: View {
 //
 //   [tag] [tag] [tag] → horizontally scrollable (up to 6)
 
+// Media row (redesign locked 2026-08-03 via SourcesPlayground): a prominent
+// color-coded content-type tile + title + domain·type + 2-line summary + tags.
+// No card border, no chevron — floats on the bloom; the List handles the tap.
 struct SourceCard: View {
     let item: Item
 
-    @State private var isPressed = false
-
     var body: some View {
-        VStack(alignment: .leading, spacing: NexusSpacing.sm) {
-            headerRow
-            summarySection
-            tagsSection
-        }
-        .padding(NexusSpacing.standard)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.Nexus.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: NexusRadius.base))
-        .overlay(
-            RoundedRectangle(cornerRadius: NexusRadius.base)
-                .stroke(Color.Nexus.border, lineWidth: NexusBorder.hair)
-        )
-        .scaleEffect(isPressed ? NexusScale.pressLight : 1)
-        .animation(NexusAnimation.press, value: isPressed)
-        .onLongPressGesture(minimumDuration: 0, pressing: { pressing in
-            isPressed = pressing
-        }, perform: {})
-    }
+        HStack(alignment: .top, spacing: 13) {
+            ContentTypeIconBadge(contentType: item.contentType, size: 44)
 
-    // MARK: Header row — icon badge + title + status pill
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.title ?? item.url)
+                    .font(.system(size: 16, weight: .semibold))
+                    .kerning(-0.3)
+                    .foregroundColor(.Nexus.ink)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
 
-    private var headerRow: some View {
-        HStack(alignment: .top, spacing: NexusSpacing.md) {
-            ContentTypeIconBadge(contentType: item.contentType)
-
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(alignment: .top, spacing: NexusSpacing.sm) {
-                    Text(item.title ?? item.url)
-                        .font(.Nexus.labelMedium)
-                        .foregroundColor(.Nexus.ink)
-                        .lineLimit(2)
-                        .kerning(NexusKerning.normal)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Spacer(minLength: NexusSpacing.xs)
-
-                    IngestStatusPill(status: item.ingestStatus)
+                HStack(spacing: 7) {
+                    Text(metaLine)
+                        .font(.system(size: 12.5))
+                        .foregroundColor(.Nexus.faint)
+                        .lineLimit(1)
+                    if item.ingestStatus != .completed {
+                        IngestStatusPill(status: item.ingestStatus)
+                    }
                 }
 
-                if let domain = extractDomain(from: item.url) {
-                    Text(domain)
-                        .font(.Nexus.overline)
-                        .foregroundColor(.Nexus.ghost)
-                        .kerning(NexusKerning.wide)
-                        .textCase(.uppercase)
-                }
+                summaryLine
+                tagsSection
             }
+
+            Spacer(minLength: 0)
         }
+        .padding(.vertical, 6)
+        .contentShape(Rectangle())
     }
 
-    // MARK: Summary section
+    // MARK: Meta + helpers
+
+    private var metaLine: String {
+        let domain = extractDomain(from: item.url) ?? ""
+        return domain.isEmpty ? typeLabel : "\(domain) · \(typeLabel)"
+    }
+
+    private var typeLabel: String {
+        switch item.contentType {
+        case .article, .blog:   return "Article"
+        case .video, .youtube:  return "Video"
+        case .podcast:          return "Podcast"
+        case .thread:           return "Thread"
+        case .announcement:     return "Announcement"
+        case .other:            return "Link"
+        }
+    }
 
     @ViewBuilder
-    private var summarySection: some View {
+    private var summaryLine: some View {
         if item.ingestStatus == .completed, let summary = item.summary {
             Text(summary)
-                .font(.Nexus.bodySmall)
+                .font(.system(size: 13.5))
                 .foregroundColor(.Nexus.muted)
-                .lineLimit(3)
+                .lineSpacing(2)
+                .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
-        } else if item.ingestStatus == .processing {
-            HStack(spacing: NexusSpacing.xs) {
-                Circle()
-                    .fill(Color.Nexus.accent.opacity(0.6))
-                    .frame(width: 5, height: 5)
-                Text("AI processing…")
-                    .font(.Nexus.caption)
+                .padding(.top, 1)
+        } else if item.ingestStatus == .processing || item.ingestStatus == .pending {
+            HStack(spacing: 5) {
+                Circle().fill(Color.Nexus.accent.opacity(0.6)).frame(width: 5, height: 5)
+                Text("Reading this source…")
+                    .font(.system(size: 12.5))
                     .foregroundColor(.Nexus.ghost)
             }
+            .padding(.top, 1)
         }
     }
-
-    // MARK: Tags section — horizontally scrollable chip row
 
     @ViewBuilder
     private var tagsSection: some View {
         if !item.tags.isEmpty {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: NexusSpacing.xs) {
-                    ForEach(item.tags.prefix(6), id: \.self) { tag in
-                        TagChip(label: tag)
-                    }
-                }
-                .padding(.horizontal, 1)
+            HStack(spacing: 6) {
+                ForEach(item.tags.prefix(3), id: \.self) { tag in TagChip(label: tag) }
             }
+            .padding(.top, 2)
         }
     }
-
-    // MARK: Helpers
 
     private func extractDomain(from urlString: String) -> String? {
         guard let host = URL(string: urlString)?.host else { return nil }
@@ -236,14 +226,15 @@ struct SourceCard: View {
 
 private struct ContentTypeIconBadge: View {
     let contentType: Item.ContentType
+    var size: CGFloat = 28
 
     var body: some View {
         Image(systemName: contentType.icon)
-            .font(.system(size: 13, weight: .medium))
+            .font(.system(size: size * 0.42, weight: .semibold))
             .foregroundColor(foregroundColor)
-            .frame(width: 28, height: 28)
+            .frame(width: size, height: size)
             .background(backgroundColor)
-            .clipShape(RoundedRectangle(cornerRadius: NexusRadius.xs))
+            .clipShape(RoundedRectangle(cornerRadius: size * 0.27, style: .continuous))
     }
 
     // Tint palette: one faint bg + one fg per content family.

@@ -91,6 +91,11 @@ private struct RootView: View {
             return AnyView(AuthView())
         case "splash":
             return AnyView(SplashView())
+        case "sourcesplayground":
+            let v = args.firstIndex(of: "-variant").flatMap { i in
+                i + 1 < args.count ? Int(args[i + 1]) : nil
+            }.flatMap { SourcesPlaygroundView.Variant(rawValue: $0) } ?? .compact
+            return AnyView(SourcesPlaygroundView(variant: v))
         case "glass":
             return AnyView(NavigationStack { GlassPlaygroundView() })
         case "account":

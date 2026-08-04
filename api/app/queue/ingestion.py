@@ -470,6 +470,7 @@ async def _process_job(
                         )
                         framing_result = await build_collection_framing(col.name, item.summary)
                         col.framing_paragraph = framing_result.sentence
+                        col.suggested_questions = framing_result.questions or None
                         framing_cost = (
                             Decimal(framing_result.input_tokens) * _HAIKU_INPUT_COST
                             + Decimal(framing_result.output_tokens) * _HAIKU_OUTPUT_COST

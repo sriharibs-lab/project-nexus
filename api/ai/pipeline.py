@@ -68,7 +68,12 @@ Your job is to find the most authoritative, insightful sources on a topic so the
 can build a collection that becomes their trusted knowledge base on that topic.
 
 Output rules:
-- Return exactly 8 sources. Quality over quantity — each source must be worth reading.
+- RELEVANCE IS NON-NEGOTIABLE: every source must be directly and specifically about \
+  THIS exact topic. Never include a source that is only tangentially related, off-topic, \
+  or a loose keyword match — drop it. Four tightly on-topic sources beat eight padded \
+  with loosely-related ones.
+- Return up to 8 sources (fewer is fine). Quality and relevance over quantity — each \
+  must be worth reading.
 - Prefer: long-form articles, research papers, definitive essays, high-signal newsletters, \
   authoritative explainers. Avoid: listicles, generic overview posts, outdated content.
 - Each source must have a real, specific, resolvable URL.
@@ -137,10 +142,12 @@ class ResearchResult:
 
 @dataclass
 class FramingResult:
-    """Return value of build_collection_framing — sentence + actual token usage."""
+    """Return value of build_collection_framing — sentence, 3 contextual starter
+    questions, and actual token usage."""
     sentence: str
     input_tokens: int
     output_tokens: int
+    questions: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -298,19 +305,36 @@ async def build_collection_framing(collection_name: str, first_summary: str) -> 
     """
     response = await _client.messages.create(
         model="claude-haiku-4-5",
-        max_tokens=80,
+        max_tokens=320,
         messages=[{
             "role": "user",
             "content": (
-                f'Write a single warm, direct sentence for the collection "{collection_name}" '
-                f"in Nexus after its first source was added. The source summary: {first_summary}\n\n"
-                "Requirements: acknowledge what was saved, invite the user to ask anything. "
-                'Don\'t start with "I". No quotes. Return only the sentence.'
+                f'A user just created the Nexus collection "{collection_name}". '
+                f"Its first source summary:\n{first_summary}\n\n"
+                "Return ONLY JSON (no markdown fences): "
+                '{"framing": "<sentence>", "questions": ["<q1>", "<q2>", "<q3>"]}\n'
+                "- framing: one warm, direct sentence acknowledging what was saved and "
+                'inviting the user to ask anything. Don\'t start with "I". No quotes.\n'
+                "- questions: exactly 3 SPECIFIC, curiosity-driving questions this user "
+                "would want to ask about THIS collection, concrete to its subject — not "
+                "generic ('summarize this', 'key ideas'). 4-9 words each, no trailing period."
             ),
         }],
     )
+    text = response.content[0].text.strip()
+    if text.startswith("```"):                       # strip accidental fences
+        text = text.strip("`")
+        text = text[4:].strip() if text.startswith("json") else text.strip()
+    sentence, questions = text, []
+    try:
+        data = json.loads(text)
+        sentence = str(data.get("framing", "")).strip() or text
+        questions = [str(q).strip() for q in data.get("questions", []) if str(q).strip()][:3]
+    except Exception:
+        pass
     return FramingResult(
-        sentence=response.content[0].text.strip(),
+        sentence=sentence,
+        questions=questions,
         input_tokens=response.usage.input_tokens,
         output_tokens=response.usage.output_tokens,
     )

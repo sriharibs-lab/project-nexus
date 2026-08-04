@@ -204,6 +204,7 @@ async def _stream_research(
 
     # ── Generate framing_paragraph ────────────────────────────────────────────
     framing: str | None = None
+    starter_questions: list[str] = []
     framing_input_tokens = 0
     framing_output_tokens = 0
     if sources_collected and settings.anthropic_api_key:
@@ -211,6 +212,7 @@ async def _stream_research(
             first_summary = sources_collected[0].rationale or sources_collected[0].title
             framing_result = await build_collection_framing(collection_name, first_summary)
             framing = framing_result.sentence
+            starter_questions = framing_result.questions
             framing_input_tokens = framing_result.input_tokens
             framing_output_tokens = framing_result.output_tokens
         except Exception:
@@ -230,6 +232,7 @@ async def _stream_research(
                 name=collection_name,
                 description=f"AI-curated sources on: {topic}",
                 framing_paragraph=framing,
+                suggested_questions=starter_questions or None,
                 source_count=0,
             )
             db.add(collection)

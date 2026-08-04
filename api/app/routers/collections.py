@@ -71,6 +71,7 @@ class CollectionResponse(BaseModel):
     name: str
     description: Optional[str]
     framing_paragraph: Optional[str]
+    suggested_questions: Optional[List[str]] = None
     created_by: CollectionCreatedBy
     source_count: int
     created_at: datetime

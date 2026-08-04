@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -45,6 +45,8 @@ class Collection(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     framing_paragraph: Mapped[str | None] = mapped_column(Text)
+    # 3 AI-generated, collection-specific starter questions (Ask-tab chips).
+    suggested_questions: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
     created_by: Mapped[CollectionCreatedBy] = mapped_column(
         # native_enum=False: the DB column is VARCHAR(10), not a Postgres enum
         # type — without it asyncpg casts $n::collectioncreatedby and fails

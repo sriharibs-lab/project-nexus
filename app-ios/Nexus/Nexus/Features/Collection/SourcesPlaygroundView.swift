@@ -1,43 +1,32 @@
 import SwiftUI
 
-// MARK: - Sources redesign playground (2026-08-03)
+// MARK: - Sources redesign playground v2 (2026-08-14)
 //
-// The shipped Sources list (tall cards + right chevron) reads weak. Three
-// cleaner directions to pick from — all kill the disclosure arrow and tighten
-// the hierarchy. Launch: simctl launch app.nexus -preview sourcesplayground [-variant 0|1|2]
+// Round 1 (borderless "Media") read unfinished — and the List's NavigationLink
+// re-added a system chevron. Round 2: elevated, native-feeling directions with
+// real shadows + rounded corners + type icons, and NO stray chevron.
+// Launch: simctl launch app.nexus -preview sourcesplayground [-variant 0|1|2]
 
 struct SourcesPlaygroundView: View {
     enum Variant: Int, CaseIterable, Identifiable {
-        case compact, card, media
+        case elevated, grouped, compact
         var id: Int { rawValue }
         var label: String {
             switch self {
-            case .compact: return "Compact"
-            case .card:    return "Card"
-            case .media:   return "Media"
+            case .elevated: return "Elevated"
+            case .grouped:  return "Grouped"
+            case .compact:  return "Compact"
             }
         }
     }
 
-    @State var variant: Variant = .compact
+    @State var variant: Variant = .elevated
 
     var body: some View {
         NavigationStack {
             ZStack {
                 NexusBackground().ignoresSafeArea()
-                ScrollView {
-                    LazyVStack(spacing: variant == .compact ? 0 : 12) {
-                        ForEach(Array(Self.samples.enumerated()), id: \.offset) { i, s in
-                            switch variant {
-                            case .compact: CompactRow(source: s, showDivider: i < Self.samples.count - 1)
-                            case .card:    CleanCard(source: s)
-                            case .media:   MediaRow(source: s)
-                            }
-                        }
-                    }
-                    .padding(.horizontal, variant == .compact ? NexusSpacing.sideGutter : NexusSpacing.sideGutter)
-                    .padding(.top, 8)
-                }
+                content
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -52,174 +41,188 @@ struct SourcesPlaygroundView: View {
         }
     }
 
-    // MARK: Sample data
+    @ViewBuilder
+    private var content: some View {
+        switch variant {
+        case .elevated:
+            ScrollView {
+                LazyVStack(spacing: 12) {
+                    ForEach(Array(Self.samples.enumerated()), id: \.offset) { _, s in
+                        ElevatedCard(source: s)
+                    }
+                }
+                .padding(.horizontal, NexusSpacing.sideGutter)
+                .padding(.top, 10)
+            }
+        case .grouped:
+            List {
+                Section {
+                    ForEach(Array(Self.samples.enumerated()), id: \.offset) { _, s in
+                        GroupedRow(source: s)
+                    }
+                }
+            }
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+        case .compact:
+            ScrollView {
+                LazyVStack(spacing: 10) {
+                    ForEach(Array(Self.samples.enumerated()), id: \.offset) { _, s in
+                        CompactCard(source: s)
+                    }
+                }
+                .padding(.horizontal, NexusSpacing.sideGutter)
+                .padding(.top, 10)
+            }
+        }
+    }
+
+    // MARK: Sample data (matches the user's real tsunami collection)
+    enum Status { case completed, failed }
     struct Source {
-        let title: String, domain: String, type: SourceType, summary: String, tags: [String]
+        let title: String, domain: String, type: SourceType, summary: String, tags: [String], status: Status
     }
     enum SourceType {
-        case article, video, podcast
-        var icon: String {
-            switch self { case .article: return "doc.text"; case .video: return "play.rectangle.fill"; case .podcast: return "waveform" }
-        }
-        var label: String {
-            switch self { case .article: return "Article"; case .video: return "Video"; case .podcast: return "Podcast" }
-        }
-        var tint: Color {
-            switch self { case .article: return Color(hex: "#4A7ABB"); case .video: return Color(hex: "#B84C3A"); case .podcast: return Color(hex: "#7B57B0") }
-        }
-        var wash: Color {
-            switch self { case .article: return Color(hex: "#EEF3FB"); case .video: return Color(hex: "#FCF0EE"); case .podcast: return Color(hex: "#F3EFFA") }
-        }
+        case article, video
+        var icon: String { self == .article ? "doc.text.fill" : "play.rectangle.fill" }
+        var label: String { self == .article ? "Article" : "Video" }
+        var tint: Color { self == .article ? Color(hex: "#4A7ABB") : Color(hex: "#B84C3A") }
+        var wash: Color { self == .article ? Color(hex: "#EEF3FB") : Color(hex: "#FCF0EE") }
     }
 
     static let samples: [Source] = [
-        .init(title: "Watch House of the Dragon", domain: "hbo.com", type: .article,
-              summary: "Season 3 is now streaming — a Game of Thrones prequel set 200 years earlier exploring House Targaryen at its height.",
-              tags: ["hbo-max", "game-of-thrones"]),
-        .init(title: "House of the Dragon", domain: "en.wikipedia.org", type: .article,
-              summary: "A Game of Thrones prequel spanning three seasons (2022–2026), adapting Martin's Targaryen civil war.",
-              tags: ["television-series", "fantasy-adaptation"]),
-        .init(title: "The Dance of the Dragons, explained", domain: "youtube.com", type: .video,
-              summary: "A deep-dive video essay on the Targaryen succession war and the key players who tore the realm apart.",
-              tags: ["lore", "explainer"]),
-        .init(title: "Fire & Blood", domain: "en.wikipedia.org", type: .article,
-              summary: "George R.R. Martin's fictional history of House Targaryen, the source material for the series.",
-              tags: ["george-r-r-martin", "fantasy-fiction"]),
-        .init(title: "House of the Dragon reviews", domain: "rottentomatoes.com", type: .article,
-              summary: "Critic and audience scores plus streaming availability for the fantasy drama.",
-              tags: ["reviews", "ratings"]),
+        .init(title: "National Weather Service — Tsunami Hazards", domain: "tsunami.gov", type: .article,
+              summary: "The U.S. Tsunami Warning System provides real-time earthquake monitoring, tsunami alerts, and coastal guidance.",
+              tags: ["tsunami-warning-system", "natural-disaster-alert"], status: .completed),
+        .init(title: "M 4.7 — Pacific-Antarctic Ridge", domain: "earthquake.usgs.gov", type: .article,
+              summary: "Magnitude 4.7 earthquake struck the Pacific-Antarctic Ridge on March 28 at 10 km depth.",
+              tags: ["earthquake", "seismology", "mid-ocean-ridge"], status: .completed),
+        .init(title: "Magnitude 7.7 earthquake strikes Indonesia", domain: "reuters.com", type: .article,
+              summary: "Breaking coverage of the 7.7 quake off Indonesia and the tsunami warnings that followed.",
+              tags: ["breaking-news", "indonesia"], status: .failed),
+        .init(title: "How tsunamis form, explained", domain: "youtube.com", type: .video,
+              summary: "A short video essay on how undersea earthquakes displace water and generate tsunami waves.",
+              tags: ["explainer", "geology"], status: .completed),
+        .init(title: "USGS Fact Sheet: Tsunami Hazards — A National Threat", domain: "pubs.usgs.gov", type: .article,
+              summary: "The 2004 Indian Ocean tsunami killed 200,000+ and exposed critical gaps in warning systems.",
+              tags: ["tsunami-hazards", "disaster-preparedness"], status: .completed),
     ]
 }
 
-// MARK: - Variant 1 · Compact (dense, scannable list)
+// MARK: - Shared type tile
 
-private struct CompactRow: View {
-    let source: SourcesPlaygroundView.Source
-    let showDivider: Bool
-
+private struct TypeTile: View {
+    let type: SourcesPlaygroundView.SourceType
+    var size: CGFloat = 38
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                Image(systemName: source.type.icon)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(source.type.tint)
-                    .frame(width: 22)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(source.title)
-                        .font(.system(size: 15.5, weight: .semibold))
-                        .kerning(-0.2)
-                        .foregroundColor(.Nexus.ink)
-                        .lineLimit(1)
-                    Text("\(source.domain) · \(source.type.label)")
-                        .font(.system(size: 12.5))
-                        .foregroundColor(.Nexus.faint)
-                        .lineLimit(1)
+        Image(systemName: type.icon)
+            .font(.system(size: size * 0.42, weight: .semibold))
+            .foregroundColor(type.tint)
+            .frame(width: size, height: size)
+            .background(type.wash)
+            .clipShape(RoundedRectangle(cornerRadius: size * 0.28, style: .continuous))
+    }
+}
+
+private struct StatusOrMeta: View {
+    let source: SourcesPlaygroundView.Source
+    var body: some View {
+        HStack(spacing: 7) {
+            Text("\(source.domain) · \(source.type.label)")
+                .font(.system(size: 12.5))
+                .foregroundColor(.Nexus.faint)
+                .lineLimit(1)
+            if source.status == .failed {
+                HStack(spacing: 4) {
+                    Circle().fill(Color.Nexus.destructive).frame(width: 5, height: 5)
+                    Text("Failed").font(.system(size: 11.5, weight: .medium)).foregroundColor(.Nexus.destructive)
                 }
-                Spacer()
-            }
-            .padding(.vertical, 12)
-            if showDivider {
-                Rectangle().fill(Color.Nexus.hair).frame(height: NexusBorder.hair)
-                    .padding(.leading, 34)
             }
         }
-        .contentShape(Rectangle())
     }
 }
 
-// MARK: - Variant 2 · Clean card (refined, no chevron)
-
-private struct CleanCard: View {
-    let source: SourcesPlaygroundView.Source
-
+private struct TagRow: View {
+    let tags: [String]
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 9) {
-                Image(systemName: source.type.icon)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(source.type.tint)
-                    .frame(width: 22, height: 22)
-                    .background(source.type.wash)
-                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                Text(source.title)
-                    .font(.system(size: 16, weight: .semibold))
-                    .kerning(-0.3)
-                    .foregroundColor(.Nexus.ink)
-                    .lineLimit(1)
-                Spacer(minLength: 4)
-                Text(source.domain)
-                    .font(.system(size: 12))
-                    .foregroundColor(.Nexus.faint)
-                    .lineLimit(1)
-            }
-            Text(source.summary)
-                .font(.system(size: 13.5))
-                .foregroundColor(.Nexus.muted)
-                .lineSpacing(2)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
-            HStack(spacing: 6) {
-                ForEach(source.tags, id: \.self) { tag in TagPill(tag) }
-            }
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.Nexus.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.Nexus.border, lineWidth: NexusBorder.hair))
-    }
-}
-
-// MARK: - Variant 3 · Media (prominent type tile, airy)
-
-private struct MediaRow: View {
-    let source: SourcesPlaygroundView.Source
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 13) {
-            Image(systemName: source.type.icon)
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundColor(source.type.tint)
-                .frame(width: 44, height: 44)
-                .background(source.type.wash)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            VStack(alignment: .leading, spacing: 4) {
-                Text(source.title)
-                    .font(.system(size: 16, weight: .semibold))
-                    .kerning(-0.3)
-                    .foregroundColor(.Nexus.ink)
-                    .lineLimit(2)
-                Text("\(source.domain) · \(source.type.label)")
-                    .font(.system(size: 12.5))
-                    .foregroundColor(.Nexus.faint)
-                Text(source.summary)
-                    .font(.system(size: 13.5))
+        HStack(spacing: 6) {
+            ForEach(tags.prefix(3), id: \.self) { t in
+                Text(t)
+                    .font(.system(size: 11.5, weight: .medium))
                     .foregroundColor(.Nexus.muted)
-                    .lineSpacing(2)
-                    .lineLimit(2)
-                    .padding(.top, 1)
-                HStack(spacing: 6) {
-                    ForEach(source.tags, id: \.self) { tag in TagPill(tag) }
-                }
-                .padding(.top, 2)
+                    .padding(.horizontal, 9).padding(.vertical, 4)
+                    .background(Color.Nexus.surface2)
+                    .clipShape(Capsule())
+            }
+        }
+    }
+}
+
+// MARK: - Variant 1 · Elevated card (shadow + rounded + full info)
+
+private struct ElevatedCard: View {
+    let source: SourcesPlaygroundView.Source
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            TypeTile(type: source.type, size: 38)
+            VStack(alignment: .leading, spacing: 5) {
+                Text(source.title)
+                    .font(.system(size: 16, weight: .semibold)).kerning(-0.3)
+                    .foregroundColor(.Nexus.ink).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                StatusOrMeta(source: source)
+                Text(source.summary)
+                    .font(.system(size: 13.5)).foregroundColor(.Nexus.muted)
+                    .lineSpacing(2).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                TagRow(tags: source.tags).padding(.top, 2)
             }
             Spacer(minLength: 0)
         }
-        .padding(.vertical, 6)
+        .padding(14)
+        .background(Color.Nexus.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 4)
     }
 }
 
-private struct TagPill: View {
-    let tag: String
-    init(_ tag: String) { self.tag = tag }
+// MARK: - Variant 2 · Native inset-grouped list row
+
+private struct GroupedRow: View {
+    let source: SourcesPlaygroundView.Source
     var body: some View {
-        Text(tag)
-            .font(.system(size: 11.5, weight: .medium))
-            .foregroundColor(.Nexus.muted)
-            .padding(.horizontal, 9)
-            .padding(.vertical, 4)
-            .background(Color.Nexus.surface2)
-            .clipShape(Capsule())
+        HStack(spacing: 12) {
+            TypeTile(type: source.type, size: 32)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(source.title)
+                    .font(.system(size: 15.5, weight: .semibold)).kerning(-0.2)
+                    .foregroundColor(.Nexus.ink).lineLimit(2)
+                StatusOrMeta(source: source)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 5)
+        .listRowBackground(Color.Nexus.cardBackground)
+    }
+}
+
+// MARK: - Variant 3 · Compact elevated card (shadow, denser, no summary)
+
+private struct CompactCard: View {
+    let source: SourcesPlaygroundView.Source
+    var body: some View {
+        HStack(spacing: 12) {
+            TypeTile(type: source.type, size: 34)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(source.title)
+                    .font(.system(size: 15.5, weight: .semibold)).kerning(-0.2)
+                    .foregroundColor(.Nexus.ink).lineLimit(1)
+                StatusOrMeta(source: source)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14).padding(.vertical, 12)
+        .background(Color.Nexus.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .shadow(color: .black.opacity(0.05), radius: 7, x: 0, y: 2)
     }
 }
 

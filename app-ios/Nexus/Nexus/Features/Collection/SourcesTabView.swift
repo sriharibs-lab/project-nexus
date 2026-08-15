@@ -75,18 +75,24 @@ struct SourcesTabView: View {
     private var sourcesList: some View {
         List {
             ForEach(items) { item in
-                NavigationLink(value: ItemDetailRoute(item: item, collectionId: collectionId)) {
+                // Hidden-link pattern: the visible content is SourceCard; the
+                // NavigationLink is an invisible overlay — this suppresses the
+                // List's automatic disclosure chevron (device dogfood).
+                ZStack {
+                    NavigationLink(value: ItemDetailRoute(item: item, collectionId: collectionId)) {
+                        EmptyView()
+                    }
+                    .opacity(0)
                     SourceCard(item: item)
                 }
-                .buttonStyle(.plain)
                 .listRowInsets(EdgeInsets(
-                    top: NexusSpacing.xs,
+                    top: 5,
                     leading: NexusSpacing.sideGutter,
-                    bottom: NexusSpacing.xs,
+                    bottom: 5,
                     trailing: NexusSpacing.sideGutter
                 ))
                 .listRowSeparator(.hidden)
-                .listRowBackground(Color.Nexus.pageBackground)
+                .listRowBackground(Color.clear)
                 // MARK: Swipe-to-delete
                 // Trailing swipe reveals a destructive Delete button.
                 // The role: .destructive colours it red automatically; the label
@@ -124,23 +130,22 @@ struct SourcesTabView: View {
 //
 //   [tag] [tag] [tag] → horizontally scrollable (up to 6)
 
-// Media row (redesign locked 2026-08-03 via SourcesPlayground): a prominent
-// color-coded content-type tile + title + domain·type + 2-line summary + tags.
-// No card border, no chevron — floats on the bloom; the List handles the tap.
+// Compact card (redesign locked 2026-08-14 via SourcesPlayground v2): an elevated
+// white card — soft shadow + rounded corners + a color-coded content-type tile +
+// title + domain·type. Dense, scannable; no chevron (hidden-link handles the tap).
 struct SourceCard: View {
     let item: Item
 
     var body: some View {
-        HStack(alignment: .top, spacing: 13) {
-            ContentTypeIconBadge(contentType: item.contentType, size: 44)
+        HStack(spacing: 12) {
+            ContentTypeIconBadge(contentType: item.contentType, size: 34)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(item.title ?? item.url)
-                    .font(.system(size: 16, weight: .semibold))
-                    .kerning(-0.3)
+                    .font(.system(size: 15.5, weight: .semibold))
+                    .kerning(-0.2)
                     .foregroundColor(.Nexus.ink)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(1)
 
                 HStack(spacing: 7) {
                     Text(metaLine)
@@ -151,14 +156,15 @@ struct SourceCard: View {
                         IngestStatusPill(status: item.ingestStatus)
                     }
                 }
-
-                summaryLine
-                tagsSection
             }
 
             Spacer(minLength: 0)
         }
-        .padding(.vertical, 6)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(Color.Nexus.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .shadow(color: .black.opacity(0.05), radius: 7, x: 0, y: 2)
         .contentShape(Rectangle())
     }
 
@@ -177,37 +183,6 @@ struct SourceCard: View {
         case .thread:           return "Thread"
         case .announcement:     return "Announcement"
         case .other:            return "Link"
-        }
-    }
-
-    @ViewBuilder
-    private var summaryLine: some View {
-        if item.ingestStatus == .completed, let summary = item.summary {
-            Text(summary)
-                .font(.system(size: 13.5))
-                .foregroundColor(.Nexus.muted)
-                .lineSpacing(2)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 1)
-        } else if item.ingestStatus == .processing || item.ingestStatus == .pending {
-            HStack(spacing: 5) {
-                Circle().fill(Color.Nexus.accent.opacity(0.6)).frame(width: 5, height: 5)
-                Text("Reading this source…")
-                    .font(.system(size: 12.5))
-                    .foregroundColor(.Nexus.ghost)
-            }
-            .padding(.top, 1)
-        }
-    }
-
-    @ViewBuilder
-    private var tagsSection: some View {
-        if !item.tags.isEmpty {
-            HStack(spacing: 6) {
-                ForEach(item.tags.prefix(3), id: \.self) { tag in TagChip(label: tag) }
-            }
-            .padding(.top, 2)
         }
     }
 

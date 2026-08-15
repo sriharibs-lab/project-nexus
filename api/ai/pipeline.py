@@ -63,42 +63,43 @@ Return JSON with this exact structure:
 
 # Research prompt — Sonnet only (SPEC §9c: collection research requires judgment and web knowledge)
 _RESEARCH_SYSTEM = """\
-You are Nexus, an AI-native content curation assistant. \
-Your job is to find the most authoritative, insightful sources on a topic so the user \
-can build a collection that becomes their trusted knowledge base on that topic.
+You are Nexus, an AI-native content curation assistant. Your job is to find the best \
+real, current sources on a topic so the user can build a collection that becomes their \
+trusted knowledge base on it.
+
+HOW TO WORK — you have a web_search tool. USE IT. Do NOT rely on memory or recall URLs:
+- Run SEVERAL searches (3-6) from DIFFERENT angles to build a rich, diverse set. \
+  Cover, as relevant: the latest news/coverage; official & primary sources (government \
+  agencies, organizations, official statements/reports); academic or technical work \
+  (papers, field surveys, journals); explainers/background; and local or regional \
+  perspectives. Vary your queries — don't search the same phrase repeatedly.
+- Recommend ONLY sources you actually found in the results, using the EXACT URLs the \
+  search returned. Never invent, guess, or recall a URL.
 
 Output rules:
 - RELEVANCE IS NON-NEGOTIABLE: every source must be directly and specifically about \
-  THIS exact topic. Never include a source that is only tangentially related, off-topic, \
-  or a loose keyword match — drop it. Four tightly on-topic sources beat eight padded \
-  with loosely-related ones.
-- Return up to 8 sources (fewer is fine). Quality and relevance over quantity — each \
-  must be worth reading.
-- Prefer: long-form articles, research papers, definitive essays, high-signal newsletters, \
-  authoritative explainers. Avoid: listicles, generic overview posts, outdated content.
-- Each source must have a real, specific, resolvable URL.
-- CRITICAL — the user's reader fetches each URL's full text, so every source must be \
-  openly readable by an automated fetcher. NEVER suggest hard-paywalled or bot-blocked \
-  sites (newyorker.com, lrb.co.uk, bloomberg.com, wsj.com, ft.com, economist.com, \
-  nytimes.com), book-store or publisher product pages (penguin.co.in, amazon), or \
-  login-gated content. Prefer openly accessible outlets: Wikipedia, arXiv, .gov/.edu, \
-  Our World in Data, Reuters, AP, BBC, The Atlantic, Vox, official blogs and \
-  documentation, established personal sites (e.g. Stratechery, Daring Fireball).
-- Provide a 1-sentence rationale for why this source is worth reading.
+  THIS exact topic. Drop anything tangential, off-topic, or a loose keyword match.
+- DIVERSITY MATTERS: return a rich MIX of source types and perspectives — news, \
+  primary/official, academic/technical, analysis/explainer, and (where relevant) \
+  local/regional. Do not return 8 of the same kind or 8 from a single site. This \
+  breadth is what makes a collection feel complete.
+- Return up to 8 sources (fewer is fine). Relevance, diversity, and freshness over count.
+- The user's reader fetches each URL's full text, so prefer OPENLY readable sources. \
+  Avoid hard-paywalled/bot-blocked sites (nytimes, wsj, ft, bloomberg, economist, \
+  newyorker) and store/product pages. Favor news wires (Reuters, AP), .gov/.edu, arXiv \
+  and journals, Wikipedia, official blogs/docs, and reputable open outlets.
+- One-sentence rationale per source: why it's worth reading.
 
-Stream output as a JSON array of objects with this exact structure:
+After searching, respond with ONLY a JSON array (no prose, no markdown fences) of objects:
 [
   {
     "title": "string",
-    "url": "https://...",
-    "domain": "string (site name, e.g. 'Nature', 'Stratechery')",
-    "rationale": "string (1 sentence — why this source matters for the topic)",
+    "url": "https://...   (the exact URL from the search result)",
+    "domain": "string (site name, e.g. 'Reuters', 'USGS')",
+    "rationale": "string (1 sentence)",
     "content_type": "article | video | podcast | thread | paper"
-  },
-  ...
-]
-
-Respond with valid JSON only. No markdown fences. No preamble."""
+  }
+]"""
 
 _RESEARCH_SYSTEM_CACHE_CONTROL = [
     {
@@ -251,12 +252,16 @@ async def research_topic_with_usage(topic: str) -> ResearchResult:
     """
     async with _client.messages.stream(
         model="claude-sonnet-4-6",
-        max_tokens=2048,
+        max_tokens=4096,
         system=_RESEARCH_SYSTEM_CACHE_CONTROL,
+        # Ground discovery in a REAL web search (server-side tool) instead of the
+        # model recalling URLs from memory — the fix for stale/generic/hallucinated
+        # sources and the NotebookLM-richness gap (2026-08-14).
+        tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 6}],
         messages=[
             {
                 "role": "user",
-                "content": f"Find the 8 best sources to understand this topic deeply: {topic}",
+                "content": f"Find the best real, current, diverse sources to understand this topic deeply: {topic}",
             }
         ],
     ) as stream:
@@ -271,11 +276,11 @@ async def research_topic_with_usage(topic: str) -> ResearchResult:
     cache_tokens = getattr(usage, "cache_read_input_tokens", 0) or 0
 
     raw = full_text.strip()
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-        raw = raw.strip()
+    # Extract the JSON array even if the model narrated around it — web_search
+    # turns often prompt some prose despite the "JSON only" instruction.
+    start, end = raw.find("["), raw.rfind("]")
+    if start != -1 and end > start:
+        raw = raw[start:end + 1]
 
     try:
         rows = json.loads(raw)

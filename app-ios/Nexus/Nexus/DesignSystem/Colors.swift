@@ -30,6 +30,7 @@ extension Color {
 
         // Status
         static let destructive     = Color(hex: "#C0392B")  // red — destructive actions only
+        static let success         = Color(hex: "#3E8E5A")  // green — correct answers, positive states
     }
 }
 

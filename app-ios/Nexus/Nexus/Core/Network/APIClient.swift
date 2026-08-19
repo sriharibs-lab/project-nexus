@@ -79,6 +79,25 @@ final class APIClient {
         return try await post(.collections, body: body)
     }
 
+    // MARK: - Artifacts (Create tab)
+
+    /// List a collection's generated artifacts (newest first).
+    func fetchArtifacts(in collectionId: UUID) async throws -> [Artifact] {
+        try await get(.artifacts(collectionId: collectionId))
+    }
+
+    /// Generate a new artifact (quiz/paper) from the collection's sources.
+    /// May take a few seconds — the backend generates synchronously on a
+    /// Fireworks OSS model. Returns 502 if generation fails (surfaced as
+    /// APIError.serverError).
+    func createArtifact(kind: String, in collectionId: UUID) async throws -> Artifact {
+        try await post(.artifacts(collectionId: collectionId), body: ArtifactCreateRequest(kind: kind))
+    }
+
+    func deleteArtifact(id: UUID) async throws {
+        try await delete(.artifact(id: id))
+    }
+
     // MARK: - Auth
 
     /// Send a magic-link OTP email via our backend (keeps Supabase service key server-side).

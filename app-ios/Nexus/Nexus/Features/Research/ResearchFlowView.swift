@@ -607,11 +607,16 @@ private struct FRESourcesSheet: View {
                             removal: .opacity
                         ))
                     }
-                    // Shimmer placeholders while loading
-                    if !isReviewing {
-                        ForEach(0..<max(0, 6 - vm.sources.count), id: \.self) { _ in
-                            FREShimmerRow()
-                        }
+                    // Brand wait state: the Echo mark pulsing (same animation as
+                    // the Ask tab's "thinking" state). Replaces the shimmer rows,
+                    // which read as "content failed to load" (dogfood 2026-08-18).
+                    if !isReviewing && vm.sources.isEmpty {
+                        EchoPulseView()
+                            .scaleEffect(1.8)
+                            .frame(height: 96)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 56)
+                            .transition(.opacity)
                     }
                 }
                 .padding(.horizontal, NexusSpacing.standard)

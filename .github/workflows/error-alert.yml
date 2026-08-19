@@ -1,0 +1,50 @@
+name: error-alert
+
+# Polls the production error monitor and FAILS the job (→ GitHub emails the repo
+# owner) when the recent error count crosses a threshold. This is the alert that
+# would have caught the 2026-08-18 Anthropic billing outage within ~30 min
+# instead of via dogfooding.
+#
+# Requires two repo secrets:
+#   ADMIN_TOKEN            — same value as the backend's ADMIN_TOKEN env var
+#   (URL is hard-coded below; change if the Render host changes)
+#
+# Threshold + window are set here. On a private repo this runs every 30 min,
+# well within the 2000 free Actions minutes/month.
+on:
+  schedule:
+    - cron: "*/30 * * * *"    # every 30 min (UTC)
+  workflow_dispatch: {}        # allow manual runs
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query error summary (last 1h)
+        env:
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+        run: |
+          URL="https://nexus-api-bwrh.onrender.com/v1/admin/errors/summary?hours=1"
+          THRESHOLD=5
+
+          if [ -z "$ADMIN_TOKEN" ]; then
+            echo "::warning::ADMIN_TOKEN secret not set — skipping error check"
+            exit 0
+          fi
+
+          # Retry to ride out Render cold starts.
+          body=""
+          for i in 1 2 3 4; do
+            body=$(curl -s --max-time 70 -H "X-Admin-Token: $ADMIN_TOKEN" "$URL") && [ -n "$body" ] && break
+            echo "attempt $i: empty/failed, retrying"; sleep 20
+          done
+
+          echo "summary: $body"
+          errors=$(echo "$body" | python3 -c "import sys,json; print(json.load(sys.stdin).get('errors',0))" 2>/dev/null || echo "0")
+          echo "errors in last hour: $errors (threshold $THRESHOLD)"
+
+          if [ "$errors" -ge "$THRESHOLD" ]; then
+            echo "::error::Nexus backend reported $errors errors in the last hour (>= $THRESHOLD). Check /v1/admin/errors."
+            exit 1
+          fi
+          echo "OK — below threshold"

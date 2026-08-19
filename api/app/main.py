@@ -16,7 +16,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.queue.ingestion import close_pgq_pool, init_pgq_pool, start_worker
-from app.routers import auth, briefing, feedback, health, ingest, collections, items, research, search, users, trending
+from app.routers import admin, artifacts, auth, briefing, feedback, health, ingest, collections, items, research, search, users, trending
+from app.middleware.error_logging import install_error_telemetry
 
 logging.basicConfig(level=settings.log_level.upper())
 logger = logging.getLogger(__name__)
@@ -85,3 +86,8 @@ app.include_router(briefing.router, prefix="/v1")
 app.include_router(search.router, prefix="/v1")
 app.include_router(users.router, prefix="/v1")
 app.include_router(trending.router, prefix="/v1")
+app.include_router(artifacts.router, prefix="/v1")
+app.include_router(admin.router, prefix="/v1")
+
+# Production error telemetry — capture unhandled 5xx into error_events.
+install_error_telemetry(app)

@@ -30,6 +30,9 @@ class Settings(BaseSettings):
 
     # Fireworks — required for embedding (nomic-embed-text-v1.5, 768-dim)
     fireworks_api_key: str = ""
+    # Open-source Fireworks text model for Create-tab artifact generation
+    # (quiz, paper). gpt-oss-120b = OpenAI open-weights; swap here to retune.
+    fireworks_text_model: str = "accounts/fireworks/models/gpt-oss-120b"
 
     # Cloudflare R2 / S3-compatible object storage (1A-008)
     # Gate: create the bucket and set these vars before 1E submission.
@@ -42,6 +45,10 @@ class Settings(BaseSettings):
     # App
     environment: str = "development"
     log_level: str = "info"
+
+    # Admin token guarding /v1/admin/* (error monitor). Set ADMIN_TOKEN in the
+    # environment; if empty, admin endpoints refuse (503) rather than open up.
+    admin_token: str = ""
 
     # Chat RAG settings
     chat_rag_top_k: int = 8          # number of similar chunks retrieved per query

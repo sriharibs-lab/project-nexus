@@ -41,6 +41,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal, get_db
+from app.core.telemetry import record_error
 from app.middleware.auth import get_current_user
 from app.models.ai_telemetry import AiTelemetry
 from app.models.collection import Collection
@@ -158,6 +159,20 @@ async def _stream_research(
         result = await research_topic_with_usage(topic)
     except Exception as exc:
         logger.exception("Research stream failed for topic=%r: %s", topic, exc)
+        # Capture to error_events — this failure rides inside a 200 SSE stream,
+        # so the HTTP telemetry net can't see it (this is exactly how the
+        # 2026-08-18 billing outage stayed invisible).
+        await record_error(
+            source="collection_research",
+            error_type=type(exc).__name__,
+            status_code=getattr(exc, "status_code", None),
+            message=str(exc) or type(exc).__name__,
+            path="/v1/collections/research",
+            method="POST",
+            correlation_id=correlation_id,
+            user_id=user_id,
+            context={"topic": topic[:200]},
+        )
         yield _sse({"event": "error", "message": "Research failed. Please try again."})
         return
 

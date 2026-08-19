@@ -39,6 +39,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.rag import RagChunk, build_context_block, retrieve_recent_chunks, retrieve_similar_chunks
+from app.core.telemetry import record_error
 from app.middleware.auth import get_current_user
 from app.models.collection import Collection, CollectionCreatedBy
 from app.models.item import collection_items
@@ -326,24 +327,45 @@ async def _stream_chat(
 
         yield await _sse_event({"type": "done"})
 
-    except anthropic.AuthenticationError:
+    except anthropic.AuthenticationError as exc:
         logger.error("Anthropic authentication failed — check ANTHROPIC_API_KEY")
+        await _record_chat_error(collection, exc, status_code=401)
         yield await _sse_event({
             "type": "error",
             "message": "AI service authentication failed. Contact support.",
         })
-    except anthropic.RateLimitError:
+    except anthropic.RateLimitError as exc:
         logger.warning("Anthropic rate limit hit for collection=%s", collection.id)
+        await _record_chat_error(collection, exc, level="warning", status_code=429)
         yield await _sse_event({
             "type": "error",
             "message": "AI service is busy. Please try again in a moment.",
         })
-    except Exception:
+    except Exception as exc:
+        # Billing/quota 400s (anthropic.BadRequestError) land here — this is the
+        # "An unexpected error occurred" path the 2026-08-18 outage surfaced.
         logger.exception("Unexpected error during chat stream for collection=%s", collection.id)
+        await _record_chat_error(collection, exc, status_code=getattr(exc, "status_code", None))
         yield await _sse_event({
             "type": "error",
             "message": "An unexpected error occurred. Please try again.",
         })
+
+
+async def _record_chat_error(
+    collection: Collection, exc: Exception, *, level: str = "error", status_code: int | None = None
+) -> None:
+    await record_error(
+        source="chat",
+        level=level,
+        status_code=status_code,
+        error_type=type(exc).__name__,
+        message=str(exc) or type(exc).__name__,
+        path="/v1/collections/{id}/chat",
+        method="POST",
+        user_id=collection.user_id,
+        context={"collection_id": str(collection.id)},
+    )
 
 
 # ── Chat Route ─────────────────────────────────────────────────────────────────

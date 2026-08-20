@@ -713,13 +713,9 @@ private struct ChatComposer: View {
         }
     }
 
+    // Functional voice dictation (Speech framework) — was a decorative waveform.
     private var waveformCircle: some View {
-        Image(systemName: "waveform")
-            .font(.system(size: 15, weight: .semibold))
-            .foregroundColor(.Nexus.faint)
-            .frame(width: 36, height: 36)
-            .background(Color.Nexus.surface2)
-            .clipShape(Circle())
+        DictationButton(text: $vm.inputText, diameter: 36)
     }
 }
 

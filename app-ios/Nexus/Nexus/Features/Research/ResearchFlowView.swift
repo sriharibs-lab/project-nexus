@@ -397,14 +397,8 @@ private struct FREComposer: View {
                         }
                         .transition(.scale.combined(with: .opacity))
                     } else {
-                        Circle()
-                            .fill(Color.Nexus.surface2)
-                            .frame(width: 32, height: 32)
-                            .overlay(
-                                Image(systemName: "mic")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(.Nexus.muted)
-                            )
+                        // Functional voice dictation (Speech framework).
+                        DictationButton(text: $text)
                             .transition(.scale.combined(with: .opacity))
                     }
                 }

@@ -210,11 +210,16 @@ async def _stream_research(
     actual_input = result.input_tokens
     actual_output = result.output_tokens
     actual_cache = result.cache_read_tokens
-    # Sonnet pricing: $3.00/1M input, $15.00/1M output; cache reads at 10% input
+    # Price by the model actually used (research_model is config-flippable).
+    # Sonnet: $3/$15 per 1M in/out; Haiku: $0.80/$4; cache reads at 10% of input.
+    if "haiku" in result.model:
+        in_rate, out_rate = Decimal("0.0000008"), Decimal("0.000004")
+    else:
+        in_rate, out_rate = Decimal("0.000003"), Decimal("0.000015")
     actual_cost = (
-        Decimal(actual_input) * Decimal("0.000003")
-        + Decimal(actual_output) * Decimal("0.000015")
-        - Decimal(actual_cache) * Decimal("0.0000027")
+        Decimal(actual_input) * in_rate
+        + Decimal(actual_output) * out_rate
+        - Decimal(actual_cache) * in_rate / 10
     )
 
     # ── Generate framing_paragraph ────────────────────────────────────────────
@@ -264,7 +269,7 @@ async def _stream_research(
                 collection_id=collection_id,
                 correlation_id=correlation_id,
                 operation="collection_research",
-                model="claude-sonnet-4-6",
+                model=result.model,
                 input_tokens=actual_input,
                 output_tokens=actual_output,
                 cache_read_tokens=actual_cache,

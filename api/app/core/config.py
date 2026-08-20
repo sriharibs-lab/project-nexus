@@ -55,6 +55,13 @@ class Settings(BaseSettings):
     chat_model: str = "claude-sonnet-4-6"  # model used for chat streaming; must match pipeline.py and research.py
     chat_max_tokens: int = 1024       # max tokens in the streamed reply
 
+    # Research (collection discovery). web_search does the grounding, so the model
+    # mostly curates/formats — Haiku ≈ halves cost vs Sonnet (search-result tokens
+    # dominate input, billed at the model's input rate). Flip via env to trade a
+    # little editorial currency for ~50% research savings.
+    research_model: str = "claude-sonnet-4-6"
+    research_web_search_max_uses: int = 4   # was 6; each search adds ~$0.01 + result tokens
+
     # Search settings (1C-006)
     search_result_limit: int = 20       # max results returned to the client
     search_top_k: int = 20              # max rows from each leg before merge

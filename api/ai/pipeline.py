@@ -139,6 +139,7 @@ class ResearchResult:
     input_tokens: int
     output_tokens: int
     cache_read_tokens: int
+    model: str = "claude-sonnet-4-6"
 
 
 @dataclass
@@ -250,14 +251,17 @@ async def research_topic_with_usage(topic: str) -> ResearchResult:
     stream.get_final_message().usage — not estimated. Used by the research router
     to write accurate AiTelemetry records (SPEC §9b cost telemetry).
     """
+    model = settings.research_model
     async with _client.messages.stream(
-        model="claude-sonnet-4-6",
+        model=model,
         max_tokens=4096,
         system=_RESEARCH_SYSTEM_CACHE_CONTROL,
         # Ground discovery in a REAL web search (server-side tool) instead of the
         # model recalling URLs from memory — the fix for stale/generic/hallucinated
-        # sources and the NotebookLM-richness gap (2026-08-14).
-        tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 6}],
+        # sources and the NotebookLM-richness gap (2026-08-14). The search does the
+        # grounding, so a cheaper model curates well; max_uses caps search spend.
+        tools=[{"type": "web_search_20250305", "name": "web_search",
+                "max_uses": settings.research_web_search_max_uses}],
         messages=[
             {
                 "role": "user",
@@ -285,7 +289,7 @@ async def research_topic_with_usage(topic: str) -> ResearchResult:
     try:
         rows = json.loads(raw)
     except json.JSONDecodeError:
-        return ResearchResult(sources=[], input_tokens=input_tokens, output_tokens=output_tokens, cache_read_tokens=cache_tokens)
+        return ResearchResult(sources=[], input_tokens=input_tokens, output_tokens=output_tokens, cache_read_tokens=cache_tokens, model=model)
 
     sources = [
         SourceRow(
@@ -297,7 +301,7 @@ async def research_topic_with_usage(topic: str) -> ResearchResult:
         )
         for row in rows
     ]
-    return ResearchResult(sources=sources, input_tokens=input_tokens, output_tokens=output_tokens, cache_read_tokens=cache_tokens)
+    return ResearchResult(sources=sources, input_tokens=input_tokens, output_tokens=output_tokens, cache_read_tokens=cache_tokens, model=model)
 
 
 async def build_collection_framing(collection_name: str, first_summary: str) -> FramingResult:

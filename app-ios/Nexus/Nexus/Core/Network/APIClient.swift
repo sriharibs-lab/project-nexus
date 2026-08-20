@@ -1,10 +1,46 @@
 import Foundation
 
+/// Serializes token refreshes so N concurrent 401s trigger ONE refresh, not N.
+/// Critical because Supabase rotates the refresh token — parallel refreshes
+/// would invalidate each other and log the user out.
+private actor RefreshGate {
+    private var inFlight: Task<Bool, Never>?
+    func run(_ op: @escaping @Sendable () async -> Bool) async -> Bool {
+        if let inFlight { return await inFlight.value }
+        let task = Task { await op() }
+        inFlight = task
+        let result = await task.value
+        inFlight = nil
+        return result
+    }
+}
+
 final class APIClient {
     static let shared = APIClient()
     private init() {}
 
+    private let refreshGate = RefreshGate()
+
     private var authToken: String? { AuthManager.shared.accessToken }
+
+    /// Refresh the access token once (single-flighted). Returns true if the
+    /// session was renewed and the caller should retry. On failure the session
+    /// is left intact so the UI can surface a retry rather than a hard logout.
+    private func attemptRefresh() async -> Bool {
+        await refreshGate.run { [weak self] in
+            guard let self else { return false }
+            guard let rt = await MainActor.run(body: { AuthManager.shared.refreshToken }) else { return false }
+            do {
+                let resp = try await self.refreshAccessToken(refreshToken: rt)
+                await MainActor.run {
+                    AuthManager.shared.updateTokens(accessToken: resp.accessToken, refreshToken: resp.refreshToken)
+                }
+                return true
+            } catch {
+                return false
+            }
+        }
+    }
 
     private let decoder: JSONDecoder = {
         let d = JSONDecoder()
@@ -180,7 +216,8 @@ final class APIClient {
     func search(
         query: String,
         mode: SearchRequest.SearchMode = .hybrid,
-        limit: Int = 20
+        limit: Int = 20,
+        isRetry: Bool = false
     ) async throws -> SearchResponse {
         guard var components = URLComponents(url: Endpoint.search.url, resolvingAgainstBaseURL: false) else {
             throw APIError.unknown
@@ -211,7 +248,11 @@ final class APIClient {
         case 200...299:
             do { return try decoder.decode(SearchResponse.self, from: data) }
             catch { throw APIError.decodingError(error) }
-        case 401: throw APIError.unauthorized
+        case 401:
+            if !isRetry, await attemptRefresh() {
+                return try await search(query: query, mode: mode, limit: limit, isRetry: true)
+            }
+            throw APIError.unauthorized
         case 404: throw APIError.notFound
         default:  throw APIError.serverError(http.statusCode)
         }
@@ -225,6 +266,7 @@ final class APIClient {
     func streamSSE<B: Encodable>(
         _ endpoint: Endpoint,
         body: B,
+        isRetry: Bool = false,
         onEvent: @escaping (Result<[String: Any], Error>) -> Void
     ) async throws {
         var req = URLRequest(url: endpoint.url)
@@ -239,6 +281,11 @@ final class APIClient {
         let (asyncBytes, response) = try await URLSession.shared.bytes(for: req)
         guard let http = response as? HTTPURLResponse else { throw APIError.unknown }
         guard (200...299).contains(http.statusCode) else {
+            // Refresh + reopen the stream once on 401 (nothing has been streamed
+            // yet at this point, so a clean retry is safe).
+            if http.statusCode == 401, !isRetry, await attemptRefresh() {
+                return try await streamSSE(endpoint, body: body, isRetry: true, onEvent: onEvent)
+            }
             switch http.statusCode {
             case 401: throw APIError.unauthorized
             case 404: throw APIError.notFound
@@ -270,7 +317,8 @@ final class APIClient {
     private func perform<T: Decodable>(
         _ endpoint: Endpoint,
         method: String,
-        body: (any Encodable)? = nil
+        body: (any Encodable)? = nil,
+        isRetry: Bool = false
     ) async throws -> T {
         var req = URLRequest(url: endpoint.url)
         req.httpMethod = method
@@ -296,7 +344,12 @@ final class APIClient {
             if T.self == EmptyResponse.self, let empty = EmptyResponse() as? T { return empty }
             do { return try decoder.decode(T.self, from: data) }
             catch { throw APIError.decodingError(error) }
-        case 401: throw APIError.unauthorized
+        case 401:
+            // Access token likely expired — refresh once and retry transparently.
+            if !isRetry, await attemptRefresh() {
+                return try await perform(endpoint, method: method, body: body, isRetry: true)
+            }
+            throw APIError.unauthorized
         case 404: throw APIError.notFound
         default:  throw APIError.serverError(http.statusCode)
         }

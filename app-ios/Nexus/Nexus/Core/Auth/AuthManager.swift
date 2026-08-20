@@ -86,6 +86,17 @@ final class AuthManager: ObservableObject {
         write(token, Key.accessToken)
     }
 
+    /// Update both tokens after a refresh. Supabase ROTATES the refresh token on
+    /// every refresh, so the new one must be persisted or the next refresh 401s.
+    func updateTokens(accessToken: String, refreshToken: String?) {
+        self.accessToken = accessToken
+        write(accessToken, Key.accessToken)
+        if let rt = refreshToken, !rt.isEmpty {
+            self.refreshToken = rt
+            write(rt, Key.refreshToken)
+        }
+    }
+
     func signOut() {
         accessToken = nil
         refreshToken = nil

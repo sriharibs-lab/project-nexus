@@ -496,84 +496,98 @@ private struct ArtifactWizardView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                Color.Nexus.pageBackground.ignoresSafeArea()
-                VStack(alignment: .leading, spacing: NexusSpacing.lg) {
-                    Text(subtitle)
-                        .font(.system(size: 15))
-                        .foregroundColor(.Nexus.muted)
-                        .lineSpacing(3)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    if kind == .quiz {
-                        WizardRow(title: "Number of questions") {
-                            WizardSegment(titles: counts.map(String.init), selection: $qCount)
+            // Native inset-grouped Form on the Bloom background (matches the
+            // Settings "Bloom" direction). Segmented Pickers are real
+            // UISegmentedControls — native styling, no custom pills.
+            Form {
+                if kind == .quiz {
+                    Section("Number of questions") {
+                        Picker("Number of questions", selection: $qCount) {
+                            ForEach(counts.indices, id: \.self) { Text("\(counts[$0])").tag($0) }
                         }
-                        WizardRow(title: "Difficulty") {
-                            WizardSegment(titles: ["Easy", "Medium", "Hard"], selection: $qDiff)
-                        }
-                    } else {
-                        WizardRow(title: "Length") {
-                            WizardSegment(titles: ["Brief", "Standard", "In-depth"], selection: $rLength)
-                        }
-                        WizardRow(title: "Style") {
-                            WizardSegment(titles: ["Explainer", "Academic", "Executive"], selection: $rStyle)
-                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
                     }
-
-                    Spacer()
-
-                    if let error {
-                        ErrorInline(message: error) { self.error = nil }
+                    Section {
+                        Picker("Difficulty", selection: $qDiff) {
+                            Text("Easy").tag(0); Text("Medium").tag(1); Text("Hard").tag(2)
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                    } header: {
+                        Text("Difficulty")
+                    } footer: {
+                        Text("Questions are generated from this collection's sources.")
                     }
-                    generateButton
+                } else {
+                    Section("Length") {
+                        Picker("Length", selection: $rLength) {
+                            Text("Brief").tag(0); Text("Standard").tag(1); Text("In-depth").tag(2)
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                    }
+                    Section {
+                        Picker("Style", selection: $rStyle) {
+                            Text("Explainer").tag(0); Text("Academic").tag(1); Text("Executive").tag(2)
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                    } header: {
+                        Text("Style")
+                    } footer: {
+                        Text("Written from this collection's sources.")
+                    }
                 }
-                .padding(.horizontal, NexusSpacing.sideGutter)
-                .padding(.top, NexusSpacing.lg)
-                .padding(.bottom, NexusSpacing.md)
+
+                if let error {
+                    Section {
+                        Text(error)
+                            .font(.system(size: 13.5))
+                            .foregroundColor(.Nexus.destructive)
+                    }
+                }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.Nexus.pageBackground)
             .navigationTitle(kind.label)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }
-                        .foregroundColor(.Nexus.muted)
-                        .disabled(generating)
+                    Button("Cancel") { dismiss() }.disabled(generating)
                 }
             }
+            .safeAreaInset(edge: .bottom) { bottomBar }
         }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
         .interactiveDismissDisabled(generating)
     }
 
-    private var subtitle: String {
-        kind == .quiz
-            ? "Test yourself on this collection's sources. Pick how many questions and how hard they should be."
-            : "Turn this collection's sources into a written report. Choose the length and the style."
-    }
-
     @ViewBuilder
-    private var generateButton: some View {
-        if generating {
-            HStack(spacing: 10) {
-                EchoPulseView().frame(width: 26, height: 26)
-                Text(kind == .quiz ? "Building your quiz…" : "Writing your report…")
-                    .font(.system(size: 14.5))
-                    .foregroundColor(.Nexus.muted)
+    private var bottomBar: some View {
+        Group {
+            if generating {
+                HStack(spacing: 10) {
+                    EchoPulseView().frame(width: 24, height: 24)
+                    Text(kind == .quiz ? "Building your quiz…" : "Writing your report…")
+                        .font(.system(size: 14.5))
+                        .foregroundColor(.Nexus.muted)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 13)
+            } else {
+                Button(action: generate) {
+                    Text("Generate").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.Nexus.accent)
+                .controlSize(.large)
+                .padding(.horizontal, NexusSpacing.sideGutter)
+                .padding(.vertical, 10)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
-        } else {
-            Button(action: generate) {
-                Text("Generate")
-                    .font(.system(size: 15.5, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 15)
-                    .background(Color.Nexus.accent)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            }
-            .buttonStyle(.plain)
         }
+        .background(.bar)
     }
 
     private func generate() {
@@ -604,53 +618,26 @@ private struct ArtifactWizardView: View {
     }
 }
 
-private struct WizardRow<Content: View>: View {
-    let title: String
-    @ViewBuilder let content: Content
-    var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            Text(title.uppercased())
-                .font(.system(size: 11, weight: .semibold))
-                .kerning(0.6)
-                .foregroundColor(.Nexus.faint)
-            content
-        }
-    }
-}
-
-private struct WizardSegment: View {
-    let titles: [String]
-    @Binding var selection: Int
-
-    var body: some View {
-        HStack(spacing: 6) {
-            ForEach(Array(titles.enumerated()), id: \.offset) { i, title in
-                Button {
-                    withAnimation(.easeInOut(duration: 0.15)) { selection = i }
-                } label: {
-                    Text(title)
-                        .font(.system(size: 14, weight: .semibold))
-                        .kerning(-0.1)
-                        .foregroundColor(selection == i ? .white : .Nexus.ink)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 11)
-                        .background(selection == i ? Color.Nexus.accent : Color.Nexus.cardBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 11, style: .continuous)
-                                .stroke(selection == i ? Color.clear : Color.Nexus.border, lineWidth: NexusBorder.hair)
-                        )
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-}
-
 #if DEBUG
 enum CreateWizardPreview {
     @MainActor static func make(kind: ArtifactKind) -> some View {
-        ArtifactWizardView(kind: kind, collection: .previewSample) { _ in }
+        WizardPreviewHost(kind: kind)
+    }
+}
+
+// Presents the wizard as a real sheet so the medium detent + drag indicator
+// render in screenshots (the view alone wouldn't get the sheet chrome).
+private struct WizardPreviewHost: View {
+    let kind: ArtifactKind
+    @State private var show = true
+    var body: some View {
+        ZStack {
+            Color.Nexus.pageBackground.ignoresSafeArea()
+            Text("Create").foregroundColor(.Nexus.faint)
+        }
+        .sheet(isPresented: $show) {
+            ArtifactWizardView(kind: kind, collection: .previewSample) { _ in }
+        }
     }
 }
 #endif

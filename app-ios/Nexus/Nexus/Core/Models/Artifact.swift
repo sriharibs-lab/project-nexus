@@ -34,6 +34,16 @@ struct QuizQuestion: Codable, Equatable, Identifiable {
     let why: String
 }
 
+/// Per-kind config from the Create wizard. All optional; the backend fills
+/// defaults. Encoded snake_case (num_questions) by the client's encoder.
+struct ArtifactOptions: Encodable {
+    var numQuestions: Int? = nil
+    var difficulty: String? = nil     // easy | medium | hard
+    var length: String? = nil         // brief | standard | indepth
+    var style: String? = nil          // explainer | academic | executive
+}
+
 struct ArtifactCreateRequest: Encodable {
     let kind: String
+    let options: ArtifactOptions?
 }

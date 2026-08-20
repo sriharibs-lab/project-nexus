@@ -17,7 +17,7 @@ enum ArtifactKind: String, CaseIterable, Identifiable {
         case .audio: return "Audio summary"
         case .info:  return "Infographic"
         case .quiz:  return "Quiz me"
-        case .paper: return "Write a paper"
+        case .paper: return "Write a report"
         }
     }
 
@@ -50,10 +50,9 @@ struct CreateTabView: View {
     let items: [Item]
 
     @State private var artifacts: [Artifact] = []
-    @State private var creating: ArtifactKind?
     @State private var didLoad = false
-    @State private var errorMessage: String?
     @State private var selected: Artifact?
+    @State private var wizardKind: ArtifactKind?
 
     var body: some View {
         ScrollView {
@@ -62,19 +61,11 @@ struct CreateTabView: View {
 
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: NexusSpacing.sm), GridItem(.flexible())], spacing: NexusSpacing.sm) {
                     ForEach(ArtifactKind.allCases) { kind in
-                        CreateCard(kind: kind, isBusy: creating == kind) {
-                            generate(kind)
+                        CreateCard(kind: kind) {
+                            if !kind.comingSoon { wizardKind = kind }
                         }
-                        .disabled(creating != nil || kind.comingSoon)
+                        .disabled(kind.comingSoon)
                     }
-                }
-
-                if let kind = creating {
-                    generatingBeat(kind)
-                }
-
-                if let errorMessage {
-                    ErrorInline(message: errorMessage) { self.errorMessage = nil }
                 }
 
                 if !artifacts.isEmpty {
@@ -100,10 +91,14 @@ struct CreateTabView: View {
             .padding(.bottom, NexusSpacing.xl)
         }
         .animation(.spring(response: 0.38, dampingFraction: 0.8), value: artifacts)
-        .animation(.easeInOut(duration: 0.2), value: creating)
         .task { await loadIfNeeded() }
         .sheet(item: $selected) { artifact in
             ArtifactDetailView(artifact: artifact)
+        }
+        .sheet(item: $wizardKind) { kind in
+            ArtifactWizardView(kind: kind, collection: collection) { created in
+                artifacts.insert(created, at: 0)
+            }
         }
     }
 
@@ -119,19 +114,6 @@ struct CreateTabView: View {
         }
     }
 
-    private func generatingBeat(_ kind: ArtifactKind) -> some View {
-        HStack(spacing: NexusSpacing.sm) {
-            EchoPulseView()
-                .frame(width: 28, height: 28)
-            Text("Creating \(kind.label.lowercased())…")
-                .font(.Nexus.bodySmall)
-                .foregroundColor(.Nexus.muted)
-        }
-        .frame(maxWidth: .infinity, alignment: .center)
-        .padding(.top, NexusSpacing.sm)
-        .transition(.opacity)
-    }
-
     // MARK: Data
 
     private func loadIfNeeded() async {
@@ -144,40 +126,12 @@ struct CreateTabView: View {
             // Non-fatal: an empty studio is a fine default; surface nothing.
         }
     }
-
-    private func generate(_ kind: ArtifactKind) {
-        guard creating == nil, let backendKind = kind.backendKind else { return }
-        creating = kind
-        errorMessage = nil
-        Task {
-            do {
-                let artifact = try await APIClient.shared.createArtifact(kind: backendKind, in: collection.id)
-                await MainActor.run {
-                    artifacts.insert(artifact, at: 0)
-                    creating = nil
-                }
-            } catch {
-                await MainActor.run {
-                    creating = nil
-                    errorMessage = friendlyError(error, kind: kind)
-                }
-            }
-        }
-    }
-
-    private func friendlyError(_ error: Error, kind: ArtifactKind) -> String {
-        if case APIError.serverError(422) = error {
-            return "Add and process at least one source before creating a \(kind.label.lowercased())."
-        }
-        return "Couldn't create that just now. Please try again."
-    }
 }
 
 // MARK: - Creation card
 
 private struct CreateCard: View {
     let kind: ArtifactKind
-    let isBusy: Bool
     let action: () -> Void
 
     @State private var pressed = false
@@ -214,7 +168,7 @@ private struct CreateCard: View {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .stroke(Color.Nexus.border, lineWidth: NexusBorder.hair)
             )
-            .opacity(isBusy ? 0.55 : (kind.comingSoon ? 0.75 : 1))
+            .opacity(kind.comingSoon ? 0.75 : 1)
         }
         .buttonStyle(.plain)
         .scaleEffect(pressed ? NexusScale.pressLight : 1)
@@ -263,7 +217,7 @@ private struct ArtifactRow: View {
             return "\(n) question\(n == 1 ? "" : "s")"
         case "paper":
             let sections = artifact.content?.outline?.count ?? 0
-            return sections > 0 ? "Briefing · \(sections) sections" : "Briefing"
+            return sections > 0 ? "Report · \(sections) sections" : "Report"
         default:
             return ""
         }
@@ -314,7 +268,7 @@ private struct ArtifactDetailView: View {
                 Color.Nexus.pageBackground.ignoresSafeArea()
                 content
             }
-            .navigationTitle(artifact.kind == "quiz" ? "Quiz" : "Briefing")
+            .navigationTitle(artifact.kind == "quiz" ? "Quiz" : "Report")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -516,6 +470,190 @@ private struct QuizPlayerView: View {
         withAnimation { index = 0; picked = nil; score = 0; finished = false }
     }
 }
+
+// MARK: - Create wizard (configure, then generate)
+
+private struct ArtifactWizardView: View {
+    let kind: ArtifactKind
+    let collection: NexusCollection
+    let onCreated: (Artifact) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    // Quiz options
+    @State private var qCount = 1   // [3, 5, 10] → default 5
+    @State private var qDiff = 1    // [easy, medium, hard] → default medium
+    // Report options
+    @State private var rLength = 1  // [brief, standard, indepth] → default standard
+    @State private var rStyle = 0   // [explainer, academic, executive] → default explainer
+
+    @State private var generating = false
+    @State private var error: String?
+
+    private let counts = [3, 5, 10]
+    private let diffVals = ["easy", "medium", "hard"]
+    private let lengthVals = ["brief", "standard", "indepth"]
+    private let styleVals = ["explainer", "academic", "executive"]
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.Nexus.pageBackground.ignoresSafeArea()
+                VStack(alignment: .leading, spacing: NexusSpacing.lg) {
+                    Text(subtitle)
+                        .font(.system(size: 15))
+                        .foregroundColor(.Nexus.muted)
+                        .lineSpacing(3)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if kind == .quiz {
+                        WizardRow(title: "Number of questions") {
+                            WizardSegment(titles: counts.map(String.init), selection: $qCount)
+                        }
+                        WizardRow(title: "Difficulty") {
+                            WizardSegment(titles: ["Easy", "Medium", "Hard"], selection: $qDiff)
+                        }
+                    } else {
+                        WizardRow(title: "Length") {
+                            WizardSegment(titles: ["Brief", "Standard", "In-depth"], selection: $rLength)
+                        }
+                        WizardRow(title: "Style") {
+                            WizardSegment(titles: ["Explainer", "Academic", "Executive"], selection: $rStyle)
+                        }
+                    }
+
+                    Spacer()
+
+                    if let error {
+                        ErrorInline(message: error) { self.error = nil }
+                    }
+                    generateButton
+                }
+                .padding(.horizontal, NexusSpacing.sideGutter)
+                .padding(.top, NexusSpacing.lg)
+                .padding(.bottom, NexusSpacing.md)
+            }
+            .navigationTitle(kind.label)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundColor(.Nexus.muted)
+                        .disabled(generating)
+                }
+            }
+        }
+        .interactiveDismissDisabled(generating)
+    }
+
+    private var subtitle: String {
+        kind == .quiz
+            ? "Test yourself on this collection's sources. Pick how many questions and how hard they should be."
+            : "Turn this collection's sources into a written report. Choose the length and the style."
+    }
+
+    @ViewBuilder
+    private var generateButton: some View {
+        if generating {
+            HStack(spacing: 10) {
+                EchoPulseView().frame(width: 26, height: 26)
+                Text(kind == .quiz ? "Building your quiz…" : "Writing your report…")
+                    .font(.system(size: 14.5))
+                    .foregroundColor(.Nexus.muted)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+        } else {
+            Button(action: generate) {
+                Text("Generate")
+                    .font(.system(size: 15.5, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 15)
+                    .background(Color.Nexus.accent)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func generate() {
+        generating = true
+        error = nil
+        let opts: ArtifactOptions = kind == .quiz
+            ? ArtifactOptions(numQuestions: counts[qCount], difficulty: diffVals[qDiff])
+            : ArtifactOptions(length: lengthVals[rLength], style: styleVals[rStyle])
+        let backendKind = kind.backendKind ?? "quiz"
+        Task {
+            do {
+                let created = try await APIClient.shared.createArtifact(kind: backendKind, options: opts, in: collection.id)
+                await MainActor.run { onCreated(created); dismiss() }
+            } catch {
+                await MainActor.run {
+                    generating = false
+                    self.error = friendly(error)
+                }
+            }
+        }
+    }
+
+    private func friendly(_ e: Error) -> String {
+        if case APIError.serverError(422) = e {
+            return "Add and process at least one source before creating this."
+        }
+        return "Couldn't create that just now. Please try again."
+    }
+}
+
+private struct WizardRow<Content: View>: View {
+    let title: String
+    @ViewBuilder let content: Content
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Text(title.uppercased())
+                .font(.system(size: 11, weight: .semibold))
+                .kerning(0.6)
+                .foregroundColor(.Nexus.faint)
+            content
+        }
+    }
+}
+
+private struct WizardSegment: View {
+    let titles: [String]
+    @Binding var selection: Int
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(Array(titles.enumerated()), id: \.offset) { i, title in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) { selection = i }
+                } label: {
+                    Text(title)
+                        .font(.system(size: 14, weight: .semibold))
+                        .kerning(-0.1)
+                        .foregroundColor(selection == i ? .white : .Nexus.ink)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 11)
+                        .background(selection == i ? Color.Nexus.accent : Color.Nexus.cardBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                                .stroke(selection == i ? Color.clear : Color.Nexus.border, lineWidth: NexusBorder.hair)
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+}
+
+#if DEBUG
+enum CreateWizardPreview {
+    @MainActor static func make(kind: ArtifactKind) -> some View {
+        ArtifactWizardView(kind: kind, collection: .previewSample) { _ in }
+    }
+}
+#endif
 
 private struct OptionRow: View {
     enum State { case idle, correct, wrong, dimmed }

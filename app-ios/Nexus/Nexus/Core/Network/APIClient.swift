@@ -90,8 +90,8 @@ final class APIClient {
     /// May take a few seconds — the backend generates synchronously on a
     /// Fireworks OSS model. Returns 502 if generation fails (surfaced as
     /// APIError.serverError).
-    func createArtifact(kind: String, in collectionId: UUID) async throws -> Artifact {
-        try await post(.artifacts(collectionId: collectionId), body: ArtifactCreateRequest(kind: kind))
+    func createArtifact(kind: String, options: ArtifactOptions? = nil, in collectionId: UUID) async throws -> Artifact {
+        try await post(.artifacts(collectionId: collectionId), body: ArtifactCreateRequest(kind: kind, options: options))
     }
 
     func deleteArtifact(id: UUID) async throws {

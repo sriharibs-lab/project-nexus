@@ -96,6 +96,12 @@ private struct RootView: View {
                 i + 1 < args.count ? Int(args[i + 1]) : nil
             }.flatMap { SourcesPlaygroundView.Variant(rawValue: $0) } ?? .compact
             return AnyView(SourcesPlaygroundView(variant: v))
+        case "createwizard":
+            let kindArg = args.firstIndex(of: "-kind").flatMap { i in
+                i + 1 < args.count ? args[i + 1] : nil
+            } ?? "quiz"
+            let kind: ArtifactKind = kindArg == "report" ? .paper : .quiz
+            return AnyView(CreateWizardPreview.make(kind: kind))
         case "glass":
             return AnyView(NavigationStack { GlassPlaygroundView() })
         case "account":

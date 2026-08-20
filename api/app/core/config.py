@@ -60,7 +60,7 @@ class Settings(BaseSettings):
     # dominate input, billed at the model's input rate). Flip via env to trade a
     # little editorial currency for ~50% research savings.
     research_model: str = "claude-haiku-4-5"  # ~½ Sonnet cost; web_search does the grounding. Revert: RESEARCH_MODEL=claude-sonnet-4-6
-    research_web_search_max_uses: int = 4   # was 6; each search adds ~$0.01 + result tokens
+    research_web_search_max_uses: int = 6   # richer/current sources; the Haiku switch already carries the savings
 
     # Search settings (1C-006)
     search_result_limit: int = 20       # max results returned to the client

@@ -33,6 +33,7 @@ final class HomeViewModel: ObservableObject {
         guard !isPreview else { return }
         #endif
         isLoading = true
+        error = nil          // clear any prior failure so a successful retry recovers
         defer { isLoading = false }
         do {
             collections = try await APIClient.shared.fetchCollections()

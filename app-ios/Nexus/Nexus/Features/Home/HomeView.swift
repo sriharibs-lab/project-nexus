@@ -42,8 +42,23 @@ struct HomeView: View {
                         LoadingStateView()
                     }
                     .toolbar(.hidden, for: .navigationBar)
+                } else if vm.collections.isEmpty && vm.error != nil {
+                    // Load FAILED (cold start, expired token, network) — show a
+                    // retry, NOT the FRE. Otherwise a transient failure looks
+                    // like every collection vanished and drops the user into
+                    // new-collection (device report 2026-08-19).
+                    ZStack {
+                        NexusBackground()
+                        ErrorStateView(
+                            message: "Couldn't load your collections."
+                        ) {
+                            await vm.load()
+                        }
+                    }
+                    .toolbar(.hidden, for: .navigationBar)
                 } else if vm.collections.isEmpty {
-                    // No collections — FRE is the primary screen, not a modal
+                    // Genuinely empty (new user, load succeeded) — FRE is the
+                    // primary screen, not a modal.
                     ResearchFlowView { collectionId in
                         Task {
                             await vm.load()

@@ -62,7 +62,10 @@ struct CreateTabView: View {
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: NexusSpacing.sm), GridItem(.flexible())], spacing: NexusSpacing.sm) {
                     ForEach(ArtifactKind.allCases) { kind in
                         CreateCard(kind: kind) {
-                            if !kind.comingSoon { wizardKind = kind }
+                            if !kind.comingSoon {
+                                Haptics.impact(.light)
+                                wizardKind = kind
+                            }
                         }
                         .disabled(kind.comingSoon)
                     }
@@ -455,7 +458,9 @@ private struct QuizPlayerView: View {
     private func pick(_ i: Int) {
         guard picked == nil else { return }
         picked = i
-        if i == current.answer { score += 1 }
+        let correct = i == current.answer
+        if correct { score += 1 }
+        Haptics.notify(correct ? .success : .error)
     }
 
     private func next() {
@@ -591,6 +596,7 @@ private struct ArtifactWizardView: View {
     }
 
     private func generate() {
+        Haptics.impact(.medium)
         generating = true
         error = nil
         let opts: ArtifactOptions = kind == .quiz

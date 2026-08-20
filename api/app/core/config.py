@@ -59,7 +59,7 @@ class Settings(BaseSettings):
     # mostly curates/formats — Haiku ≈ halves cost vs Sonnet (search-result tokens
     # dominate input, billed at the model's input rate). Flip via env to trade a
     # little editorial currency for ~50% research savings.
-    research_model: str = "claude-sonnet-4-6"
+    research_model: str = "claude-haiku-4-5"  # ~½ Sonnet cost; web_search does the grounding. Revert: RESEARCH_MODEL=claude-sonnet-4-6
     research_web_search_max_uses: int = 4   # was 6; each search adds ~$0.01 + result tokens
 
     # Search settings (1C-006)

@@ -42,8 +42,18 @@ _FW_TEXT_OUTPUT_COST = Decimal("0.0000006")   # ~$0.60 / 1M
 ArtifactKind = Literal["quiz", "paper"]
 
 
+class ArtifactOptions(BaseModel):
+    # quiz
+    num_questions: int | None = None
+    difficulty: str | None = None
+    # report (kind="paper")
+    length: str | None = None
+    style: str | None = None
+
+
 class ArtifactCreateRequest(BaseModel):
     kind: ArtifactKind
+    options: ArtifactOptions | None = None
 
 
 class ArtifactResponse(BaseModel):
@@ -113,12 +123,23 @@ async def create_artifact(
             detail="Add and process at least one source before creating artifacts.",
         )
 
+    opts = payload.options or ArtifactOptions()
     correlation_id = str(uuid.uuid4())
     try:
         if payload.kind == "quiz":
-            result = await generate_quiz(collection.name, context)
+            result = await generate_quiz(
+                collection.name,
+                context,
+                num_questions=opts.num_questions or 5,
+                difficulty=opts.difficulty or "medium",
+            )
         else:
-            result = await generate_paper(collection.name, context)
+            result = await generate_paper(
+                collection.name,
+                context,
+                length=opts.length or "standard",
+                style=opts.style or "explainer",
+            )
     except Exception as exc:  # provider error, malformed output, empty result
         logger.exception("artifact generation failed kind=%s collection=%s", payload.kind, collection.id)
         await record_error(

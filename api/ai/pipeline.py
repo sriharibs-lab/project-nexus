@@ -652,9 +652,10 @@ You are a sharp research writer. Using ONLY the provided sources, write a concis
 well-structured briefing on the topic. Rules:
 - Ground every claim in the sources; do not fabricate facts or citations.
 - Start with a single "# Title" line, then flowing prose under "## " section \
-headings (3-5 sections). Cover: what's going on, where sources agree/disagree, \
-and what it means / what's next.
-- ~500-800 words. Clean GitHub-flavored markdown. No preamble like "Here is"."""
+headings. Cover: what's going on, where sources agree/disagree, and what it \
+means / what's next.
+- Follow the requested length and style. Clean GitHub-flavored markdown. No \
+preamble like "Here is"."""
 
 
 def _fw_usage(resp) -> tuple[int, int]:
@@ -662,11 +663,26 @@ def _fw_usage(resp) -> tuple[int, int]:
     return (getattr(u, "prompt_tokens", 0) or 0, getattr(u, "completion_tokens", 0) or 0)
 
 
-async def generate_quiz(collection_name: str, context: str, num_questions: int = 5) -> ArtifactResult:
+_QUIZ_DIFFICULTY = {
+    "easy": "Easy: test recall of key facts and definitions stated plainly in the sources.",
+    "medium": "Medium: test comprehension and application — connect ideas across the sources.",
+    "hard": "Hard: test synthesis and nuance — subtle distinctions, implications, and edge cases.",
+}
+
+
+async def generate_quiz(
+    collection_name: str,
+    context: str,
+    num_questions: int = 5,
+    difficulty: str = "medium",
+) -> ArtifactResult:
     """Generate a grounded multiple-choice quiz from a collection's sources."""
     model = settings.fireworks_text_model
+    difficulty = difficulty if difficulty in _QUIZ_DIFFICULTY else "medium"
+    num_questions = min(max(num_questions, 1), 15)
     user = (
         f"Collection: {collection_name}\n\nSOURCES:\n{context}\n\n"
+        f"Difficulty — {_QUIZ_DIFFICULTY[difficulty]}\n"
         f"Write {num_questions} multiple-choice questions that test understanding of these sources."
     )
     # NOTE: gpt-oss-120b garbles output under response_format=json_object
@@ -717,14 +733,37 @@ async def generate_quiz(collection_name: str, context: str, num_questions: int =
     )
 
 
-async def generate_paper(collection_name: str, context: str) -> ArtifactResult:
-    """Generate a grounded briefing paper (markdown) from a collection's sources."""
+_PAPER_LENGTH = {
+    "brief": ("~250-350 words, 2-3 sections", 900),
+    "standard": ("~500-800 words, 3-5 sections", 2200),
+    "indepth": ("~1000-1400 words, 5-7 sections with more detail", 3600),
+}
+_PAPER_STYLE = {
+    "explainer": "Plain, accessible explainer tone — clear language a curious non-expert can follow.",
+    "academic": "Formal, analytical academic tone — precise, measured, argument-driven.",
+    "executive": "Crisp executive tone — lead with a one-line bottom line, then tight sections and bulleted takeaways.",
+}
+
+
+async def generate_paper(
+    collection_name: str,
+    context: str,
+    length: str = "standard",
+    style: str = "explainer",
+) -> ArtifactResult:
+    """Generate a grounded report (markdown) from a collection's sources."""
     model = settings.fireworks_text_model
-    user = f"Topic / collection: {collection_name}\n\nSOURCES:\n{context}\n\nWrite the briefing now."
+    length = length if length in _PAPER_LENGTH else "standard"
+    style = style if style in _PAPER_STYLE else "explainer"
+    length_hint, max_toks = _PAPER_LENGTH[length]
+    user = (
+        f"Topic / collection: {collection_name}\n\nSOURCES:\n{context}\n\n"
+        f"Length — {length_hint}.\nStyle — {_PAPER_STYLE[style]}\n\nWrite the report now."
+    )
     resp = await _fireworks.chat.completions.create(
         model=model,
         messages=[{"role": "system", "content": _PAPER_SYSTEM}, {"role": "user", "content": user}],
-        max_tokens=2200,
+        max_tokens=max_toks,
         temperature=0.6,
     )
     inp, out = _fw_usage(resp)

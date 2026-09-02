@@ -227,19 +227,27 @@ private struct ArtifactRow: View {
         }
     }
 
+    // Color-coded tile per artifact kind (quiz = amber, report = blue).
+    private var tileBg: Color {
+        artifact.kind == "quiz" ? Color(hex: "#FDF5E8") : Color(hex: "#EEF3FB")
+    }
+    private var tileFg: Color {
+        artifact.kind == "quiz" ? Color(hex: "#B8862A") : Color(hex: "#4A7ABB")
+    }
+
     var body: some View {
         HStack(spacing: 12) {
             ZStack {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color.Nexus.accent.opacity(0.12))
-                    .frame(width: 40, height: 40)
+                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                    .fill(tileBg)
+                    .frame(width: 42, height: 42)
                 Image(systemName: kind?.icon ?? "sparkles")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.Nexus.accent)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(tileFg)
             }
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(artifact.title)
-                    .font(.system(size: 14.5, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold))
                     .kerning(-0.2)
                     .foregroundColor(.Nexus.ink)
                     .lineLimit(2)
@@ -253,10 +261,10 @@ private struct ArtifactRow: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(.Nexus.ghost)
         }
-        .padding(.horizontal, 14).padding(.vertical, 12)
+        .padding(.horizontal, 14).padding(.vertical, 13)
         .background(Color.Nexus.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.Nexus.border, lineWidth: NexusBorder.hair))
+        .shadow(color: .black.opacity(0.05), radius: 7, x: 0, y: 2)
     }
 }
 
@@ -346,12 +354,51 @@ private struct ArtifactDetailView: View {
 private struct PaperReaderView: View {
     let markdown: String
 
+    /// First H1 becomes the styled header title.
+    private var headerTitle: String {
+        for line in markdown.components(separatedBy: "\n") where line.hasPrefix("# ") {
+            return String(line.dropFirst(2)).trimmingCharacters(in: .whitespaces)
+        }
+        return "Report"
+    }
+
+    /// Body markdown with the first H1 removed (it's rendered as the header).
+    private var bodyMarkdown: String {
+        var lines = markdown.components(separatedBy: "\n")
+        if let i = lines.firstIndex(where: { $0.hasPrefix("# ") }) { lines.remove(at: i) }
+        return lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     var body: some View {
         ScrollView {
-            AssistantMarkdown(content: markdown)
-                .padding(.horizontal, NexusSpacing.sideGutter)
-                .padding(.vertical, NexusSpacing.lg)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: 0) {
+                // Header: eyebrow → title → divider
+                Text("REPORT")
+                    .font(.system(size: 11, weight: .bold))
+                    .kerning(1.4)
+                    .foregroundColor(.Nexus.accent)
+                    .padding(.bottom, 9)
+                Text(headerTitle)
+                    .font(.system(size: 25, weight: .bold))
+                    .kerning(-0.5)
+                    .foregroundColor(.Nexus.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.bottom, 16)
+                Rectangle()
+                    .fill(Color.Nexus.hair)
+                    .frame(height: 1)
+                    .padding(.bottom, 18)
+
+                AssistantMarkdown(content: bodyMarkdown)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(22)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.Nexus.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .shadow(color: .black.opacity(0.06), radius: 14, x: 0, y: 5)
+            .padding(.horizontal, NexusSpacing.sideGutter)
+            .padding(.vertical, NexusSpacing.lg)
         }
     }
 }

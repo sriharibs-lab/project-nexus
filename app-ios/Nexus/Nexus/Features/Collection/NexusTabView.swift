@@ -615,6 +615,10 @@ private struct ChatComposer: View {
     /// keyboard by setting composerFocused = false from a tap-outside gesture.
     var focused: FocusState<Bool>.Binding
 
+    @StateObject private var speech = SpeechRecognizer()
+    @State private var dictating = false
+    @State private var baseText = ""
+
     private var canSend: Bool {
         !vm.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && vm.phase == .idle
     }
@@ -627,7 +631,7 @@ private struct ChatComposer: View {
     /// identity, destroying first responder the moment you tapped ("can't
     /// type into the chat box", 2026-07-15). The TextField below exists in
     /// exactly one place; only spacing, shape, and the send row animate.
-    private var isExpanded: Bool { focused.wrappedValue || !vm.inputText.isEmpty }
+    private var isExpanded: Bool { focused.wrappedValue || !vm.inputText.isEmpty || dictating }
 
     var body: some View {
         VStack(alignment: .leading, spacing: isExpanded ? NexusSpacing.sm : 0) {
@@ -663,27 +667,33 @@ private struct ChatComposer: View {
             }
 
             if isExpanded {
-                HStack(spacing: NexusSpacing.sm) {
-                    waveformCircle
-                    Spacer()
-                    Button {
-                        if canSend { vm.send() }
-                    } label: {
-                        Image(systemName: "arrow.up")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(width: 38, height: 38)
-                            // Plum: sending to Nexus is an AI moment — the one
-                            // accent belongs here (matches FRE create + link-sheet
-                            // Save). Ink is reserved for the audio glyph.
-                            .background(canSend ? Color.Nexus.accent : Color.Nexus.ghost)
-                            .clipShape(Circle())
+                if dictating {
+                    DictationBar(speech: speech, onCancel: cancelDictation, onConfirm: confirmDictation)
+                        .frame(height: 38)
+                        .transition(.opacity)
+                } else {
+                    HStack(spacing: NexusSpacing.sm) {
+                        waveformCircle
+                        Spacer()
+                        Button {
+                            if canSend { vm.send() }
+                        } label: {
+                            Image(systemName: "arrow.up")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.white)
+                                .frame(width: 38, height: 38)
+                                // Plum: sending to Nexus is an AI moment — the one
+                                // accent belongs here (matches FRE create + link-sheet
+                                // Save). Ink is reserved for the audio glyph.
+                                .background(canSend ? Color.Nexus.accent : Color.Nexus.ghost)
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(!canSend)
+                        .animation(NexusAnimation.element, value: canSend)
                     }
-                    .buttonStyle(.plain)
-                    .disabled(!canSend)
-                    .animation(NexusAnimation.element, value: canSend)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
                 }
-                .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
         }
         .padding(isExpanded ? NexusSpacing.md : NexusSpacing.sm)
@@ -694,6 +704,11 @@ private struct ChatComposer: View {
         )
         .shadow(color: .black.opacity(isExpanded ? 0.08 : 0.04), radius: isExpanded ? 16 : 8, y: isExpanded ? 4 : 2)
         .animation(.spring(response: 0.36, dampingFraction: 0.82), value: isExpanded)
+        .onChange(of: speech.transcript) { _, t in
+            guard dictating else { return }
+            let sep = baseText.isEmpty ? "" : " "
+            vm.inputText = t.isEmpty ? baseText : baseText + sep + t
+        }
     }
 
     // Liquid Glass backdrop when expanded (floating layer, DESIGN_LANGUAGE §3);
@@ -715,7 +730,29 @@ private struct ChatComposer: View {
 
     // Functional voice dictation (Speech framework) — was a decorative waveform.
     private var waveformCircle: some View {
-        DictationButton(text: $vm.inputText, diameter: 36)
+        MicCircle(diameter: 36) { startDictation() }
+    }
+
+    private func startDictation() {
+        Task {
+            guard await speech.requestAuthorization() else { return }
+            baseText = vm.inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+            focused.wrappedValue = false
+            Haptics.impact(.medium)
+            withAnimation(NexusAnimation.element) { dictating = true }
+            speech.start()
+        }
+    }
+
+    private func confirmDictation() {
+        speech.stop()
+        withAnimation(NexusAnimation.element) { dictating = false }
+    }
+
+    private func cancelDictation() {
+        speech.cancel()
+        vm.inputText = baseText
+        withAnimation(NexusAnimation.element) { dictating = false }
     }
 }
 

@@ -340,6 +340,10 @@ private struct FREComposer: View {
     @FocusState.Binding var focused: Bool
     let onSubmit: () -> Void
 
+    @StateObject private var speech = SpeechRecognizer()
+    @State private var dictating = false
+    @State private var baseText = ""
+
     private var hasText: Bool {
         !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
@@ -369,42 +373,53 @@ private struct FREComposer: View {
             .padding(.bottom, 16)
             .frame(minHeight: 28)
 
-            // Bottom toolbar — both buttons share a 42pt frame so height never shifts
-            HStack(spacing: 8) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Color.Nexus.surface2)
-                        .frame(width: 32, height: 32)
-                    Image(systemName: "plus")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(.Nexus.ink)
-                }
-                .frame(height: 42)  // anchor row to 42pt so mic→send swap doesn't shift height
-
-                Spacer()
-
-                ZStack {
-                    if hasText {
-                        Button(action: onSubmit) {
-                            Circle()
-                                .fill(Color.Nexus.accent)
-                                .frame(width: 42, height: 42)
-                                .overlay(
-                                    Image(systemName: "arrow.up")
-                                        .font(.system(size: 15, weight: .semibold))
-                                        .foregroundColor(.white)
-                                )
+            // Bottom toolbar — swaps to the dictation bar while recording.
+            Group {
+                if dictating {
+                    DictationBar(speech: speech, onCancel: cancelDictation, onConfirm: confirmDictation)
+                        .frame(height: 42)
+                } else {
+                    HStack(spacing: 8) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(Color.Nexus.surface2)
+                                .frame(width: 32, height: 32)
+                            Image(systemName: "plus")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundColor(.Nexus.ink)
                         }
-                        .transition(.scale.combined(with: .opacity))
-                    } else {
-                        // Functional voice dictation (Speech framework).
-                        DictationButton(text: $text)
-                            .transition(.scale.combined(with: .opacity))
+                        .frame(height: 42)
+
+                        Spacer()
+
+                        ZStack {
+                            if hasText {
+                                Button(action: onSubmit) {
+                                    Circle()
+                                        .fill(Color.Nexus.accent)
+                                        .frame(width: 42, height: 42)
+                                        .overlay(
+                                            Image(systemName: "arrow.up")
+                                                .font(.system(size: 15, weight: .semibold))
+                                                .foregroundColor(.white)
+                                        )
+                                }
+                                .transition(.scale.combined(with: .opacity))
+                            } else {
+                                MicCircle { startDictation() }
+                                    .transition(.scale.combined(with: .opacity))
+                            }
+                        }
+                        .frame(width: 42, height: 42)
+                        .animation(NexusAnimation.element, value: hasText)
                     }
                 }
-                .frame(width: 42, height: 42)
-                .animation(NexusAnimation.element, value: hasText)
             }
+        }
+        .onChange(of: speech.transcript) { _, t in
+            guard dictating else { return }
+            let sep = baseText.isEmpty ? "" : " "
+            text = t.isEmpty ? baseText : baseText + sep + t
         }
         .padding(.horizontal, 14)
         .padding(.top, 16)
@@ -416,7 +431,30 @@ private struct FREComposer: View {
                 .stroke(focused ? Color.Nexus.borderStrong : Color.Nexus.border, lineWidth: NexusBorder.base)
         )
         .animation(NexusAnimation.element, value: focused)
-        .onTapGesture { focused = true }
+        .animation(NexusAnimation.element, value: dictating)
+        .onTapGesture { if !dictating { focused = true } }
+    }
+
+    private func startDictation() {
+        Task {
+            guard await speech.requestAuthorization() else { return }
+            baseText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            focused = false
+            Haptics.impact(.medium)
+            withAnimation(NexusAnimation.element) { dictating = true }
+            speech.start()
+        }
+    }
+
+    private func confirmDictation() {
+        speech.stop()
+        withAnimation(NexusAnimation.element) { dictating = false }
+    }
+
+    private func cancelDictation() {
+        speech.cancel()
+        text = baseText
+        withAnimation(NexusAnimation.element) { dictating = false }
     }
 }
 

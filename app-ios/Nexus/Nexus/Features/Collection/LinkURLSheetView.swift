@@ -132,13 +132,18 @@ struct LinkURLSheetView: View {
         detectedType ?? initialContentType
     }
 
+    /// The FRE "start with a link" path has no collection yet — saving there
+    /// creates one from the link instead of dead-ending on a disabled button.
+    private var allowCreateOnSave: Bool {
+        preselectedCollectionId == nil && collections.isEmpty
+    }
+
     private var canSubmit: Bool {
         guard !isSubmitting else { return false }
         guard detectedType != nil else { return false }     // URL must be parseable
         let trimmed = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return false }
-        guard effectiveCollectionId != nil else { return false }
-        return true
+        return effectiveCollectionId != nil || allowCreateOnSave
     }
 
     private var effectiveCollectionId: UUID? {
@@ -146,94 +151,51 @@ struct LinkURLSheetView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // ── Header (native drag indicator sits above) ──────────────────
-            sheetHeader
-                .padding(.horizontal, NexusSpacing.standard)
-                .padding(.top, NexusSpacing.md)
-                .padding(.bottom, NexusSpacing.sm)
-
-            Divider()
-                .background(Color.Nexus.hair)
-
+        NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: NexusSpacing.lg) {
-                    // ── URL field ──────────────────────────────────────────
-                    urlField
+                    Text(allowCreateOnSave
+                         ? "Paste a link — we'll start a new collection with it."
+                         : "Paste a link to save it to this collection.")
+                        .font(.Nexus.caption)
+                        .foregroundColor(.Nexus.ghost)
 
-                    // ── Content-type chip (auto-updates) ──────────────────
+                    urlField
                     contentTypeRow
 
-                    // ── Collection picker (when collectionId not pre-set) ──
                     if preselectedCollectionId == nil && !collections.isEmpty {
                         collectionPicker
                     }
-
-                    // ── Error banner ───────────────────────────────────────
                     if let error = submitError {
                         ErrorInlineBanner(message: error)
                     }
                 }
                 .padding(.horizontal, NexusSpacing.standard)
-                .padding(.top, NexusSpacing.lg)
-                .padding(.bottom, NexusSpacing.xxl)
+                .padding(.top, NexusSpacing.md)
+                .padding(.bottom, NexusSpacing.lg)
             }
-
-            Spacer(minLength: 0)
-
-            // ── CTA bar ────────────────────────────────────────────────────
-            ctaBar
-                .padding(.horizontal, NexusSpacing.standard)
-                .padding(.bottom, NexusSpacing.xxl)
-                .padding(.top, NexusSpacing.sm)
-                .background(
-                    LinearGradient(
-                        colors: [Color.Nexus.pageEnd.opacity(0), Color.Nexus.pageEnd],
-                        startPoint: .top,
-                        endPoint: UnitPoint(x: 0.5, y: 0.3)
-                    )
-                )
+            .background(NexusBackground())
+            .scrollDismissesKeyboard(.interactively)
+            .navigationTitle("Add a source")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    SheetCloseButton { dismiss() }
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                ctaBar
+                    .padding(.horizontal, NexusSpacing.standard)
+                    .padding(.top, NexusSpacing.sm)
+                    .padding(.bottom, NexusSpacing.md)
+                    .background(.bar)
+            }
         }
-        .background(NexusBackground())
         .onAppear {
             selectedCollectionId = preselectedCollectionId ?? collections.first?.id
-            // Delay so the sheet animation completes before keyboard appears.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
                 urlFocused = true
             }
-        }
-    }
-
-    // MARK: - Header
-
-    private var sheetHeader: some View {
-        // Grabber is the native drag indicator now (.presentationDragIndicator).
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Add a source")
-                    .font(.Nexus.headingSmall)
-                    .foregroundColor(.Nexus.ink)
-                    .kerning(NexusKerning.tighter)
-                Text("Paste a link to save it to your collection")
-                    .font(.Nexus.caption)
-                    .foregroundColor(.Nexus.ghost)
-                    .kerning(NexusKerning.normal)
-            }
-
-            Spacer()
-
-            // Close button
-            Button(action: { dismiss() }) {
-                ZStack {
-                    Circle()
-                        .fill(Color.Nexus.surface2)
-                        .frame(width: 30, height: 30)
-                    Image(systemName: "xmark")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.Nexus.muted)
-                }
-            }
-            .buttonStyle(.plain)
         }
     }
 
@@ -378,7 +340,7 @@ struct LinkURLSheetView: View {
     // MARK: - Submit
 
     private func submit() async {
-        guard canSubmit, let collId = effectiveCollectionId else { return }
+        guard canSubmit else { return }
         isSubmitting = true
         defer { isSubmitting = false }
 
@@ -389,18 +351,33 @@ struct LinkURLSheetView: View {
         }
 
         do {
+            // Resolve a destination collection, creating one for the FRE path.
+            let targetId: UUID
+            if let existing = effectiveCollectionId {
+                targetId = existing
+            } else {
+                let created = try await APIClient.shared.createCollection(name: collectionName(from: candidate))
+                targetId = created.id
+            }
             let response = try await APIClient.shared.ingest(
                 url: candidate,
-                collectionId: collId,
+                collectionId: targetId,
                 contentType: resolvedType.backendString
             )
             dismiss()
-            onComplete(response.jobId, collId)
+            onComplete(response.jobId, targetId)
         } catch let e as APIError {
             submitError = e.errorDescription ?? "Something went wrong. Please try again."
         } catch {
             submitError = error.localizedDescription
         }
+    }
+
+    /// A readable collection name derived from the link's host.
+    private func collectionName(from url: String) -> String {
+        guard let host = URL(string: url)?.host else { return "New collection" }
+        let clean = host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
+        return clean.isEmpty ? "New collection" : clean
     }
 }
 

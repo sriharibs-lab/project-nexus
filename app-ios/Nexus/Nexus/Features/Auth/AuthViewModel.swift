@@ -186,11 +186,13 @@ final class AuthViewModel: ObservableObject {
     // MARK: - Private
 
     private func provisionSession(accessToken: String, refreshToken: String, userId: UUID) async {
-        // Provision and store session
+        // Provision and store session. Pass the email the user just verified so
+        // the Account screen can show it (was omitted → Account showed "—").
         AuthManager.shared.setSession(
             accessToken: accessToken,
             refreshToken: refreshToken,
-            userId: userId
+            userId: userId,
+            email: email.trimmingCharacters(in: .whitespacesAndNewlines)
         )
         phase = .done
     }

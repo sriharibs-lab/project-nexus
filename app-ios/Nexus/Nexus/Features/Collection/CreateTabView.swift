@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Create tab (artifact studio)
 //
@@ -274,12 +275,43 @@ private struct ArtifactDetailView: View {
             .navigationTitle(artifact.kind == "quiz" ? "Quiz" : "Report")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    SheetCloseButton { dismiss() }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
-                        .foregroundColor(.Nexus.accent)
+                    Menu {
+                        Button {
+                            UIPasteboard.general.string = shareText
+                            Haptics.notify(.success)
+                        } label: { Label("Copy", systemImage: "doc.on.doc") }
+                        ShareLink(item: shareText) {
+                            Label("Share", systemImage: "square.and.arrow.up")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.Nexus.ink)
+                    }
                 }
             }
         }
+    }
+
+    /// Plain-text rendering for Copy / Share.
+    private var shareText: String {
+        if artifact.kind == "paper" {
+            return artifact.content?.markdown ?? artifact.title
+        }
+        // Quiz → readable text
+        var out = artifact.title + "\n\n"
+        for (i, q) in (artifact.content?.questions ?? []).enumerated() {
+            out += "\(i + 1). \(q.q)\n"
+            for (j, opt) in q.options.enumerated() {
+                out += "   \(Character(UnicodeScalar(65 + j)!)). \(opt)\n"
+            }
+            out += "\n"
+        }
+        return out
     }
 
     @ViewBuilder
@@ -559,7 +591,7 @@ private struct ArtifactWizardView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }.disabled(generating)
+                    SheetCloseButton { dismiss() }.disabled(generating)
                 }
             }
             .safeAreaInset(edge: .bottom) { bottomBar }

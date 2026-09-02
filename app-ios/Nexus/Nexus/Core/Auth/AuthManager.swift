@@ -55,7 +55,28 @@ final class AuthManager: ObservableObject {
             isAuthenticated = true
             displayName = read(Key.displayName) ?? ""
             email = read(Key.email) ?? ""
+            // Backfill email for sessions provisioned before we stored it: the
+            // Supabase access token (JWT) carries the email claim.
+            if email.isEmpty, let claim = Self.emailClaim(from: token) {
+                email = claim
+                write(claim, Key.email)
+            }
         }
+    }
+
+    /// Decode the `email` claim from a JWT access token (no verification — we
+    /// only read a display value we already trust locally).
+    static func emailClaim(from jwt: String) -> String? {
+        let parts = jwt.split(separator: ".")
+        guard parts.count >= 2 else { return nil }
+        var b64 = String(parts[1]).replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        while b64.count % 4 != 0 { b64 += "=" }
+        guard let data = Data(base64Encoded: b64),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let email = json["email"] as? String,
+              !email.isEmpty
+        else { return nil }
+        return email
     }
 
     /// Call after a successful Apple or magic-link sign-in.

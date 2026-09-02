@@ -109,9 +109,12 @@ struct CollectionView: View {
     private var tabContent: some View {
         switch selectedTab {
         case "ask":
-            // Composer must clear the capsule — inset the whole tab
+            // Composer must clear the capsule — inset the whole tab. Collapse
+            // the clearance when the keyboard is up (tab bar hides then), else
+            // the composer floats ~84pt above the keyboard (device report #4).
             NexusTabView(collection: vm.collection, items: vm.items)
-                .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 84) }
+                .safeAreaInset(edge: .bottom) { Color.clear.frame(height: keyboardUp ? 0 : 84) }
+                .animation(.easeInOut(duration: 0.22), value: keyboardUp)
                 .transition(.opacity)
         case "create":
             // Content scrolls UNDER the glass capsule (margins, not insets —

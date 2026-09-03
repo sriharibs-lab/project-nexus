@@ -468,10 +468,16 @@ private struct CodeField: View {
 
     var body: some View {
         TextField("", text: $text, prompt: Text("Code").foregroundColor(.Nexus.ghost))
-            // .numberPad has reports of silently dropping oneTimeCode
-            // suggestion taps on some iOS versions; asciiCapableNumberPad
-            // uses a different input path.
-            .keyboardType(.asciiCapableNumberPad)
+            // KEYBOARD TYPE IS THE LEVER (device confirmed 2026-09: the code
+            // DOES appear in the QuickType bar — iOS detection works — but
+            // tapping it inserted an empty string). Security Code AutoFill only
+            // delivers reliably into the SYSTEM DEFAULT keyboard; numeric
+            // keyboards (.numberPad / .asciiCapableNumberPad) route autofill
+            // through a path that drops the insertion to "" (Apple FB16394617,
+            // regressed since iOS 15). Using .default trades the number pad for
+            // a working tap-to-fill; manual typers use the 123 layout, and the
+            // Paste chip covers the rest.
+            .keyboardType(.default)
             .textContentType(.oneTimeCode)
             .multilineTextAlignment(.center)
             .font(.system(size: 20, weight: .medium))

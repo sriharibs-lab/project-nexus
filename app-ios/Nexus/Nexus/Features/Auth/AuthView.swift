@@ -1,5 +1,6 @@
 import AuthenticationServices
 import SwiftUI
+import UIKit
 
 // MARK: - Auth screen
 //
@@ -462,6 +463,8 @@ private struct CodeField: View {
 
     @FocusState private var focused: Bool
     @State private var submitted = false
+    @State private var canPaste = false
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         TextField("", text: $text, prompt: Text("Code").foregroundColor(.Nexus.ghost))
@@ -481,8 +484,33 @@ private struct CodeField: View {
             .background(Color.Nexus.cardBackground)
             .clipShape(Capsule())
             .overlay(Capsule().stroke(Color.Nexus.border, lineWidth: NexusBorder.base))
+            // One-tap "Paste" when a code is on the clipboard — the reliable
+            // path for Gmail users, since iOS only auto-reads email codes from
+            // Apple Mail. detectPatterns tells us a number EXISTS without
+            // reading it (no privacy banner); the value is read only on tap.
+            .overlay(alignment: .trailing) {
+                if canPaste && text.isEmpty && !disabled {
+                    Button(action: pasteCode) {
+                        Text("Paste")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.Nexus.accent)
+                            .padding(.horizontal, 14)
+                            .frame(height: 34)
+                            .background(Color.Nexus.accent.opacity(0.10))
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.trailing, 8)
+                    .transition(.opacity.combined(with: .scale(scale: 0.85)))
+                }
+            }
             .onAppear {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { focused = true }
+                detectClipboardCode()
+            }
+            .onChange(of: scenePhase) { _, phase in
+                // Re-check when returning from the mail app after copying.
+                if phase == .active { detectClipboardCode() }
             }
             .onChange(of: text) { _, new in
                 onDebug("chg'\(new)'")
@@ -493,5 +521,22 @@ private struct CodeField: View {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { submitted = false }
                 }
             }
+    }
+
+    private func detectClipboardCode() {
+        UIPasteboard.general.detectPatterns(for: [.number]) { result in
+            let hasNumber = (try? result.get())?.contains(.number) ?? false
+            DispatchQueue.main.async {
+                withAnimation(.easeInOut(duration: 0.2)) { canPaste = hasNumber }
+            }
+        }
+    }
+
+    private func pasteCode() {
+        guard let clip = UIPasteboard.general.string else { return }
+        let digits = clip.filter(\.isNumber)
+        guard (4...Self.otpLength).contains(digits.count) else { return }
+        Haptics.impact(.light)
+        text = String(digits.prefix(Self.otpLength))
     }
 }

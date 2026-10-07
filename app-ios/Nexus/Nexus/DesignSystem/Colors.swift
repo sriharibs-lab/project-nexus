@@ -10,7 +10,7 @@ extension Color {
         // Neutral scale
         static let white         = Color(hex: "#FFFFFF")
         static let surface3      = Color(hex: "#FBFAFD")
-        static let pageEnd       = Color(hex: "#F9F8FC")
+        static let pageEnd       = Color(hex: "#F7F3EC")  // Cream (warm base, chosen 2026)
         static let surface2      = Color(hex: "#F4F2F9")
         static let hair          = Color(hex: "#EEEBF5")
         static let border        = Color(hex: "#E9E5F2")
@@ -22,7 +22,7 @@ extension Color {
         static let inkDeep       = Color(hex: "#0A0710")
 
         // Semantic
-        static let pageBackground  = Color(hex: "#F9F8FC")
+        static let pageBackground  = Color(hex: "#F7F3EC")  // Cream (warm base, chosen 2026)
         static let cardBackground  = Color(hex: "#FFFFFF")
         static let textPrimary     = Color(hex: "#130E1A")
         static let textSecondary   = Color(hex: "#68607A")
@@ -43,7 +43,9 @@ struct NexusBackground: View {
         ZStack {
             Color.Nexus.pageEnd.ignoresSafeArea()
             LinearGradient(
-                colors: [Color.Nexus.bloom.opacity(0.5), .clear],
+                // Softened on the warm Cream base so the cool plum bloom reads
+                // as a faint haze, not a muddy wash (base chosen 2026).
+                colors: [Color.Nexus.bloom.opacity(0.32), .clear],
                 startPoint: .top,
                 endPoint: UnitPoint(x: 0.5, y: 0.48)
             )

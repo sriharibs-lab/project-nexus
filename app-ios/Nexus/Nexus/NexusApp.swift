@@ -27,10 +27,20 @@ struct NexusApp: App {
 private struct RootView: View {
     @EnvironmentObject var authManager: AuthManager
     @State private var showSplash = true
+    @State private var showWelcome = !UserDefaults.standard.bool(forKey: Self.welcomeKey)
+
+    private static let welcomeKey = "nexus_seen_welcome"
 
     var body: some View {
         ZStack {
             rootContent
+            // First-run welcome sits above the app, below the splash — so the
+            // splash fades to reveal it on first launch.
+            if showWelcome {
+                WelcomeOnboardingView { markWelcomeSeen() }
+                    .transition(.opacity)
+                    .zIndex(5)
+            }
             if showSplash {
                 SplashView()
                     .transition(.opacity)
@@ -39,12 +49,17 @@ private struct RootView: View {
         }
         .task {
             #if DEBUG
-            // Skip the splash for the screenshot/preview harness.
-            if previewScreen != nil { showSplash = false; return }
+            // Skip splash + welcome for the screenshot/preview harness.
+            if previewScreen != nil { showSplash = false; showWelcome = false; return }
             #endif
             try? await Task.sleep(nanoseconds: 1_400_000_000)
             withAnimation(.easeOut(duration: 0.45)) { showSplash = false }
         }
+    }
+
+    private func markWelcomeSeen() {
+        UserDefaults.standard.set(true, forKey: Self.welcomeKey)
+        withAnimation(.easeOut(duration: 0.4)) { showWelcome = false }
     }
 
     @ViewBuilder
@@ -91,6 +106,11 @@ private struct RootView: View {
             return AnyView(AuthView())
         case "splash":
             return AnyView(SplashView())
+        case "welcome":
+            let step = args.firstIndex(of: "-step").flatMap { i in
+                i + 1 < args.count ? Int(args[i + 1]) : nil
+            }
+            return AnyView(WelcomeOnboardingView(startPage: step ?? 0, onFinish: {}))
         case "sourcesplayground":
             let v = args.firstIndex(of: "-variant").flatMap { i in
                 i + 1 < args.count ? Int(args[i + 1]) : nil

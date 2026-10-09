@@ -216,13 +216,13 @@ private struct ContentTypeIconBadge: View {
     // Intentionally distinct from the brand accent to avoid overuse of plum.
     private var backgroundColor: Color {
         switch contentType {
-        case .article:      return Color(hex: "#EEF3FB") // cool-blue wash
-        case .blog:         return Color(hex: "#EEF3FB") // same family as article
-        case .podcast:      return Color(hex: "#EEF3FB") // audio — cool blue wash
-        case .video:        return Color(hex: "#FCF0EE") // warm-red wash
-        case .youtube:      return Color(hex: "#FCF0EE") // same family
-        case .thread:       return Color(hex: "#F0F7EE") // sage-green wash
-        case .announcement: return Color(hex: "#FDF5E8") // amber wash
+        case .article:      return Color.adaptive("#EEF3FB", "#1F2A38") // cool-blue wash
+        case .blog:         return Color.adaptive("#EEF3FB", "#1F2A38") // same family as article
+        case .podcast:      return Color.adaptive("#EEF3FB", "#1F2A38") // audio — cool blue wash
+        case .video:        return Color.adaptive("#FCF0EE", "#3A2320") // warm-red wash
+        case .youtube:      return Color.adaptive("#FCF0EE", "#3A2320") // same family
+        case .thread:       return Color.adaptive("#F0F7EE", "#1F2E22") // sage-green wash
+        case .announcement: return Color.adaptive("#FDF5E8", "#3A2E18") // amber wash
         case .other:        return Color.Nexus.surface2
         }
     }

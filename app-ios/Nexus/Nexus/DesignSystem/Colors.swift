@@ -1,38 +1,72 @@
 // Generated from design-system/tokens/colors.json — do not edit manually.
 import SwiftUI
+import UIKit
 
 extension Color {
-    enum Nexus {
-        // Brand
-        static let accent  = Color(hex: "#7054AB")  // plum — approved uses only
-        static let bloom   = Color(hex: "#E7DCF4")  // plum bloom
+    /// Adaptive color resolved by the system trait — one light hex, one dark hex.
+    /// Every brand token below is adaptive, so the whole app follows the
+    /// Appearance setting (System / Light / Dark) with no per-view work.
+    static func adaptive(_ light: String, _ dark: String) -> Color {
+        Color(uiColor: UIColor { trait in
+            UIColor(nexusHex: trait.userInterfaceStyle == .dark ? dark : light)
+        })
+    }
 
-        // Neutral scale — WARM (re-tinted 2026 to sit on the Cream base; the old
-        // ramp was plum-cool and read as "old white" popping on warm screens).
+    enum Nexus {
+        // Brand — plum in light; lifted to lilac in dark (BRAND.md dark variants).
+        static let accent  = adaptive("#7054AB", "#A990E6")
+        static let bloom   = adaptive("#E7DCF4", "#3A2E5C")
+
+        // Neutral scale — WARM. Light = Cream family; dark = deep warm gray,
+        // same restraint (DESIGN_LANGUAGE: dark mode is deep gray, not black).
         static let white         = Color(hex: "#FFFFFF")
-        static let surface3      = Color(hex: "#FBF9F4")  // warm near-white
-        static let pageEnd       = Color(hex: "#F7F3EC")  // Cream (warm base)
-        static let surface2      = Color(hex: "#EFEBE1")  // warm light fill (chips/pills)
-        static let hair          = Color(hex: "#EAE4D8")  // warm hairline
-        static let border        = Color(hex: "#E6DFD2")  // warm border
-        static let borderStrong  = Color(hex: "#D6CDBD")  // warm strong border
-        static let ghost         = Color(hex: "#B5AD9E")  // warm gray (placeholders)
-        static let faint         = Color(hex: "#948C7D")  // warm gray
-        static let muted         = Color(hex: "#6A6253")  // warm dark gray
-        static let ink           = Color(hex: "#130E1A")
-        static let inkDeep       = Color(hex: "#0A0710")
+        static let surface3      = adaptive("#FBF9F4", "#221D18")
+        static let pageEnd       = adaptive("#F7F3EC", "#16120E")
+        static let surface2      = adaptive("#EFEBE1", "#2A241E")
+        static let hair          = adaptive("#EAE4D8", "#30291F")
+        static let border        = adaptive("#E6DFD2", "#3A3228")
+        static let borderStrong  = adaptive("#D6CDBD", "#4A4033")
+        static let ghost         = adaptive("#B5AD9E", "#6B6256")
+        static let faint         = adaptive("#948C7D", "#8A8070")
+        static let muted         = adaptive("#6A6253", "#B3A999")
+        static let ink           = adaptive("#130E1A", "#F4EFE8")
+        static let inkDeep       = adaptive("#0A0710", "#FFFFFF")
+        /// Text/glyph color ON an ink-filled control (ink flips to near-white
+        /// in dark, so "white on ink" would vanish there).
+        static let onInk         = adaptive("#FFFFFF", "#16120E")
 
         // Semantic
-        static let pageBackground  = Color(hex: "#F7F3EC")  // Cream (warm base, chosen 2026)
-        static let cardBackground  = Color(hex: "#FFFFFF")
-        static let textPrimary     = Color(hex: "#130E1A")
-        static let textSecondary   = Color(hex: "#6A6253")  // warm (matches muted)
-        static let textTertiary    = Color(hex: "#948C7D")  // warm (matches faint)
+        static let pageBackground  = adaptive("#F7F3EC", "#16120E")
+        static let cardBackground  = adaptive("#FFFFFF", "#1F1A15")
+        static let textPrimary     = adaptive("#130E1A", "#F4EFE8")
+        static let textSecondary   = adaptive("#6A6253", "#B3A999")
+        static let textTertiary    = adaptive("#948C7D", "#8A8070")
 
         // Status
-        static let destructive     = Color(hex: "#C0392B")  // red — destructive actions only
-        static let success         = Color(hex: "#3E8E5A")  // green — correct answers, positive states
+        static let destructive     = adaptive("#C0392B", "#E06A5C")
+        static let success         = adaptive("#3E8E5A", "#6FC08A")
     }
+}
+
+/// Ember gradient stops for the brand mark — light vs dark (BRAND.md).
+struct EmberPalette {
+    let inner: [Color]      // plum → magenta → coral
+    let outer: [Color]      // orchid → peach
+    let pearl: [Color]      // node radial: highlight → mid → deep
+    let shadow: Color
+    let shadowOpacity: Double
+
+    static let light = EmberPalette(
+        inner: [Color(hex: "#7054AB"), Color(hex: "#B8569C"), Color(hex: "#E8776A")],
+        outer: [Color(hex: "#9A5BB5"), Color(hex: "#F09A78")],
+        pearl: [Color(hex: "#CDB8FF"), Color(hex: "#7E5CC4"), Color(hex: "#4B2F86")],
+        shadow: Color(hex: "#5E3F9E"), shadowOpacity: 0.30)
+    static let dark = EmberPalette(
+        inner: [Color(hex: "#B9A2EE"), Color(hex: "#E07BC0"), Color(hex: "#FFA78A")],
+        outer: [Color(hex: "#C9B5F5"), Color(hex: "#FFC2A8")],
+        pearl: [Color(hex: "#FFFFFF"), Color(hex: "#EFE6FF"), Color(hex: "#B9A2EE")],
+        shadow: Color(hex: "#E07BC0"), shadowOpacity: 0.55)
+    static func current(_ scheme: ColorScheme) -> EmberPalette { scheme == .dark ? .dark : .light }
 }
 
 // MARK: - Global background
@@ -65,9 +99,11 @@ struct NexusBackground: View {
 struct EchoMark: View {
     var color: Color? = nil
     var size: CGFloat = 48
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        Canvas { ctx, sz in
+        let p = EmberPalette.current(scheme)
+        return Canvas { ctx, sz in
             let s = sz.width / 48.0
 
             // Paths (identical geometry to the SVG arc endpoints).
@@ -92,7 +128,7 @@ struct EchoMark: View {
 
             // Ember shadow only at ≥32px (BRAND.md); never on small marks.
             if color == nil, size >= 32 {
-                ctx.addFilter(.shadow(color: Color(hex: "#5E3F9E").opacity(0.30), radius: 1.3 * s, x: 0, y: 1.2 * s))
+                ctx.addFilter(.shadow(color: p.shadow.opacity(p.shadowOpacity), radius: 1.3 * s, x: 0, y: 1.2 * s))
             }
 
             if let flat = color {
@@ -108,9 +144,9 @@ struct EchoMark: View {
             // Ember gradients (light). Inner: plum → magenta → coral.
             let ember = GraphicsContext.Shading.linearGradient(
                 Gradient(stops: [
-                    .init(color: Color(hex: "#7054AB"), location: 0),
-                    .init(color: Color(hex: "#B8569C"), location: 0.55),
-                    .init(color: Color(hex: "#E8776A"), location: 1),
+                    .init(color: p.inner[0], location: 0),
+                    .init(color: p.inner[1], location: 0.55),
+                    .init(color: p.inner[2], location: 1),
                 ]),
                 startPoint: CGPoint(x: 12 * s, y: 10 * s), endPoint: CGPoint(x: 36 * s, y: 38 * s))
             ctx.stroke(innerL, with: ember, style: innerStyle)
@@ -119,8 +155,8 @@ struct EchoMark: View {
             // Outer: orchid → peach at 60%.
             let outer = GraphicsContext.Shading.linearGradient(
                 Gradient(stops: [
-                    .init(color: Color(hex: "#9A5BB5").opacity(0.6), location: 0),
-                    .init(color: Color(hex: "#F09A78").opacity(0.6), location: 1),
+                    .init(color: p.outer[0].opacity(0.6), location: 0),
+                    .init(color: p.outer[1].opacity(0.6), location: 1),
                 ]),
                 startPoint: CGPoint(x: 10 * s, y: 8 * s), endPoint: CGPoint(x: 38 * s, y: 40 * s))
             ctx.stroke(outerL, with: outer, style: outerStyle)
@@ -129,9 +165,9 @@ struct EchoMark: View {
             // Pearl node — radial + a soft white highlight.
             let pearl = GraphicsContext.Shading.radialGradient(
                 Gradient(stops: [
-                    .init(color: Color(hex: "#CDB8FF"), location: 0),
-                    .init(color: Color(hex: "#7E5CC4"), location: 0.45),
-                    .init(color: Color(hex: "#4B2F86"), location: 1),
+                    .init(color: p.pearl[0], location: 0),
+                    .init(color: p.pearl[1], location: 0.45),
+                    .init(color: p.pearl[2], location: 1),
                 ]),
                 center: CGPoint(x: 22.68 * s, y: 22.24 * s), startRadius: 0, endRadius: 6.6 * s)
             ctx.fill(node, with: pearl)
@@ -139,6 +175,17 @@ struct EchoMark: View {
             ctx.fill(hl, with: .color(.white.opacity(0.75)))
         }
         .frame(width: size, height: size)
+    }
+}
+
+extension UIColor {
+    convenience init(nexusHex hex: String) {
+        let h = hex.hasPrefix("#") ? String(hex.dropFirst()) : hex
+        var rgb: UInt64 = 0
+        Scanner(string: h).scanHexInt64(&rgb)
+        self.init(red: CGFloat((rgb >> 16) & 0xFF) / 255.0,
+                  green: CGFloat((rgb >> 8) & 0xFF) / 255.0,
+                  blue: CGFloat(rgb & 0xFF) / 255.0, alpha: 1)
     }
 }
 

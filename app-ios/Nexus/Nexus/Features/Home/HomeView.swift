@@ -211,7 +211,7 @@ struct HomeView: View {
                             .font(.system(size: 15.5, weight: .semibold))
                             .kerning(-0.2)
                     }
-                    .foregroundColor(.white)
+                    .foregroundColor(.Nexus.onInk)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 15)
                     .background(Color.Nexus.ink)
@@ -231,7 +231,7 @@ struct HomeView: View {
                     } label: {
                         ZStack {
                             Circle().fill(.ultraThinMaterial)
-                            Circle().stroke(Color.white.opacity(0.65), lineWidth: NexusBorder.hair)
+                            Circle().stroke(Color.Nexus.cardBackground.opacity(0.65), lineWidth: NexusBorder.hair)
                             Image(systemName: "xmark")
                                 .font(.system(size: 15, weight: .semibold))
                                 .foregroundColor(.Nexus.ink)
@@ -278,7 +278,7 @@ struct HomeView: View {
         .background(searchGlass)
         .overlay(
             Capsule().stroke(
-                searchFocused ? Color.white.opacity(0.95) : Color.white.opacity(0.65),
+                searchFocused ? Color.Nexus.cardBackground.opacity(0.95) : Color.Nexus.cardBackground.opacity(0.65),
                 lineWidth: NexusBorder.hair
             )
         )

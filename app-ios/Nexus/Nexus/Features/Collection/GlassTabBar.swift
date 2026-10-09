@@ -67,8 +67,8 @@ struct GlassTabBar: View {
                 .background {
                     if isSelected {
                         Capsule()
-                            .fill(Color.white.opacity(0.66))
-                            .overlay(Capsule().stroke(Color.white.opacity(0.85), lineWidth: NexusBorder.hair))
+                            .fill(Color.Nexus.cardBackground.opacity(0.66))
+                            .overlay(Capsule().stroke(Color.Nexus.cardBackground.opacity(0.85), lineWidth: NexusBorder.hair))
                             .shadow(color: .black.opacity(0.10), radius: 8, x: 0, y: 3)
                             .matchedGeometryEffect(id: "thumb", in: thumbNS)
                     }
@@ -103,7 +103,7 @@ private struct TabCellView: View {
                             .foregroundColor(tint)
                         Image(systemName: "sparkles")
                             .font(.system(size: 9, weight: .bold))
-                            .foregroundColor(.white)
+                            .foregroundColor(.Nexus.onInk)
                             .offset(y: -1.5)
                     }
                     .frame(width: 30, height: 26)
@@ -145,13 +145,16 @@ private struct TabCellView: View {
 private struct NativeSegmentedTabBar: UIViewRepresentable {
     let tabs: [GlassTabItem]
     @Binding var selection: String
+    // Read so SwiftUI re-runs updateUIView on Light/Dark changes; the baked
+    // cell images carry resolved colors, so they must be re-baked per scheme.
+    @Environment(\.colorScheme) private var scheme
 
     func makeUIView(context: Context) -> UISegmentedControl {
         let control = UISegmentedControl(items: [UIImage()])
         control.removeAllSegments()
         for (i, tab) in tabs.enumerated() {
             control.insertSegment(
-                with: Self.cellImage(tab, highlighted: tab.key == selection),
+                with: Self.cellImage(tab, highlighted: tab.key == selection, scheme: scheme),
                 at: i,
                 animated: false
             )
@@ -187,10 +190,12 @@ private struct NativeSegmentedTabBar: UIViewRepresentable {
         // intrinsic size → SwiftUI re-runs layout/update → setImage again — a
         // main-thread layout feedback loop, fed continuously by item polling
         // re-renders (2026-07-14). The guard breaks the cycle.
-        guard context.coordinator.lastBakedSelection != selection else { return }
+        guard context.coordinator.lastBakedSelection != selection
+                || context.coordinator.lastBakedScheme != scheme else { return }
         context.coordinator.lastBakedSelection = selection
+        context.coordinator.lastBakedScheme = scheme
         for (i, tab) in tabs.enumerated() {
-            control.setImage(Self.cellImage(tab, highlighted: i == idx), forSegmentAt: i)
+            control.setImage(Self.cellImage(tab, highlighted: i == idx, scheme: scheme), forSegmentAt: i)
         }
     }
 
@@ -200,14 +205,24 @@ private struct NativeSegmentedTabBar: UIViewRepresentable {
     /// .alwaysOriginal keeps our baked-in colors (the control would otherwise
     /// template-tint everything).
     @MainActor
-    static func cellImage(_ tab: GlassTabItem, highlighted: Bool) -> UIImage {
-        let renderer = ImageRenderer(content: TabCellView(tab: tab, highlighted: highlighted))
+    static func cellImage(_ tab: GlassTabItem, highlighted: Bool, scheme: ColorScheme) -> UIImage {
+        // Offscreen rendering resolves adaptive (UIColor-backed) tokens against
+        // the *current* trait collection, which is light by default — so dark
+        // mode baked near-black glyphs onto a dark bar. Render under the real
+        // style for both the UIKit (trait) and SwiftUI (environment) sides.
+        let style: UIUserInterfaceStyle = scheme == .dark ? .dark : .light
+        let renderer = ImageRenderer(
+            content: TabCellView(tab: tab, highlighted: highlighted).environment(\.colorScheme, scheme)
+        )
         renderer.scale = UIScreen.main.scale
-        return (renderer.uiImage ?? UIImage()).withRenderingMode(.alwaysOriginal)
+        var image: UIImage?
+        UITraitCollection(userInterfaceStyle: style).performAsCurrent { image = renderer.uiImage }
+        return (image ?? UIImage()).withRenderingMode(.alwaysOriginal)
     }
 
     final class Coordinator: NSObject {
         var parent: NativeSegmentedTabBar
+        var lastBakedScheme: ColorScheme? = nil
         /// Selection the segment images were last rendered for — guards the
         /// updateUIView re-bake so it never runs on unrelated update passes.
         var lastBakedSelection: String?

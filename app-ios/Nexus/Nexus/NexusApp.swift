@@ -11,12 +11,14 @@ import SwiftUI
 @main
 struct NexusApp: App {
     @StateObject private var authManager = AuthManager.shared
+    // Appearance: "System" | "Light" | "Dark" (Settings → App → Appearance).
+    @AppStorage("nx_appearance") private var appearance = "System"
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(authManager)
-                .preferredColorScheme(.light)
+                .preferredColorScheme(appearance == "Dark" ? .dark : appearance == "Light" ? .light : nil)
         }
     }
 }

@@ -239,9 +239,9 @@ private struct ArtifactRow: View {
     // Color-coded tile per artifact kind (quiz = amber, report = blue, infographic = green).
     private var tileBg: Color {
         switch artifact.kind {
-        case "quiz": return Color(hex: "#FDF5E8")
-        case "info": return Color(hex: "#F0F7EE")
-        default:     return Color(hex: "#EEF3FB")
+        case "quiz": return Color.adaptive("#FDF5E8", "#3A2E18")
+        case "info": return Color.adaptive("#F0F7EE", "#1F2E22")
+        default:     return Color.adaptive("#EEF3FB", "#1F2A38")
         }
     }
     private var tileFg: Color {

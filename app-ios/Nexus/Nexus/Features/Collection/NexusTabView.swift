@@ -518,6 +518,7 @@ struct CitationChip: View {
 // ghost ripple expands. TimelineView drives the Canvas per-frame.
 struct EchoPulseView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var scheme
     private static let period: Double = 1.8
 
     var body: some View {
@@ -525,7 +526,7 @@ struct EchoPulseView: View {
             EchoMark(size: 36)        // static mark when motion is reduced
         } else {
             TimelineView(.animation) { timeline in
-                Canvas { ctx, size in Self.draw(&ctx, size, timeline.date) }
+                Canvas { ctx, size in Self.draw(&ctx, size, timeline.date, EmberPalette.current(scheme)) }
                     .frame(width: 36, height: 36)
             }
         }
@@ -544,7 +545,7 @@ struct EchoPulseView: View {
         return stops.last!.1
     }
 
-    private static func draw(_ ctx: inout GraphicsContext, _ size: CGSize, _ date: Date) {
+    private static func draw(_ ctx: inout GraphicsContext, _ size: CGSize, _ date: Date, _ pal: EmberPalette) {
         let s = size.width / 48.0
         let t = date.timeIntervalSinceReferenceDate
         let p = (t / period).truncatingRemainder(dividingBy: 1)
@@ -559,10 +560,10 @@ struct EchoPulseView: View {
         var outerR = Path(); outerR.addArc(center: CGPoint(x: 24.702 * s, y: 24 * s), radius: 17.5 * s, startAngle: .degrees(304), endAngle: .degrees(56), clockwise: false)
 
         let ember = GraphicsContext.Shading.linearGradient(
-            Gradient(stops: [.init(color: Color(hex: "#7054AB"), location: 0), .init(color: Color(hex: "#B8569C"), location: 0.55), .init(color: Color(hex: "#E8776A"), location: 1)]),
+            Gradient(stops: [.init(color: pal.inner[0], location: 0), .init(color: pal.inner[1], location: 0.55), .init(color: pal.inner[2], location: 1)]),
             startPoint: CGPoint(x: 12 * s, y: 10 * s), endPoint: CGPoint(x: 36 * s, y: 38 * s))
         let outer = GraphicsContext.Shading.linearGradient(
-            Gradient(stops: [.init(color: Color(hex: "#9A5BB5"), location: 0), .init(color: Color(hex: "#F09A78"), location: 1)]),
+            Gradient(stops: [.init(color: pal.outer[0], location: 0), .init(color: pal.outer[1], location: 1)]),
             startPoint: CGPoint(x: 10 * s, y: 8 * s), endPoint: CGPoint(x: 38 * s, y: 40 * s))
         let center = CGPoint(x: 24 * s, y: 24 * s)
 
@@ -604,7 +605,7 @@ struct EchoPulseView: View {
         let dotR = 4.4 * s
         let node = Path(ellipseIn: CGRect(x: 24 * s - dotR, y: 24 * s - dotR, width: dotR * 2, height: dotR * 2))
         let pearl = GraphicsContext.Shading.radialGradient(
-            Gradient(stops: [.init(color: Color(hex: "#CDB8FF"), location: 0), .init(color: Color(hex: "#7E5CC4"), location: 0.45), .init(color: Color(hex: "#4B2F86"), location: 1)]),
+            Gradient(stops: [.init(color: pal.pearl[0], location: 0), .init(color: pal.pearl[1], location: 0.45), .init(color: pal.pearl[2], location: 1)]),
             center: CGPoint(x: 22.68 * s, y: 22.24 * s), startRadius: 0, endRadius: 6.6 * s)
         layer(kf(p, [(0, 1), (0.3, 1.22), (0.6, 0.94), (1, 1)]), 1) { l in
             l.fill(node, with: pearl)

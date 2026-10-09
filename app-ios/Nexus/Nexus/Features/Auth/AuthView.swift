@@ -150,7 +150,7 @@ struct AuthView: View {
             HStack(spacing: 9) {
                 if vm.phase == .signingIn {
                     ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        .progressViewStyle(CircularProgressViewStyle(tint: .Nexus.onInk))
                         .scaleEffect(0.9)
                 } else {
                     Image(systemName: "apple.logo")
@@ -160,7 +160,7 @@ struct AuthView: View {
                         .kerning(-0.2)
                 }
             }
-            .foregroundColor(.white)
+            .foregroundColor(.Nexus.onInk)
             .frame(maxWidth: .infinity)
             .frame(height: 56)
             .background(Color.Nexus.ink)
@@ -388,7 +388,7 @@ private struct EmailBox: View {
                         } else {
                             Image(systemName: "arrow.up")
                                 .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(.white)
+                                .foregroundColor(.Nexus.onInk)
                         }
                     }
                 }

@@ -24,6 +24,7 @@ Core thesis: The entire product is an AI harness — tools, skills, and memory b
 - Custom logos, icons, and typography are non-negotiable.
 - Mobile-first (iPhone launch). Every screen must be purposeful and beautiful.
 - Never propose generic UI. Always go for opinionated, modern, unique.
+- **Native-first on iOS**: default to native elements (Form/inset List, segmented/menu Picker, Menu, native sheets + `presentationDetents`, `.borderedProminent`) over custom controls. Make the design/config call and **build it — don't ask in chat**; reserve questions for genuine product forks.
 - **Always render visuals.** At every design step, produce an actual HTML file or React component the user can open in a browser. Never describe colors, fonts, or layouts in text or tables alone — user must see, not read.
 
 ## App IA (locked; tabs revised 2026-07-10)

@@ -14,7 +14,7 @@ struct SettingsView: View {
     @Environment(\.openURL) private var openURL
     /// Recorded preference; the app currently forces Light (dark palette is
     /// undesigned — Dark/System rows are visible but disabled).
-    @AppStorage("nx_appearance") private var appearance = "Light"
+    @AppStorage("nx_appearance") private var appearance = "System"
     @State private var cacheBytes: Int = 0
 
     var body: some View {
@@ -99,9 +99,11 @@ struct SettingsView: View {
     private var appearanceRow: some View {
         SettingsRow(icon: "circle.lefthalf.filled", label: "Appearance") {
             Menu {
-                Button { appearance = "Light" } label: { Label("Light", systemImage: "checkmark") }
-                Button {} label: { Text("Dark (soon)") }.disabled(true)
-                Button {} label: { Text("System (soon)") }.disabled(true)
+                ForEach(["System", "Light", "Dark"], id: \.self) { option in
+                    Button { appearance = option } label: {
+                        if appearance == option { Label(option, systemImage: "checkmark") } else { Text(option) }
+                    }
+                }
             } label: {
                 HStack(spacing: 3) {
                     Text(appearance)
@@ -460,7 +462,7 @@ struct FeedbackView: View {
             Button { dismiss() } label: {
                 Text("Done")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(.Nexus.onInk)
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
                     .background(Color.Nexus.ink)

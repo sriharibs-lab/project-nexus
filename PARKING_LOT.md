@@ -1,5 +1,6 @@
 # Parking Lot
 
+- [ ] **Pin ALL backend deps for Render** — `api/requirements.txt` uses `>=` floats (fastapi, sqlalchemy, anthropic, deepgram-sdk…) while local dev runs `uv.lock`. Render pip-installs requirements.txt, so every deploy can pull different versions than were tested; pgqueuer did exactly that and crash-looped the worker for weeks. Generate requirements from the lock (`uv export --format requirements-txt`) or switch the Dockerfile to `uv sync --frozen`. (added 2026-10-09)
 - [ ] **Account screen completion** — per approved IA tree (2026-07-16): plan row ("Free · Beta" placeholder), Sign out, **Delete account (red, confirmed) — App Store guideline 5.1.1(v) REQUIRES in-app account deletion; needs a backend endpoint too. Submission blocker.**
 - [ ] **Settings contents build-out** — per approved tree: Appearance (Light live; Dark/System "soon" until dark palette designed), Data (clear offline reading cache w/ size), About (version + build stamp), Legal (Terms/Privacy — resolves login stub links), DEBUG-only Developer section (Glass Playground). (added 2026-07-16)
 

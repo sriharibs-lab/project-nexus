@@ -11,7 +11,7 @@ asyncpg>=0.30.0
 sqlalchemy[asyncio]>=2.0.0
 alembic>=1.14.0
 pgvector>=0.3.0
-pgqueuer>=0.16.0
+pgqueuer==1.1.1  # PINNED: Render pip-installs this file; a floating >=0.16 pulled a newer release whose dequeue schema (holder.slot) mismatched the DB → worker crash-loop (2026-10-09). Keep in lockstep with uv.lock.
 
 # Auth
 python-jose[cryptography]>=3.3.0

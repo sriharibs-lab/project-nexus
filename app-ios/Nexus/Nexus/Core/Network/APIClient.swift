@@ -24,12 +24,22 @@ final class APIClient {
     private var authToken: String? { AuthManager.shared.accessToken }
 
     /// Refresh the access token once (single-flighted). Returns true if the
-    /// session was renewed and the caller should retry. On failure the session
-    /// is left intact so the UI can surface a retry rather than a hard logout.
+    /// session was renewed and the caller should retry.
+    ///
+    /// If the refresh token is missing or DEFINITIVELY rejected (the backend
+    /// returns 401/4xx — "please sign in again"), the session is dead and can
+    /// only be recovered by re-authenticating, so we sign the user out → the
+    /// app returns to the login screen. Without this, an expired session left
+    /// the user stuck on "couldn't load — Try again" forever, since every retry
+    /// re-hits the same dead token (TestFlight report 2026-10). Transient
+    /// network failures keep the session so a retry can still recover.
     private func attemptRefresh() async -> Bool {
         await refreshGate.run { [weak self] in
             guard let self else { return false }
-            guard let rt = await MainActor.run(body: { AuthManager.shared.refreshToken }) else { return false }
+            guard let rt = await MainActor.run(body: { AuthManager.shared.refreshToken }) else {
+                await MainActor.run { AuthManager.shared.signOut() }
+                return false
+            }
             do {
                 let resp = try await self.refreshAccessToken(refreshToken: rt)
                 await MainActor.run {
@@ -37,6 +47,14 @@ final class APIClient {
                 }
                 return true
             } catch {
+                // Definitive auth rejection → dead session → sign out to re-login.
+                let dead: Bool
+                switch error {
+                case APIError.unauthorized, APIError.notFound: dead = true
+                case APIError.serverError(let code) where (400..<500).contains(code): dead = true
+                default: dead = false   // network/timeout/5xx → transient, keep session
+                }
+                if dead { await MainActor.run { AuthManager.shared.signOut() } }
                 return false
             }
         }

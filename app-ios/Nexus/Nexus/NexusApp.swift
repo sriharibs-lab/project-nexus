@@ -120,8 +120,13 @@ private struct RootView: View {
             let kindArg = args.firstIndex(of: "-kind").flatMap { i in
                 i + 1 < args.count ? args[i + 1] : nil
             } ?? "quiz"
-            let kind: ArtifactKind = kindArg == "report" ? .paper : .quiz
+            let kind: ArtifactKind = kindArg == "report" ? .paper : kindArg == "info" ? .info : .quiz
             return AnyView(CreateWizardPreview.make(kind: kind))
+        case "infographic":
+            let layout = args.firstIndex(of: "-layout").flatMap { i in
+                i + 1 < args.count ? args[i + 1] : nil
+            } ?? "numbers"
+            return AnyView(InfographicPreview.make(layout: layout))
         case "glass":
             return AnyView(NavigationStack { GlassPlaygroundView() })
         case "account":

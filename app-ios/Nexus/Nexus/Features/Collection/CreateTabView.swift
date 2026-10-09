@@ -36,7 +36,8 @@ enum ArtifactKind: String, CaseIterable, Identifiable {
         switch self {
         case .quiz:  return "quiz"
         case .paper: return "paper"
-        case .audio, .info: return nil
+        case .info:  return "info"
+        case .audio: return nil
         }
     }
 
@@ -222,17 +223,33 @@ private struct ArtifactRow: View {
         case "paper":
             let sections = artifact.content?.outline?.count ?? 0
             return sections > 0 ? "Report · \(sections) sections" : "Report"
+        case "info":
+            switch artifact.content?.layout {
+            case "timeline":   return "Infographic · timeline"
+            case "comparison": return "Infographic · comparison"
+            default:
+                let n = artifact.content?.numbers?.count ?? 0
+                return n > 0 ? "Infographic · \(n) numbers" : "Infographic"
+            }
         default:
             return ""
         }
     }
 
-    // Color-coded tile per artifact kind (quiz = amber, report = blue).
+    // Color-coded tile per artifact kind (quiz = amber, report = blue, infographic = green).
     private var tileBg: Color {
-        artifact.kind == "quiz" ? Color(hex: "#FDF5E8") : Color(hex: "#EEF3FB")
+        switch artifact.kind {
+        case "quiz": return Color(hex: "#FDF5E8")
+        case "info": return Color(hex: "#F0F7EE")
+        default:     return Color(hex: "#EEF3FB")
+        }
     }
     private var tileFg: Color {
-        artifact.kind == "quiz" ? Color(hex: "#B8862A") : Color(hex: "#4A7ABB")
+        switch artifact.kind {
+        case "quiz": return Color(hex: "#B8862A")
+        case "info": return Color(hex: "#4A8A5C")
+        default:     return Color(hex: "#4A7ABB")
+        }
     }
 
     var body: some View {
@@ -273,6 +290,15 @@ private struct ArtifactRow: View {
 private struct ArtifactDetailView: View {
     let artifact: Artifact
     @Environment(\.dismiss) private var dismiss
+    @State private var shareImage: Image?
+
+    private var navTitle: String {
+        switch artifact.kind {
+        case "quiz": return "Quiz"
+        case "info": return "Infographic"
+        default:     return "Report"
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -280,7 +306,8 @@ private struct ArtifactDetailView: View {
                 Color.Nexus.pageBackground.ignoresSafeArea()
                 content
             }
-            .navigationTitle(artifact.kind == "quiz" ? "Quiz" : "Report")
+            .task { renderShareImage() }
+            .navigationTitle(navTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -292,8 +319,13 @@ private struct ArtifactDetailView: View {
                             UIPasteboard.general.string = shareText
                             Haptics.notify(.success)
                         } label: { Label("Copy", systemImage: "doc.on.doc") }
+                        if let shareImage {
+                            ShareLink(item: shareImage, preview: SharePreview(artifact.title, image: shareImage)) {
+                                Label("Share as image", systemImage: "photo")
+                            }
+                        }
                         ShareLink(item: shareText) {
-                            Label("Share", systemImage: "square.and.arrow.up")
+                            Label(artifact.kind == "info" ? "Share as text" : "Share", systemImage: "square.and.arrow.up")
                         }
                     } label: {
                         Image(systemName: "ellipsis")
@@ -305,10 +337,36 @@ private struct ArtifactDetailView: View {
         }
     }
 
+    /// Render the infographic card to a crisp image for sharing (what you
+    /// share is exactly what you see). Runs on the main actor via .task.
+    @MainActor
+    private func renderShareImage() {
+        guard artifact.kind == "info", let c = artifact.content, shareImage == nil else { return }
+        let view = InfographicCard(title: c.title ?? artifact.title, subtitle: c.subtitle, content: c)
+            .frame(width: 360)
+            .padding(24)
+            .background(Color.Nexus.pageBackground)
+        let renderer = ImageRenderer(content: view)
+        renderer.scale = 3
+        if let ui = renderer.uiImage { shareImage = Image(uiImage: ui) }
+    }
+
     /// Plain-text rendering for Copy / Share.
     private var shareText: String {
         if artifact.kind == "paper" {
             return artifact.content?.markdown ?? artifact.title
+        }
+        if artifact.kind == "info", let c = artifact.content {
+            var out = (c.title ?? artifact.title) + "\n"
+            if let sub = c.subtitle, !sub.isEmpty { out += sub + "\n" }
+            out += "\n"
+            if let n = c.numbers { for x in n { out += "\(x.value) — \(x.label)\n" } }
+            if let t = c.timeline { for x in t { out += "\(x.when): \(x.what)\n" } }
+            if let cmp = c.comparison {
+                out += "\(cmp.a) vs \(cmp.b)\n"
+                for r in cmp.rows { out += "\(r.aspect): \(r.a) | \(r.b)\n" }
+            }
+            return out
         }
         // Quiz → readable text
         var out = artifact.title + "\n\n"
@@ -332,6 +390,10 @@ private struct ArtifactDetailView: View {
         case "paper":
             if let md = artifact.content?.markdown, !md.isEmpty {
                 PaperReaderView(markdown: md)
+            } else { unavailable }
+        case "info":
+            if artifact.content?.layout != nil {
+                InfographicView(artifact: artifact)
             } else { unavailable }
         default:
             unavailable
@@ -569,6 +631,8 @@ private struct ArtifactWizardView: View {
     // Report options
     @State private var rLength = 1  // [brief, standard, indepth] → default standard
     @State private var rStyle = 0   // [explainer, academic, executive] → default explainer
+    // Infographic options
+    @State private var iKind = 0    // [auto, numbers, timeline, comparison] → default auto
 
     @State private var generating = false
     @State private var error: String?
@@ -577,6 +641,7 @@ private struct ArtifactWizardView: View {
     private let diffVals = ["easy", "medium", "hard"]
     private let lengthVals = ["brief", "standard", "indepth"]
     private let styleVals = ["explainer", "academic", "executive"]
+    private let infoVals = ["auto", "numbers", "timeline", "comparison"]
 
     var body: some View {
         NavigationStack {
@@ -602,6 +667,18 @@ private struct ArtifactWizardView: View {
                         Text("Difficulty")
                     } footer: {
                         Text("Questions are generated from this collection's sources.")
+                    }
+                } else if kind == .info {
+                    Section {
+                        Picker("Type", selection: $iKind) {
+                            Text("Auto").tag(0); Text("Numbers").tag(1); Text("Timeline").tag(2); Text("Compare").tag(3)
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                    } header: {
+                        Text("Type")
+                    } footer: {
+                        Text("Auto picks the layout that fits your sources best. Every figure comes from the sources — nothing is invented.")
                     }
                 } else {
                     Section("Length") {
@@ -654,7 +731,7 @@ private struct ArtifactWizardView: View {
             if generating {
                 HStack(spacing: 10) {
                     EchoPulseView().frame(width: 24, height: 24)
-                    Text(kind == .quiz ? "Building your quiz…" : "Writing your report…")
+                    Text(kind == .quiz ? "Building your quiz…" : kind == .info ? "Drawing your infographic…" : "Writing your report…")
                         .font(.system(size: 14.5))
                         .foregroundColor(.Nexus.muted)
                 }
@@ -678,9 +755,12 @@ private struct ArtifactWizardView: View {
         Haptics.impact(.medium)
         generating = true
         error = nil
-        let opts: ArtifactOptions = kind == .quiz
-            ? ArtifactOptions(numQuestions: counts[qCount], difficulty: diffVals[qDiff])
-            : ArtifactOptions(length: lengthVals[rLength], style: styleVals[rStyle])
+        let opts: ArtifactOptions
+        switch kind {
+        case .quiz: opts = ArtifactOptions(numQuestions: counts[qCount], difficulty: diffVals[qDiff])
+        case .info: opts = ArtifactOptions(infoKind: infoVals[iKind])
+        default:    opts = ArtifactOptions(length: lengthVals[rLength], style: styleVals[rStyle])
+        }
         let backendKind = kind.backendKind ?? "quiz"
         Task {
             do {

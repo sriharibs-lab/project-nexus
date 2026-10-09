@@ -6,7 +6,7 @@ import Foundation
 struct Artifact: Codable, Identifiable, Equatable {
     let id: UUID
     let collectionId: UUID
-    let kind: String          // "quiz" | "paper"
+    let kind: String          // "quiz" | "paper" | "info"
     let title: String
     let status: String        // "ready" | "failed"
     let content: ArtifactContent?
@@ -20,11 +20,28 @@ struct Artifact: Codable, Identifiable, Equatable {
 /// depends on `kind`:
 ///   quiz  → questions
 ///   paper → markdown + outline
+///   info  → title/subtitle/layout + numbers | timeline | comparison
 struct ArtifactContent: Codable, Equatable {
     var questions: [QuizQuestion]?
     var markdown: String?
     var outline: [String]?
+    // infographic
+    var title: String?
+    var subtitle: String?
+    var layout: String?            // numbers | timeline | comparison
+    var numbers: [InfoNumber]?
+    var timeline: [InfoTimelineItem]?
+    var comparison: InfoComparison?
 }
+
+struct InfoNumber: Codable, Equatable { let value: String; let label: String }
+struct InfoTimelineItem: Codable, Equatable { let when: String; let what: String }
+struct InfoComparison: Codable, Equatable {
+    let a: String
+    let b: String
+    let rows: [InfoComparisonRow]
+}
+struct InfoComparisonRow: Codable, Equatable { let aspect: String; let a: String; let b: String }
 
 struct QuizQuestion: Codable, Equatable, Identifiable {
     var id: String { q }
@@ -41,6 +58,7 @@ struct ArtifactOptions: Encodable {
     var difficulty: String? = nil     // easy | medium | hard
     var length: String? = nil         // brief | standard | indepth
     var style: String? = nil          // explainer | academic | executive
+    var infoKind: String? = nil       // auto | numbers | timeline | comparison
 }
 
 struct ArtifactCreateRequest: Encodable {

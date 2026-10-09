@@ -216,8 +216,10 @@ struct NexusTabView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 14)
 
-            // Suggested questions only make sense once there is something to ask about
-            if hasAnySources {
+            // Suggested questions only once the AI can actually answer from
+            // processed sources — offering them while everything is still
+            // "Reading…" invited questions it had to refuse (device 2026-10).
+            if readyCount > 0 {
                 Text("ASK")
                     .font(.Nexus.overline)
                     .foregroundColor(.Nexus.ghost)
@@ -237,10 +239,13 @@ struct NexusTabView: View {
 
     @ViewBuilder
     private var promptRow: some View {
-        if !vm.messages.isEmpty, vm.phase != .streaming {
+        // ONE suggestion system: the same contextual starters as the hero
+        // (not a second, generic "Dig deeper…" set), and only when sources are
+        // ready and nothing is streaming — fewer competing pills on screen.
+        if !vm.messages.isEmpty, vm.phase != .streaming, readyCount > 0 {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: NexusSpacing.xs) {
-                    ForEach(vm.starterPrompts, id: \.self) { prompt in
+                    ForEach(heroStarters, id: \.self) { prompt in
                         StarterChip(label: prompt, nowrap: true) { vm.sendStarter(prompt) }
                     }
                 }

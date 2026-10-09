@@ -24,6 +24,10 @@ class IngestRequest(BaseModel):
     # Validated against the canonical ContentType enum — prevents silent
     # routing errors when an unknown content_type bypasses AI path selection.
     content_type: ContentType = ContentType.article
+    # Optional: the research step already knows the page title — carrying it
+    # here makes the Sources row readable from the first second instead of a
+    # raw URL until the worker finishes (device 2026-10).
+    title: str | None = None
 
 
 class IngestResponse(BaseModel):
@@ -60,6 +64,7 @@ async def ingest_item(
         id=uuid.uuid4(),
         user_id=user.id,
         url=str(payload.url),
+        title=(payload.title or "").strip()[:500] or None,
         content_type=payload.content_type,
         ingest_status=IngestStatus.pending,
     )

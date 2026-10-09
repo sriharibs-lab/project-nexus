@@ -162,7 +162,8 @@ final class ResearchViewModel: ObservableObject {
                         _ = try await APIClient.shared.ingest(
                             url: source.url,
                             collectionId: collectionId,
-                            contentType: source.contentType
+                            contentType: source.contentType,
+                            title: source.title
                         )
                     } catch {
                         // Non-fatal: log and continue. Sources tab will show "Failed".

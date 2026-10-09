@@ -60,6 +60,25 @@ enum DetectedContentType: String, Identifiable, Equatable {
     }
 }
 
+// MARK: - URL extraction
+
+/// Returns the first http(s) URL inside arbitrary pasted text, or nil when the
+/// text is a single clean token (nothing to extract). Handles "Title https://x",
+/// "https://x\nTitle", and multi-line share text.
+func extractFirstURL(from text: String) -> String? {
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    // Single token without whitespace → let normal detection handle it.
+    guard trimmed.rangeOfCharacter(from: .whitespacesAndNewlines) != nil else { return nil }
+    guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else { return nil }
+    let range = NSRange(trimmed.startIndex..., in: trimmed)
+    for m in detector.matches(in: trimmed, options: [], range: range) {
+        if let url = m.url, let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" {
+            return url.absoluteString
+        }
+    }
+    return nil
+}
+
 // MARK: - Content-type detection
 
 /// Pure function — no side effects, testable without a view.
@@ -233,6 +252,12 @@ struct LinkURLSheetView: View {
                     .padding(.vertical, NexusSpacing.sm + 4)
                     // Live detection — runs on every keystroke
                     .onChange(of: urlText) { _, newValue in
+                        // Shared/copied text often arrives as "Article title https://…"
+                        // or URL + newline. Keep ONLY the first URL (device 2026-10).
+                        if let only = extractFirstURL(from: newValue), only != newValue {
+                            urlText = only
+                            return
+                        }
                         withAnimation(NexusAnimation.element) {
                             detectedType = detectContentType(from: newValue)
                         }

@@ -53,7 +53,8 @@ struct ResearchFlowView: View {
                     vm: vm,
                     showsBackButton: showsBackButton,
                     showsAvatar: showsAvatar,
-                    onBack: { dismiss() }
+                    onBack: { dismiss() },
+                    onLinkCollectionCreated: { id in dismiss(); onComplete(id) }
                 )
                     .scaleEffect(sheetVisible ? 0.945 : 1.0)
                     .clipShape(RoundedRectangle(cornerRadius: sheetVisible ? 22 : 0, style: .continuous))
@@ -128,6 +129,9 @@ private struct FREInputScreen: View {
     var showsBackButton = false
     var showsAvatar = true
     var onBack: () -> Void = {}
+    /// "Start with a link" created a collection — the parent pops the FRE and
+    /// navigates into it (same completion the research path uses).
+    var onLinkCollectionCreated: (UUID) -> Void = { _ in }
     @EnvironmentObject private var authManager: AuthManager
     @State private var showAccount = false
     @State private var showSettings = false
@@ -151,6 +155,9 @@ private struct FREInputScreen: View {
     var body: some View {
         ZStack(alignment: .top) {
             NexusBackground()
+                // Tap anywhere outside the composer to dismiss the keyboard.
+                .contentShape(Rectangle())
+                .onTapGesture { composerFocused = false }
 
             // Main content — vertically centered with safe area clearance
             VStack(spacing: 0) {
@@ -264,9 +271,14 @@ private struct FREInputScreen: View {
                 // (collections: []) so user will assign on next visit.
                 // A future task can wire a real collection picker here.
                 collections: [],
-                onComplete: { _, _ in
-                    // Sheet auto-dismisses via dismiss() inside LinkURLSheetView.
-                    // No FRE navigation needed — user returns to the input screen.
+                onComplete: { _, collectionId in
+                    // The link created a collection + queued the source. Land the
+                    // user INSIDE it — mirrors the research path's completion.
+                    // (Was a no-op: the sheet dismissed and the new collection was
+                    // never shown — "I add a link and it's gone", device 2026-10.)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                        onLinkCollectionCreated(collectionId)
+                    }
                 }
             )
             .presentationDetents([.large])
@@ -380,16 +392,6 @@ private struct FREComposer: View {
                         .frame(height: 42)
                 } else {
                     HStack(spacing: 8) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(Color.Nexus.surface2)
-                                .frame(width: 32, height: 32)
-                            Image(systemName: "plus")
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundColor(.Nexus.ink)
-                        }
-                        .frame(height: 42)
-
                         Spacer()
 
                         ZStack {
@@ -621,8 +623,8 @@ private struct FRESourcesSheet: View {
                 .padding(.top, 2)
             }
             .padding(.horizontal, NexusSpacing.standard)
-            .padding(.top, 8)
-            .padding(.bottom, 4)
+            .padding(.top, 22)   // breathing room under the grabber (was jammed at 8)
+            .padding(.bottom, 6)
             .animation(NexusAnimation.element, value: isReviewing)
 
             // Sources list

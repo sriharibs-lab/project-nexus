@@ -128,9 +128,10 @@ struct HomeView: View {
     // Header: title left, avatar right (locked mock; native menu = Weather style)
     private var header: some View {
         HStack {
+            // iOS large-title scale (like TestFlight's "Apps") — 22pt read too small.
             Text("Nexus")
-                .font(.system(size: 22, weight: .bold))
-                .kerning(-0.5)
+                .font(.system(size: 34, weight: .bold))
+                .kerning(-0.9)
                 .foregroundColor(.Nexus.ink)
             Spacer()
             NexusAvatarMenu(

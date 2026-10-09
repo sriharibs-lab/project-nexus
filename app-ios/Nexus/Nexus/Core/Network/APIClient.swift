@@ -118,8 +118,8 @@ final class APIClient {
         try await delete(.authMe)
     }
 
-    func ingest(url: String, collectionId: UUID, contentType: String = "article") async throws -> IngestResponse {
-        let body = IngestRequest(url: url, collectionId: collectionId, contentType: contentType)
+    func ingest(url: String, collectionId: UUID, contentType: String = "article", title: String? = nil) async throws -> IngestResponse {
+        let body = IngestRequest(url: url, collectionId: collectionId, contentType: contentType, title: title)
         return try await post(.ingest, body: body)
     }
 
@@ -385,6 +385,7 @@ struct IngestRequest: Encodable {
     let url: String
     let collectionId: UUID
     let contentType: String
+    let title: String?
 }
 
 struct IngestResponse: Decodable {

@@ -15,6 +15,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.core.telemetry import record_error
 from app.queue.ingestion import close_pgq_pool, init_pgq_pool, start_worker
 from app.routers import admin, artifacts, auth, briefing, feedback, health, ingest, collections, items, legal, research, search, users, trending
 from app.middleware.error_logging import install_error_telemetry
@@ -43,6 +44,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             return
         if exc := task.exception():
             logger.error("INGESTION WORKER DIED — jobs will queue unprocessed: %r", exc, exc_info=exc)
+            asyncio.create_task(record_error(source="ingest_worker", error_type=type(exc).__name__,
+                                             message=f"worker died: {exc}"))
     _worker_task.add_done_callback(_log_worker_death)
 
     yield

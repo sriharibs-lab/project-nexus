@@ -21,9 +21,12 @@ import uuid
 from decimal import Decimal
 
 import asyncpg
-from pgqueuer import PgQueuer
+import traceback
+from datetime import datetime, timedelta, timezone
+
 from pgqueuer.db import AsyncpgDriver
-from pgqueuer.models import Job
+from pgqueuer.models import Job, TracebackRecord
+from pgqueuer.ports.repository import EntrypointExecutionParameter
 from pgqueuer.queries import Queries
 from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -31,6 +34,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal
+from app.core.telemetry import record_error
 from app.models.ai_telemetry import AiTelemetry
 from app.models.collection import Collection
 from app.models.embedding import Embedding
@@ -109,81 +113,86 @@ async def enqueue_item(
 
 async def start_worker() -> None:
     """
-    Supervised worker: pgqueuer's run() has wedged silently in production —
-    "worker started" logged, connection healthy, yet queued jobs sat untouched
-    for minutes (observed 2026-07-14: 14 jobs, zero dispatched, no exception).
-    The supervisor pairs the worker with a watchdog that checks queue staleness;
-    when queued jobs are old and nothing is processing, it kills and restarts
-    the worker loop. Restart also re-drains the backlog (initial fetch works
-    reliably even when the notify path doesn't).
+    Supervised POLLING worker.
+
+    Why polling (2026-10-09): on Render the backend reaches Supabase through
+    the Supavisor pooler (the direct host is IPv6-only), and the pooler does
+    not relay LISTEN/NOTIFY — pgqueuer's run() sat waiting on a wake-up that
+    never came. Jobs queued for SEVEN WEEKS (last consumption 2026-08-22)
+    while the same code drained the backlog in 21s from a direct connection.
+    A plain dequeue loop (SELECT … FOR UPDATE SKIP LOCKED under the hood)
+    works through any pooler and recovers from DB restarts because a
+    connection is only held during dequeue/log, never across processing.
     """
     while True:
-        worker = asyncio.create_task(_run_worker_once(), name="pgq-worker")
-        watchdog = asyncio.create_task(_watchdog(worker), name="pgq-watchdog")
         try:
-            await worker
-            logger.error("pgqueuer run() returned unexpectedly — restarting in 5s")
+            await _run_worker_once()
+            logger.error("ingestion worker loop returned unexpectedly — restarting in 5s")
         except asyncio.CancelledError:
-            if worker.cancelled() or worker.done():
-                logger.error("pgqueuer worker cancelled by watchdog — restarting in 5s")
-            else:
-                worker.cancel()
-                raise  # app shutdown
-        except Exception:
-            logger.exception("pgqueuer worker crashed — restarting in 5s")
-        finally:
-            watchdog.cancel()
+            raise  # app shutdown
+        except Exception as exc:
+            logger.exception("ingestion worker crashed — restarting in 5s")
+            await record_error(source="ingest_worker", error_type=type(exc).__name__,
+                               message=f"worker crashed: {exc}")
         await asyncio.sleep(5)
 
 
-async def _watchdog(worker: asyncio.Task) -> None:
-    """Cancel the worker task if queued jobs are going stale under it."""
-    pool = get_pgq_pool()
-    while not worker.done():
-        await asyncio.sleep(30)
-        try:
-            async with pool.acquire() as conn:
-                stale = await conn.fetchval(
-                    """
-                    SELECT count(*) FROM pgqueuer
-                    WHERE status = 'queued'
-                      AND created < now() - interval '45 seconds'
-                    """
-                )
-            if stale and stale > 0:
-                logger.error(
-                    "WATCHDOG: %d queued job(s) stale >45s with a 'running' worker — force-restarting worker",
-                    stale,
-                )
-                worker.cancel()
-                return
-        except Exception:
-            logger.exception("watchdog check failed (non-fatal)")
+_POLL_INTERVAL_S = 3.0
+_BATCH_SIZE = 3
+# A 'picked' job whose heartbeat is older than this is considered abandoned and
+# re-dequeued. Generous: a podcast transcription can legitimately take minutes.
+_HEARTBEAT_TIMEOUT = timedelta(minutes=15)
 
 
 async def _run_worker_once() -> None:
     pool = get_pgq_pool()
-    async with pool.acquire() as conn:
-        # Driver wrapper is REQUIRED — PgQueuer(raw asyncpg conn) crashed
-        # run() instantly; create_task swallowed it, so the worker "started"
-        # then silently died and jobs sat queued forever (2026-07-11).
-        pgq = PgQueuer(AsyncpgDriver(conn))
-
-        @pgq.entrypoint(QUEUE_NAME)
-        async def handle_ingest(job: Job) -> None:
-            data = json.loads(job.payload)  # payload is bytes; loads accepts it
-            logger.info("Processing ingest job url=%s", data.get("url"))
-            await _process_job(
-                job_id=data["job_id"],
-                url=data["url"],
-                content_type=data["content_type"],
-                user_id=data["user_id"],
-                collection_id=data["collection_id"],
-                item_id=data.get("item_id"),
+    qm_id = uuid.uuid4()
+    entrypoints = {QUEUE_NAME: EntrypointExecutionParameter(concurrency_limit=_BATCH_SIZE)}
+    logger.info("ingestion worker started (polling every %.0fs) queue=%s", _POLL_INTERVAL_S, QUEUE_NAME)
+    while True:
+        async with pool.acquire() as conn:
+            jobs = await Queries(AsyncpgDriver(conn)).dequeue(
+                batch_size=_BATCH_SIZE,
+                entrypoints=entrypoints,
+                queue_manager_id=qm_id,
+                global_concurrency_limit=None,
+                heartbeat_timeout=_HEARTBEAT_TIMEOUT,
             )
+        if not jobs:
+            await asyncio.sleep(_POLL_INTERVAL_S)
+            continue
+        for job in jobs:
+            await _handle_job(pool, job)
 
-        logger.info("pgqueuer ingestion worker started, queue=%s", QUEUE_NAME)
-        await pgq.run()
+
+async def _handle_job(pool: asyncpg.Pool, job: Job) -> None:
+    status = "successful"
+    tb: TracebackRecord | None = None
+    try:
+        data = json.loads(job.payload or b"{}")
+        logger.info("Processing ingest job url=%s", data.get("url"))
+        await _process_job(
+            job_id=data["job_id"],
+            url=data["url"],
+            content_type=data["content_type"],
+            user_id=data["user_id"],
+            collection_id=data["collection_id"],
+            item_id=data.get("item_id"),
+        )
+    except Exception as exc:  # _process_job handles its own item failure; this is the unexpected path
+        status = "exception"
+        tb = TracebackRecord(
+            job_id=job.id, timestamp=datetime.now(timezone.utc),
+            exception_type=type(exc).__name__, exception_message=str(exc),
+            traceback=traceback.format_exc(), additional_context=None,
+        )
+        logger.exception("Ingest job %s raised: %s", job.id, exc)
+        await record_error(source="ingest_worker", error_type=type(exc).__name__, message=str(exc))
+    try:
+        async with pool.acquire() as conn:
+            await Queries(AsyncpgDriver(conn)).log_jobs([(job, status, tb)])
+    except Exception:
+        logger.exception("Failed to log completion of job %s (may be re-picked after heartbeat timeout)", job.id)
 
 
 # ---------------------------------------------------------------------------
@@ -499,3 +508,7 @@ async def _process_job(
             item.ingest_status = IngestStatus.failed
             item.metadata_ = {**(item.metadata_ or {}), "error": str(exc)}
             await db.commit()
+            await record_error(
+                source="ingest", error_type=type(exc).__name__, message=str(exc)[:500],
+                context={"url": url, "item_id": str(item.id), "collection_id": collection_id},
+            )

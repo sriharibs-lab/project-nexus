@@ -14,7 +14,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -63,6 +63,25 @@ async def errors_summary(
         )
     ).all()
 
+    # Ingestion queue health — a wedged worker never raises, so error counts
+    # alone can't see it (it hid for 7 weeks, 2026-08-22 → 10-09). Expose the
+    # backlog + the age of the oldest queued job; the alert cron fails on
+    # staleness.
+    queue = (
+        await db.execute(text(
+            """
+            SELECT count(*) AS queued,
+                   COALESCE(EXTRACT(EPOCH FROM (now() - min(created))), 0)::int AS oldest_age_s
+            FROM pgqueuer WHERE status = 'queued'
+            """
+        ))
+    ).one()
+    picked_recent = (
+        await db.execute(text(
+            "SELECT count(*) FROM pgqueuer_log WHERE status = 'successful' AND created > now() - interval '24 hours'"
+        ))
+    ).scalar_one()
+
     return {
         "window_hours": hours,
         "since": since.isoformat(),
@@ -71,6 +90,11 @@ async def errors_summary(
         "warnings": sum(c for lvl, c in by_level if lvl == "warning"),
         "by_level": {lvl: c for lvl, c in by_level},
         "by_source": [{"source": s, "count": c} for s, c in by_source],
+        "queue": {
+            "queued": int(queue.queued),
+            "oldest_queued_age_s": int(queue.oldest_age_s),
+            "processed_24h": int(picked_recent),
+        },
     }
 
 

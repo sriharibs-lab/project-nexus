@@ -55,16 +55,20 @@ struct DictationBar: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: 34)
 
+            // Stop button (square) — finalizes the dictation and keeps the text,
+            // matching the Claude-app dictation UX.
             Button {
-                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 onConfirm()
             } label: {
                 Circle()
-                    .fill(Color.Nexus.accent)
+                    .fill(Color.Nexus.ink)
                     .frame(width: 34, height: 34)
-                    .overlay(Image(systemName: "checkmark")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.white))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 3, style: .continuous)
+                            .fill(Color.white)
+                            .frame(width: 12, height: 12)
+                    )
             }
             .buttonStyle(.plain)
         }

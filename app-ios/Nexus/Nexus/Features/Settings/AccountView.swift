@@ -91,11 +91,10 @@ struct AccountView: View {
                     SheetCloseButton { dismiss() }
                 }
             }
-            .confirmationDialog(
-                "Delete your account?",
-                isPresented: $confirmingDelete,
-                titleVisibility: .visible
-            ) {
+            // Native alert (centered modal) — a confirmationDialog inside this
+            // sheet mis-anchored as a popover near the top on iOS 26 (device
+            // report: dialog appeared far from the button).
+            .alert("Delete your account?", isPresented: $confirmingDelete) {
                 Button("Delete account and all data", role: .destructive) {
                     Task { await deleteAccount() }
                 }

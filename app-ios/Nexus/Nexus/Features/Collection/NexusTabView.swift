@@ -699,7 +699,7 @@ private struct ChatComposer: View {
                         .lineLimit(1...6)
                         .submitLabel(.send)
                         .onSubmit {
-                            if canSend { vm.send() }
+                            if canSend { vm.send(); focused.wrappedValue = false }
                         }
                         .padding(.horizontal, 6)
                 }
@@ -723,7 +723,7 @@ private struct ChatComposer: View {
                         waveformCircle
                         Spacer()
                         Button {
-                            if canSend { vm.send() }
+                            if canSend { vm.send(); focused.wrappedValue = false }
                         } label: {
                             Image(systemName: "arrow.up")
                                 .font(.system(size: 16, weight: .semibold))

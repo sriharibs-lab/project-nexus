@@ -55,7 +55,7 @@
          <EnvironmentVariable
             key = "API_BASE_URL"
             value = "http://10.0.0.174:8000"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </EnvironmentVariable>
       </EnvironmentVariables>
    </LaunchAction>

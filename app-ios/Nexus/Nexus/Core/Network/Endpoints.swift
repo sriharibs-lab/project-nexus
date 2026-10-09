@@ -1,26 +1,24 @@
 import Foundation
 
 enum Endpoint {
-    // Priority: Info.plist "API_BASE_URL" → Xcode scheme env var → debug LAN
-    // fallback → localhost.
+    // Priority: Info.plist "API_BASE_URL" → Xcode scheme env var → production.
     //
-    // The scheme env var only exists when launched FROM Xcode — apps opened
-    // from the home screen don't get it, so debug builds fall back to the
-    // dev Mac's LAN address (phone and Mac on the same WiFi).
+    // DEBUG now defaults to the PRODUCTION backend too (2026-10): the Render
+    // deploy is stable, and the old LAN-IP fallback silently broke every dev
+    // build whenever the Mac's IP drifted or the local server was down
+    // ("couldn't load collections", Retry loops forever). To run against a
+    // LOCAL backend, set API_BASE_URL (scheme env var or Info.plist) —
+    // e.g. http://<mac-ip>:8000 — which takes priority over this fallback.
+    static let productionBase = "https://nexus-api-bwrh.onrender.com"
+
     static var baseURL: String {
-        if let plist = Bundle.main.object(forInfoDictionaryKey: "API_BASE_URL") as? String {
+        if let plist = Bundle.main.object(forInfoDictionaryKey: "API_BASE_URL") as? String, !plist.isEmpty {
             return plist
         }
-        if let env = ProcessInfo.processInfo.environment["API_BASE_URL"] {
+        if let env = ProcessInfo.processInfo.environment["API_BASE_URL"], !env.isEmpty {
             return env
         }
-        #if DEBUG
-        // Srihari's dev Mac — update if the Mac's IP changes (ipconfig getifaddr en0)
-        return "http://10.0.0.174:8000"
-        #else
-        // Production backend (Render). TestFlight/App Store builds hit this.
-        return "https://nexus-api-bwrh.onrender.com"
-        #endif
+        return productionBase
     }
 
     // Auth

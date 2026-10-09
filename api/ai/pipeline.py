@@ -790,6 +790,109 @@ async def generate_paper(
     )
 
 
+_INFOGRAPHIC_SYSTEM = """\
+You distill a set of sources into a tight, factual infographic. Return ONLY a \
+JSON object (no prose, no markdown fence) of this exact shape:
+{
+  "title": "short punchy title (<= 48 chars)",
+  "subtitle": "one-line framing (<= 90 chars)",
+  "layout": "numbers" | "timeline" | "comparison",
+  "numbers":    [{"value": "50,000+", "label": "works created"}],
+  "timeline":   [{"when": "1881", "what": "Born in Málaga, Spain"}],
+  "comparison": {"a": "Option A", "b": "Option B", "rows": [{"aspect": "Cost", "a": "...", "b": "..."}]}
+}
+Rules:
+- Include ONLY the array/object matching "layout"; omit the others.
+- Base every value STRICTLY on the sources — never invent figures. Prefer \
+concrete numbers/dates. If a number isn't in the sources, don't fabricate one.
+- numbers: 4-6 items, each value short (a figure, %, rank, or year).
+- timeline: 4-7 chronological items, "what" <= 70 chars.
+- comparison: 2 sides, 3-5 rows, cells <= 40 chars.
+- Choose the layout that best fits the content unless one is requested."""
+
+_INFO_LAYOUTS = {"numbers", "timeline", "comparison"}
+
+
+async def generate_infographic(collection_name: str, context: str, kind: str = "auto") -> ArtifactResult:
+    """Extract a grounded, structured infographic spec from a collection's sources.
+
+    Rendered natively on-device (crisp text/numbers) rather than as an AI image.
+    `kind` ∈ {auto, numbers, timeline, comparison}.
+    """
+    model = settings.fireworks_text_model
+    layout_hint = (
+        f"Use the \"{kind}\" layout."
+        if kind in _INFO_LAYOUTS
+        else "Pick the layout that best fits the content."
+    )
+    user = f"Collection: {collection_name}\n\nSOURCES:\n{context}\n\n{layout_hint}\nProduce the infographic JSON."
+    resp = await _fireworks.chat.completions.create(
+        model=model,
+        messages=[{"role": "system", "content": _INFOGRAPHIC_SYSTEM}, {"role": "user", "content": user}],
+        max_tokens=1200,
+        temperature=0.3,
+    )
+    inp, out = _fw_usage(resp)
+    raw = (resp.choices[0].message.content or "").strip()
+    start, end = raw.find("{"), raw.rfind("}")
+    if start != -1 and end > start:
+        raw = raw[start:end + 1]
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        raise ValueError("infographic generation returned invalid JSON")
+
+    layout = data.get("layout")
+    if layout not in _INFO_LAYOUTS:
+        raise ValueError("infographic generation returned no valid layout")
+
+    content: dict = {
+        "title": str(data.get("title", collection_name)).strip()[:80],
+        "subtitle": str(data.get("subtitle", "")).strip()[:120],
+        "layout": layout,
+    }
+    if layout == "numbers":
+        rows = [
+            {"value": str(r.get("value", "")).strip()[:16], "label": str(r.get("label", "")).strip()[:48]}
+            for r in (data.get("numbers") or []) if r.get("value")
+        ]
+        if not rows:
+            raise ValueError("infographic numbers layout returned no items")
+        content["numbers"] = rows[:6]
+    elif layout == "timeline":
+        rows = [
+            {"when": str(r.get("when", "")).strip()[:20], "what": str(r.get("what", "")).strip()[:80]}
+            for r in (data.get("timeline") or []) if r.get("what")
+        ]
+        if not rows:
+            raise ValueError("infographic timeline layout returned no items")
+        content["timeline"] = rows[:7]
+    else:  # comparison
+        comp = data.get("comparison") or {}
+        rows = [
+            {"aspect": str(r.get("aspect", "")).strip()[:40],
+             "a": str(r.get("a", "")).strip()[:48],
+             "b": str(r.get("b", "")).strip()[:48]}
+            for r in (comp.get("rows") or []) if r.get("aspect")
+        ]
+        if not rows:
+            raise ValueError("infographic comparison layout returned no rows")
+        content["comparison"] = {
+            "a": str(comp.get("a", "A")).strip()[:28],
+            "b": str(comp.get("b", "B")).strip()[:28],
+            "rows": rows[:5],
+        }
+
+    return ArtifactResult(
+        kind="info",
+        title=content["title"][:300],
+        content=content,
+        model=model,
+        input_tokens=inp,
+        output_tokens=out,
+    )
+
+
 async def _run_examples_async() -> None:
     examples = [
         ("article", ARTICLE),

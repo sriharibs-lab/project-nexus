@@ -39,7 +39,7 @@ router = APIRouter(tags=["artifacts"])
 _FW_TEXT_INPUT_COST = Decimal("0.00000015")   # ~$0.15 / 1M
 _FW_TEXT_OUTPUT_COST = Decimal("0.0000006")   # ~$0.60 / 1M
 
-ArtifactKind = Literal["quiz", "paper"]
+ArtifactKind = Literal["quiz", "paper", "info"]
 
 
 class ArtifactOptions(BaseModel):
@@ -49,6 +49,8 @@ class ArtifactOptions(BaseModel):
     # report (kind="paper")
     length: str | None = None
     style: str | None = None
+    # infographic (kind="info"): auto | numbers | timeline | comparison
+    info_kind: str | None = None
 
 
 class ArtifactCreateRequest(BaseModel):
@@ -110,7 +112,7 @@ async def create_artifact(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ArtifactResponse:
-    from ai.pipeline import generate_paper, generate_quiz
+    from ai.pipeline import generate_infographic, generate_paper, generate_quiz
 
     user, collection = await _resolve_owned_collection(collection_id, current_user, db)
 
@@ -132,6 +134,12 @@ async def create_artifact(
                 context,
                 num_questions=opts.num_questions or 5,
                 difficulty=opts.difficulty or "medium",
+            )
+        elif payload.kind == "info":
+            result = await generate_infographic(
+                collection.name,
+                context,
+                kind=opts.info_kind or "auto",
             )
         else:
             result = await generate_paper(

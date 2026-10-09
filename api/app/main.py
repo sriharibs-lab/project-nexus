@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.queue.ingestion import close_pgq_pool, init_pgq_pool, start_worker
-from app.routers import admin, artifacts, auth, briefing, feedback, health, ingest, collections, items, research, search, users, trending
+from app.routers import admin, artifacts, auth, briefing, feedback, health, ingest, collections, items, legal, research, search, users, trending
 from app.middleware.error_logging import install_error_telemetry
 
 logging.basicConfig(level=settings.log_level.upper())
@@ -76,6 +76,7 @@ app.add_middleware(
 )
 
 app.include_router(health.router)
+app.include_router(legal.router)  # public /legal/terms + /legal/privacy
 app.include_router(auth.router, prefix="/v1")
 app.include_router(feedback.router, prefix="/v1")
 app.include_router(ingest.router, prefix="/v1")

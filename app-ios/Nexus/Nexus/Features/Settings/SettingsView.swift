@@ -44,7 +44,7 @@ struct SettingsView: View {
                             SettingsValue(versionLabel)
                         }
                         Button {
-                            openURL(URL(string: "https://nexus.app/terms")!)
+                            openURL(URL(string: "https://nexus-api-bwrh.onrender.com/legal/terms")!)
                         } label: {
                             SettingsRow(icon: "doc.text", label: "Terms of Service") {
                                 SettingsExternalArrow()
@@ -52,7 +52,7 @@ struct SettingsView: View {
                         }
                         .tint(.primary)
                         Button {
-                            openURL(URL(string: "https://nexus.app/privacy")!)
+                            openURL(URL(string: "https://nexus-api-bwrh.onrender.com/legal/privacy")!)
                         } label: {
                             SettingsRow(icon: "hand.raised", label: "Privacy Policy") {
                                 SettingsExternalArrow()

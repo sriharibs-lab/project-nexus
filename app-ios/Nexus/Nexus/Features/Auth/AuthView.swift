@@ -318,8 +318,8 @@ struct AuthView: View {
             "By continuing, you agree to Nexus's Terms and Conditions and acknowledge the Privacy Policy."
         )
         for (phrase, url) in [
-            ("Terms and Conditions", "https://nexus.app/terms"),
-            ("Privacy Policy", "https://nexus.app/privacy"),
+            ("Terms and Conditions", "https://nexus-api-bwrh.onrender.com/legal/terms"),
+            ("Privacy Policy", "https://nexus-api-bwrh.onrender.com/legal/privacy"),
         ] {
             if let range = string.range(of: phrase) {
                 string[range].link = URL(string: url)

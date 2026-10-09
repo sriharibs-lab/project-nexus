@@ -663,10 +663,28 @@ async def delete_account(
     from app.models.ai_telemetry import AiTelemetry
 
     await db.execute(sa_delete(AiTelemetry).where(AiTelemetry.user_id == user.id))
-    # ORM cascades handle collections, items, tags, embeddings, profiles
+    # ORM cascades handle collections, items, tags, embeddings, profiles;
+    # artifacts cascade at the DB level (FK ondelete=CASCADE).
+    user_id = user.id
+    supabase_id = current_user["supabase_id"]
     await db.delete(user)
     await db.commit()
-    logger.info("Account deleted: user=%s", user.id)
+
+    # Delete the Supabase AUTH identity too, so the account is fully gone (App
+    # Store 5.1.1(v)) — not just its app data. Best-effort: the DB data is
+    # already removed; a Supabase hiccup shouldn't fail the user's request.
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.delete(
+                f"{settings.supabase_url}/auth/v1/admin/users/{supabase_id}",
+                headers=_supabase_admin_headers(),
+            )
+            if resp.status_code not in (200, 204, 404):
+                logger.warning("Supabase auth delete → %s for user=%s", resp.status_code, user_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Supabase auth delete failed for user=%s: %s", user_id, exc)
+
+    logger.info("Account deleted: user=%s", user_id)
 
 
 @router.get("/me", response_model=UserProfile, status_code=status.HTTP_200_OK)

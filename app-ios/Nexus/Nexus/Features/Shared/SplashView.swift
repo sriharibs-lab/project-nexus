@@ -11,17 +11,26 @@ struct SplashView: View {
         ZStack {
             NexusBackground().ignoresSafeArea()
 
-            VStack(spacing: 22) {
-                EchoMark(size: 78)
+            // Matches the AuthView hero EXACTLY (mark 64 → "Nexus" → tagline,
+            // same sizes + centering) so splash → login is a seamless crossfade
+            // with no jump (device report 2026-10).
+            VStack(spacing: 0) {
+                EchoMark(size: 64)
                     .scaleEffect(appeared ? 1 : 0.92)
-
                 Text("Nexus")
-                    .font(.system(size: 34, weight: .bold))
-                    .kerning(-0.5)
+                    .font(.system(size: 27, weight: .semibold))
+                    .kerning(-0.6)
                     .foregroundColor(.Nexus.ink)
+                    .padding(.top, 26)
+                Text("Your AI research companion.")
+                    .font(.system(size: 27, weight: .semibold))
+                    .kerning(-0.6)
+                    .foregroundColor(.Nexus.faint)
+                    .padding(.top, 10)
             }
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 20)
             .opacity(appeared ? 1 : 0)
-            .offset(y: -12)
         }
         .onAppear {
             withAnimation(.spring(response: 0.6, dampingFraction: 0.82)) { appeared = true }

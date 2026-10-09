@@ -35,7 +35,7 @@ struct AuthView: View {
         ZStack {
             // Background is the tap-outside-to-dismiss catcher. Controls sit
             // above it and receive their own taps — no simultaneous gestures.
-            Color.Nexus.surface3
+            Color.Nexus.pageEnd        // Cream — was plum-white surface3
                 .ignoresSafeArea()
                 .contentShape(Rectangle())
                 .onTapGesture { hideKeyboard() }

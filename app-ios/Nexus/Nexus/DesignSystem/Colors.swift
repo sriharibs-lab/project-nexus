@@ -7,17 +7,18 @@ extension Color {
         static let accent  = Color(hex: "#7054AB")  // plum — approved uses only
         static let bloom   = Color(hex: "#E7DCF4")  // plum bloom
 
-        // Neutral scale
+        // Neutral scale — WARM (re-tinted 2026 to sit on the Cream base; the old
+        // ramp was plum-cool and read as "old white" popping on warm screens).
         static let white         = Color(hex: "#FFFFFF")
-        static let surface3      = Color(hex: "#FBFAFD")
-        static let pageEnd       = Color(hex: "#F7F3EC")  // Cream (warm base, chosen 2026)
-        static let surface2      = Color(hex: "#F4F2F9")
-        static let hair          = Color(hex: "#EEEBF5")
-        static let border        = Color(hex: "#E9E5F2")
-        static let borderStrong  = Color(hex: "#DCD7EA")
-        static let ghost         = Color(hex: "#B7B1C4")
-        static let faint         = Color(hex: "#9A93AC")
-        static let muted         = Color(hex: "#68607A")
+        static let surface3      = Color(hex: "#FBF9F4")  // warm near-white
+        static let pageEnd       = Color(hex: "#F7F3EC")  // Cream (warm base)
+        static let surface2      = Color(hex: "#EFEBE1")  // warm light fill (chips/pills)
+        static let hair          = Color(hex: "#EAE4D8")  // warm hairline
+        static let border        = Color(hex: "#E6DFD2")  // warm border
+        static let borderStrong  = Color(hex: "#D6CDBD")  // warm strong border
+        static let ghost         = Color(hex: "#B5AD9E")  // warm gray (placeholders)
+        static let faint         = Color(hex: "#948C7D")  // warm gray
+        static let muted         = Color(hex: "#6A6253")  // warm dark gray
         static let ink           = Color(hex: "#130E1A")
         static let inkDeep       = Color(hex: "#0A0710")
 
@@ -25,8 +26,8 @@ extension Color {
         static let pageBackground  = Color(hex: "#F7F3EC")  // Cream (warm base, chosen 2026)
         static let cardBackground  = Color(hex: "#FFFFFF")
         static let textPrimary     = Color(hex: "#130E1A")
-        static let textSecondary   = Color(hex: "#68607A")
-        static let textTertiary    = Color(hex: "#9A93AC")
+        static let textSecondary   = Color(hex: "#6A6253")  // warm (matches muted)
+        static let textTertiary    = Color(hex: "#948C7D")  // warm (matches faint)
 
         // Status
         static let destructive     = Color(hex: "#C0392B")  // red — destructive actions only

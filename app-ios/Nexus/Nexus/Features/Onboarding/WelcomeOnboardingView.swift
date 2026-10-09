@@ -91,9 +91,19 @@ struct WelcomeOnboardingView: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 54)
-                        .background(Color.Nexus.accent)
+                        .background(
+                            // Ember gradient (brand hues only) + a soft top sheen.
+                            ZStack {
+                                LinearGradient(
+                                    colors: [Color(hex: "#7054AB"), Color(hex: "#9A5BB5"), Color(hex: "#B8569C")],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing)
+                                LinearGradient(
+                                    colors: [Color.white.opacity(0.18), .clear],
+                                    startPoint: .top, endPoint: .center)
+                            }
+                        )
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        .shadow(color: Color.Nexus.accent.opacity(0.25), radius: 12, y: 5)
+                        .shadow(color: Color(hex: "#7054AB").opacity(0.30), radius: 14, y: 6)
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, NexusSpacing.sideGutter)
@@ -178,64 +188,149 @@ private struct OnboardingPage: View {
 }
 
 // MARK: - Illustrations
+//
+// Premium pass (device review 2026-10): continuous ambient motion, layered
+// depth, restrained Ember gradients. All motion is slow and easeful — ambience,
+// not spectacle. Respects Reduce Motion (drift/orbit collapse to static).
 
-/// A soft ember glow behind content.
+/// Ambient ember glow — two soft radial pools that slowly drift and breathe,
+/// giving the scene living depth without adding color.
 private struct EmberGlow: View {
-    var size: CGFloat = 220
+    var size: CGFloat = 240
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var drift = false
+
     var body: some View {
-        RadialGradient(
-            colors: [Color(hex: "#E8776A").opacity(0.18), Color(hex: "#7054AB").opacity(0.10), .clear],
-            center: .center, startRadius: 2, endRadius: size / 2
-        )
-        .frame(width: size, height: size)
-        .blur(radius: 6)
+        ZStack {
+            RadialGradient(
+                colors: [Color(hex: "#E8776A").opacity(0.20), .clear],
+                center: .center, startRadius: 2, endRadius: size * 0.42
+            )
+            .frame(width: size, height: size)
+            .offset(x: drift ? -18 : 14, y: drift ? 10 : -12)
+            .scaleEffect(drift ? 1.08 : 0.96)
+
+            RadialGradient(
+                colors: [Color(hex: "#7054AB").opacity(0.16), .clear],
+                center: .center, startRadius: 2, endRadius: size * 0.5
+            )
+            .frame(width: size * 1.15, height: size * 1.15)
+            .offset(x: drift ? 16 : -12, y: drift ? -8 : 12)
+            .scaleEffect(drift ? 0.97 : 1.06)
+        }
+        .blur(radius: 14)
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 5.2).repeatForever(autoreverses: true)) { drift = true }
+        }
     }
 }
 
-/// Step 1 — the Echo mark with sources gathering around it.
-private struct ResearchArt: View {
-    private let chips: [(String, Color, Color, CGSize)] = [
-        ("doc.text.fill", Color(hex: "#4A7ABB"), Color(hex: "#EEF3FB"), CGSize(width: -96, height: -84)),
-        ("play.rectangle.fill", Color(hex: "#B84C3A"), Color(hex: "#FCF0EE"), CGSize(width: 104, height: -56)),
-        ("waveform", Color(hex: "#4A8A5C"), Color(hex: "#F0F7EE"), CGSize(width: -104, height: 72)),
-        ("bubble.left.fill", Color(hex: "#B8862A"), Color(hex: "#FDF5E8"), CGSize(width: 92, height: 86)),
-    ]
+/// A floating white tile with layered depth (ambient + contact shadows) that
+/// gently bobs on its own phase — shared by the illustration scenes.
+private struct FloatingTile<Content: View>: View {
+    var amplitude: CGFloat = 5
+    var period: Double = 3.4
+    var phase: Double = 0
+    @ViewBuilder let content: Content
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
-        ZStack {
-            EmberGlow(size: 260)
-            ForEach(chips.indices, id: \.self) { i in
-                sourceChip(icon: chips[i].0, fg: chips[i].1, bg: chips[i].2)
-                    .offset(chips[i].3)
+        if reduceMotion {
+            content
+        } else {
+            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+                let t = timeline.date.timeIntervalSinceReferenceDate
+                content
+                    .offset(y: sin((t + phase) * 2 * .pi / period) * amplitude)
             }
-            EchoMark(size: 92)
         }
     }
-    private func sourceChip(icon: String, fg: Color, bg: Color) -> some View {
-        RoundedRectangle(cornerRadius: 13, style: .continuous)
+}
+
+/// Step 1 — the Echo mark breathing at the center while source chips orbit
+/// slowly around it (satellites being gathered in).
+private struct ResearchArt: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private struct Chip { let icon: String; let fg: Color; let angle: Double }
+    private let chips: [Chip] = [
+        .init(icon: "doc.text.fill", fg: Color(hex: "#4A7ABB"), angle: 215),
+        .init(icon: "play.rectangle.fill", fg: Color(hex: "#B84C3A"), angle: 325),
+        .init(icon: "waveform", fg: Color(hex: "#4A8A5C"), angle: 145),
+        .init(icon: "bubble.left.fill", fg: Color(hex: "#B8862A"), angle: 35),
+    ]
+    private let radius: CGFloat = 118
+
+    var body: some View {
+        ZStack {
+            EmberGlow(size: 280)
+
+            // Faint orbit ring — depth cue for the motion path.
+            Circle()
+                .stroke(
+                    LinearGradient(
+                        colors: [Color(hex: "#7054AB").opacity(0.18), Color(hex: "#E8776A").opacity(0.10)],
+                        startPoint: .topLeading, endPoint: .bottomTrailing),
+                    style: StrokeStyle(lineWidth: 1, dash: [3, 7])
+                )
+                .frame(width: radius * 2, height: radius * 2)
+
+            if reduceMotion {
+                ForEach(chips.indices, id: \.self) { i in
+                    chipView(chips[i])
+                        .offset(x: radius * cos(chips[i].angle * .pi / 180),
+                                y: radius * sin(chips[i].angle * .pi / 180))
+                }
+            } else {
+                TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+                    let t = timeline.date.timeIntervalSinceReferenceDate
+                    let orbit = (t / 26.0) * 360.0   // one slow revolution / 26s
+                    ZStack {
+                        ForEach(chips.indices, id: \.self) { i in
+                            let a = (chips[i].angle + orbit) * .pi / 180
+                            chipView(chips[i])
+                                .offset(x: radius * cos(a), y: radius * sin(a))
+                        }
+                    }
+                }
+            }
+
+            // The mark itself, breathing (reuses the brand pulse).
+            EchoPulseView()
+                .scaleEffect(2.6)
+                .frame(width: 100, height: 100)
+        }
+    }
+
+    private func chipView(_ chip: Chip) -> some View {
+        RoundedRectangle(cornerRadius: 14, style: .continuous)
             .fill(Color.Nexus.cardBackground)
-            .frame(width: 54, height: 54)
-            .shadow(color: .black.opacity(0.08), radius: 10, y: 4)
+            .frame(width: 52, height: 52)
+            .shadow(color: Color(hex: "#5E3F9E").opacity(0.10), radius: 14, y: 6)
+            .shadow(color: .black.opacity(0.05), radius: 3, y: 1)
             .overlay(
-                Image(systemName: icon)
-                    .font(.system(size: 21, weight: .semibold))
-                    .foregroundColor(fg)
+                Image(systemName: chip.icon)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(chip.fg)
             )
     }
 }
 
-/// Step 2 — a clean deck of saved source cards.
+/// Step 2 — a deck of saved source cards, each floating on its own phase.
 private struct SaveArt: View {
-    private let cards: [(String, Color, Color, CGFloat)] = [
-        ("play.rectangle.fill", Color(hex: "#B84C3A"), Color(hex: "#FCF0EE"), 118),
-        ("waveform", Color(hex: "#4A8A5C"), Color(hex: "#F0F7EE"), 92),
-        ("doc.text.fill", Color(hex: "#4A7ABB"), Color(hex: "#EEF3FB"), 134),
+    private let cards: [(String, Color, Color, CGFloat, Double)] = [
+        ("play.rectangle.fill", Color(hex: "#B84C3A"), Color(hex: "#FCF0EE"), 118, 0.0),
+        ("waveform", Color(hex: "#4A8A5C"), Color(hex: "#F0F7EE"), 92, 1.1),
+        ("doc.text.fill", Color(hex: "#4A7ABB"), Color(hex: "#EEF3FB"), 134, 2.2),
     ]
     var body: some View {
         ZStack {
-            EmberGlow(size: 250)
-            VStack(spacing: 14) {
+            EmberGlow(size: 260)
+            VStack(spacing: 15) {
                 ForEach(cards.indices, id: \.self) { i in
-                    card(icon: cards[i].0, fg: cards[i].1, bg: cards[i].2, titleWidth: cards[i].3)
+                    FloatingTile(amplitude: 4, period: 3.8, phase: cards[i].4) {
+                        card(icon: cards[i].0, fg: cards[i].1, bg: cards[i].2, titleWidth: cards[i].3)
+                    }
                 }
             }
         }
@@ -255,15 +350,34 @@ private struct SaveArt: View {
         .frame(width: 272)
         .background(Color.Nexus.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .shadow(color: .black.opacity(0.07), radius: 11, y: 4)
+        .overlay(
+            // Gradient hairline — quiet Ember edge-light for depth.
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(
+                    LinearGradient(
+                        colors: [Color(hex: "#7054AB").opacity(0.14), Color(hex: "#E8776A").opacity(0.10)],
+                        startPoint: .topLeading, endPoint: .bottomTrailing),
+                    lineWidth: 1
+                )
+        )
+        .shadow(color: Color(hex: "#5E3F9E").opacity(0.10), radius: 16, y: 7)
+        .shadow(color: .black.opacity(0.04), radius: 3, y: 1)
     }
 }
 
-/// Step 3 — a grounded answer with a citation.
+/// Step 3 — a grounded answer "typing in": skeleton lines sweep in one after
+/// another, then the citation chips pop. Loops gently.
 private struct AskArt: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var cycle = 0           // bump to replay
+    @State private var lineProgress: [CGFloat] = [0, 0, 0]
+    @State private var chipsShown = false
+
+    private let lineWidths: [CGFloat] = [248, 248, 150]
+
     var body: some View {
         ZStack {
-            EmberGlow(size: 240)
+            EmberGlow(size: 260)
             VStack(alignment: .leading, spacing: 14) {
                 // user bubble
                 HStack {
@@ -272,70 +386,145 @@ private struct AskArt: View {
                         .font(.system(size: 13.5, weight: .medium))
                         .foregroundColor(.Nexus.ink)
                         .padding(.horizontal, 14).padding(.vertical, 10)
-                        .background(Color.Nexus.bloom.opacity(0.55))
+                        .background(
+                            LinearGradient(
+                                colors: [Color.Nexus.bloom.opacity(0.75), Color.Nexus.bloom.opacity(0.45)],
+                                startPoint: .topLeading, endPoint: .bottomTrailing)
+                        )
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .shadow(color: Color(hex: "#5E3F9E").opacity(0.08), radius: 8, y: 3)
                 }
                 // answer card
-                VStack(alignment: .leading, spacing: 8) {
-                    RoundedRectangle(cornerRadius: 3).fill(Color.Nexus.ink.opacity(0.8)).frame(height: 8)
-                    RoundedRectangle(cornerRadius: 3).fill(Color.Nexus.ink.opacity(0.8)).frame(height: 8)
-                    RoundedRectangle(cornerRadius: 3).fill(Color.Nexus.ink.opacity(0.8)).frame(width: 150, height: 8)
-                    HStack(spacing: 6) {
-                        ForEach(1...2, id: \.self) { n in
-                            Text("\(n)")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundColor(.Nexus.accent)
-                                .frame(width: 20, height: 20)
-                                .background(Color.Nexus.accent.opacity(0.12))
-                                .clipShape(Circle())
+                FloatingTile(amplitude: 3.5, period: 4.2, phase: 0.8) {
+                    VStack(alignment: .leading, spacing: 9) {
+                        ForEach(lineWidths.indices, id: \.self) { i in
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(Color.Nexus.surface2)
+                                    .frame(width: lineWidths[i], height: 8)
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(Color.Nexus.ink.opacity(0.8))
+                                    .frame(width: lineWidths[i] * lineProgress[i], height: 8)
+                            }
                         }
-                        Text("Sources")
-                            .font(.system(size: 11.5, weight: .medium))
-                            .foregroundColor(.Nexus.faint)
+                        HStack(spacing: 6) {
+                            ForEach(1...2, id: \.self) { n in
+                                Text("\(n)")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundColor(.Nexus.accent)
+                                    .frame(width: 20, height: 20)
+                                    .background(Color.Nexus.accent.opacity(0.12))
+                                    .clipShape(Circle())
+                                    .scaleEffect(chipsShown ? 1 : 0.3)
+                                    .opacity(chipsShown ? 1 : 0)
+                                    .animation(.spring(response: 0.4, dampingFraction: 0.65).delay(Double(n) * 0.1), value: chipsShown)
+                            }
+                            Text("Sources")
+                                .font(.system(size: 11.5, weight: .medium))
+                                .foregroundColor(.Nexus.faint)
+                                .opacity(chipsShown ? 1 : 0)
+                                .animation(.easeIn(duration: 0.3).delay(0.3), value: chipsShown)
+                        }
+                        .padding(.top, 2)
                     }
-                    .padding(.top, 2)
+                    .padding(16)
+                    .background(Color.Nexus.cardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(
+                                LinearGradient(
+                                    colors: [Color(hex: "#7054AB").opacity(0.14), Color(hex: "#E8776A").opacity(0.10)],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing),
+                                lineWidth: 1
+                            )
+                    )
+                    .shadow(color: Color(hex: "#5E3F9E").opacity(0.10), radius: 16, y: 7)
+                    .shadow(color: .black.opacity(0.04), radius: 3, y: 1)
                 }
-                .padding(16)
-                .background(Color.Nexus.cardBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .shadow(color: .black.opacity(0.08), radius: 14, y: 5)
             }
             .frame(width: 280)
         }
+        .onAppear { playTyping() }
+    }
+
+    private func playTyping() {
+        if reduceMotion {
+            lineProgress = [1, 1, 1]; chipsShown = true
+            return
+        }
+        lineProgress = [0, 0, 0]; chipsShown = false
+        for i in 0..<3 {
+            withAnimation(.easeOut(duration: 0.55).delay(0.25 + Double(i) * 0.45)) {
+                lineProgress[i] = 1
+            }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) { chipsShown = true }
     }
 }
 
-/// Step 4 — the Create artifact tiles.
+/// Step 4 — the Create artifact tiles popping in with a stagger, then
+/// floating on independent phases.
 private struct CreateArt: View {
-    private let tiles: [(String, String, Color, Color)] = [
-        ("checkmark.circle.fill", "Quiz", Color(hex: "#B8862A"), Color(hex: "#FDF5E8")),
-        ("doc.text.fill", "Report", Color(hex: "#4A7ABB"), Color(hex: "#EEF3FB")),
-        ("waveform", "Audio", Color(hex: "#7054AB"), Color(hex: "#F0ECF9")),
-        ("chart.bar.fill", "Infographic", Color(hex: "#4A8A5C"), Color(hex: "#F0F7EE")),
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var shown = [false, false, false, false]
+
+    private let tiles: [(String, String, Color, Color, Double)] = [
+        ("checkmark.circle.fill", "Quiz", Color(hex: "#B8862A"), Color(hex: "#FDF5E8"), 0.0),
+        ("doc.text.fill", "Report", Color(hex: "#4A7ABB"), Color(hex: "#EEF3FB"), 1.3),
+        ("waveform", "Audio", Color(hex: "#7054AB"), Color(hex: "#F0ECF9"), 2.1),
+        ("chart.bar.fill", "Infographic", Color(hex: "#4A8A5C"), Color(hex: "#F0F7EE"), 0.7),
     ]
     private let cols = [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)]
+
     var body: some View {
         ZStack {
-            EmberGlow(size: 240)
+            EmberGlow(size: 260)
             LazyVGrid(columns: cols, spacing: 14) {
                 ForEach(tiles.indices, id: \.self) { i in
-                    VStack(spacing: 10) {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(tiles[i].3).frame(width: 48, height: 48)
-                            .overlay(Image(systemName: tiles[i].0).font(.system(size: 22, weight: .semibold)).foregroundColor(tiles[i].2))
-                        Text(tiles[i].1)
-                            .font(.system(size: 13.5, weight: .semibold))
-                            .foregroundColor(.Nexus.ink)
+                    FloatingTile(amplitude: 3.5, period: 4.0, phase: tiles[i].4) {
+                        tile(i)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 20)
-                    .background(Color.Nexus.cardBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .shadow(color: .black.opacity(0.06), radius: 10, y: 4)
+                    .scaleEffect(shown[i] ? 1 : 0.6)
+                    .opacity(shown[i] ? 1 : 0)
                 }
             }
             .frame(width: 280)
         }
+        .onAppear {
+            if reduceMotion { shown = [true, true, true, true]; return }
+            for i in 0..<4 {
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.68).delay(0.15 + Double(i) * 0.09)) {
+                    shown[i] = true
+                }
+            }
+        }
+    }
+
+    private func tile(_ i: Int) -> some View {
+        VStack(spacing: 10) {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(tiles[i].3).frame(width: 48, height: 48)
+                .overlay(Image(systemName: tiles[i].0).font(.system(size: 22, weight: .semibold)).foregroundColor(tiles[i].2))
+            Text(tiles[i].1)
+                .font(.system(size: 13.5, weight: .semibold))
+                .foregroundColor(.Nexus.ink)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 20)
+        .background(Color.Nexus.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(
+                    LinearGradient(
+                        colors: [Color(hex: "#7054AB").opacity(0.12), Color(hex: "#E8776A").opacity(0.09)],
+                        startPoint: .topLeading, endPoint: .bottomTrailing),
+                    lineWidth: 1
+                )
+        )
+        .shadow(color: Color(hex: "#5E3F9E").opacity(0.09), radius: 14, y: 6)
+        .shadow(color: .black.opacity(0.04), radius: 3, y: 1)
     }
 }
 

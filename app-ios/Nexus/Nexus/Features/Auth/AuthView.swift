@@ -62,7 +62,7 @@ struct AuthView: View {
             // Dead-center when idle; glides to the top (slightly smaller) while
             // the email field is focused, staying visible above the risen stack.
             VStack(spacing: 0) {
-                EchoMark(color: Color.Nexus.accent, size: 64)
+                EchoMark(size: 64)
                 Text("Nexus")
                     .font(.system(size: 27, weight: .semibold))
                     .kerning(-0.6)

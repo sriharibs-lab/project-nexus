@@ -12,7 +12,7 @@ struct SplashView: View {
             NexusBackground().ignoresSafeArea()
 
             VStack(spacing: 22) {
-                EchoMark(color: Color.Nexus.accent, size: 78)
+                EchoMark(size: 78)
                     .scaleEffect(appeared ? 1 : 0.92)
 
                 Text("Nexus")

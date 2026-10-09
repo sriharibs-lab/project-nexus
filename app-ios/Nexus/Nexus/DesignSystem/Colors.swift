@@ -56,66 +56,86 @@ struct NexusBackground: View {
 
 // MARK: - Echo mark (canonical)
 
-/// The Nexus brand mark: two facing C-arcs with a filled center dot.
-/// Translated exactly from logo.jsx in the design system (48×48 viewBox).
-/// Arc geometry: left arcs CCW, right arcs CW — all endpoints match the SVG arc paths.
+/// The Nexus brand mark — "Echo Ember" (brand kit 2026, BRAND.md).
+/// Two inner arcs + a fainter outer arc pair around a pearl node; the arcs warm
+/// from plum → magenta → coral. Geometry matches brand/svg/mark-light.svg
+/// (48-unit grid). `color == nil` → full Ember gradient (hero sizes); set a
+/// `color` for a flat one-colour mark (small / nav / monochrome contexts).
 struct EchoMark: View {
-    var color: Color = Color.Nexus.accent
+    var color: Color? = nil
     var size: CGFloat = 48
 
     var body: some View {
         Canvas { ctx, sz in
             let s = sz.width / 48.0
 
-            // Inner arcs — strokeWidth 3, full opacity
-            // SwiftUI Path.addArc uses CG Y-up convention: clockwise:true = CCW on screen.
-            // Left "(" arc: appears CCW on screen → clockwise: true
-            var li = Path()
-            li.addArc(center: CGPoint(x: 26.05 * s, y: 24 * s),
-                      radius: 11 * s,
-                      startAngle: .degrees(226.6),
-                      endAngle: .degrees(133.4),
-                      clockwise: true)
-            ctx.stroke(li, with: .color(color),
-                       style: StrokeStyle(lineWidth: 3 * s, lineCap: .round))
+            // Paths (identical geometry to the SVG arc endpoints).
+            var innerL = Path()
+            innerL.addArc(center: CGPoint(x: 26.05 * s, y: 24 * s), radius: 11 * s,
+                          startAngle: .degrees(226.6), endAngle: .degrees(133.4), clockwise: true)
+            var innerR = Path()
+            innerR.addArc(center: CGPoint(x: 21.95 * s, y: 24 * s), radius: 11 * s,
+                          startAngle: .degrees(313.4), endAngle: .degrees(46.6), clockwise: false)
+            var outerL = Path()
+            outerL.addArc(center: CGPoint(x: 23.298 * s, y: 24 * s), radius: 17.5 * s,
+                          startAngle: .degrees(236), endAngle: .degrees(124), clockwise: true)
+            var outerR = Path()
+            outerR.addArc(center: CGPoint(x: 24.702 * s, y: 24 * s), radius: 17.5 * s,
+                          startAngle: .degrees(304), endAngle: .degrees(56), clockwise: false)
 
-            // Right ")" arc: appears CW on screen → clockwise: false
-            var ri = Path()
-            ri.addArc(center: CGPoint(x: 21.95 * s, y: 24 * s),
-                      radius: 11 * s,
-                      startAngle: .degrees(313.4),
-                      endAngle: .degrees(46.6),
-                      clockwise: false)
-            ctx.stroke(ri, with: .color(color),
-                       style: StrokeStyle(lineWidth: 3 * s, lineCap: .round))
-
-            // Outer arcs — strokeWidth 2.2, opacity 0.32
-            let outer = color.opacity(0.32)
-            // Left outer: CCW on screen → clockwise: true
-            var lo = Path()
-            lo.addArc(center: CGPoint(x: 23.298 * s, y: 24 * s),
-                      radius: 17.5 * s,
-                      startAngle: .degrees(236),
-                      endAngle: .degrees(124),
-                      clockwise: true)
-            ctx.stroke(lo, with: .color(outer),
-                       style: StrokeStyle(lineWidth: 2.2 * s, lineCap: .round))
-
-            // Right outer: CW on screen → clockwise: false
-            var ro = Path()
-            ro.addArc(center: CGPoint(x: 24.702 * s, y: 24 * s),
-                      radius: 17.5 * s,
-                      startAngle: .degrees(304),
-                      endAngle: .degrees(56),
-                      clockwise: false)
-            ctx.stroke(ro, with: .color(outer),
-                       style: StrokeStyle(lineWidth: 2.2 * s, lineCap: .round))
-
-            // Center dot: cx=24, cy=24, r=4.4, filled
             let dotR = 4.4 * s
-            let dot = Path(ellipseIn: CGRect(x: 24 * s - dotR, y: 24 * s - dotR,
-                                             width: dotR * 2, height: dotR * 2))
-            ctx.fill(dot, with: .color(color))
+            let node = Path(ellipseIn: CGRect(x: 24 * s - dotR, y: 24 * s - dotR, width: dotR * 2, height: dotR * 2))
+
+            let innerStyle = StrokeStyle(lineWidth: 3.2 * s, lineCap: .round)
+            let outerStyle = StrokeStyle(lineWidth: 2.4 * s, lineCap: .round)
+
+            // Ember shadow only at ≥32px (BRAND.md); never on small marks.
+            if color == nil, size >= 32 {
+                ctx.addFilter(.shadow(color: Color(hex: "#5E3F9E").opacity(0.30), radius: 1.3 * s, x: 0, y: 1.2 * s))
+            }
+
+            if let flat = color {
+                // One-colour mark (small / nav).
+                ctx.stroke(innerL, with: .color(flat), style: innerStyle)
+                ctx.stroke(innerR, with: .color(flat), style: innerStyle)
+                ctx.stroke(outerL, with: .color(flat.opacity(0.6)), style: outerStyle)
+                ctx.stroke(outerR, with: .color(flat.opacity(0.6)), style: outerStyle)
+                ctx.fill(node, with: .color(flat))
+                return
+            }
+
+            // Ember gradients (light). Inner: plum → magenta → coral.
+            let ember = GraphicsContext.Shading.linearGradient(
+                Gradient(stops: [
+                    .init(color: Color(hex: "#7054AB"), location: 0),
+                    .init(color: Color(hex: "#B8569C"), location: 0.55),
+                    .init(color: Color(hex: "#E8776A"), location: 1),
+                ]),
+                startPoint: CGPoint(x: 12 * s, y: 10 * s), endPoint: CGPoint(x: 36 * s, y: 38 * s))
+            ctx.stroke(innerL, with: ember, style: innerStyle)
+            ctx.stroke(innerR, with: ember, style: innerStyle)
+
+            // Outer: orchid → peach at 60%.
+            let outer = GraphicsContext.Shading.linearGradient(
+                Gradient(stops: [
+                    .init(color: Color(hex: "#9A5BB5").opacity(0.6), location: 0),
+                    .init(color: Color(hex: "#F09A78").opacity(0.6), location: 1),
+                ]),
+                startPoint: CGPoint(x: 10 * s, y: 8 * s), endPoint: CGPoint(x: 38 * s, y: 40 * s))
+            ctx.stroke(outerL, with: outer, style: outerStyle)
+            ctx.stroke(outerR, with: outer, style: outerStyle)
+
+            // Pearl node — radial + a soft white highlight.
+            let pearl = GraphicsContext.Shading.radialGradient(
+                Gradient(stops: [
+                    .init(color: Color(hex: "#CDB8FF"), location: 0),
+                    .init(color: Color(hex: "#7E5CC4"), location: 0.45),
+                    .init(color: Color(hex: "#4B2F86"), location: 1),
+                ]),
+                center: CGPoint(x: 22.68 * s, y: 22.24 * s), startRadius: 0, endRadius: 6.6 * s)
+            ctx.fill(node, with: pearl)
+            let hl = Path(ellipseIn: CGRect(x: (22.7 - 1.4) * s, y: (22.5 - 0.9) * s, width: 2.8 * s, height: 1.8 * s))
+            ctx.fill(hl, with: .color(.white.opacity(0.75)))
         }
         .frame(width: size, height: size)
     }

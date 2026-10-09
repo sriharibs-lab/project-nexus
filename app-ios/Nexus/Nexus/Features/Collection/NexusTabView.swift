@@ -506,58 +506,105 @@ struct CitationChip: View {
 
 // MARK: - Echo-pulse wait state
 //
-// Two concentric ring pairs animate outward from a small pulsing center node
-// while the AI is generating a response. Radius and opacity animate in sequence.
-// Uses Canvas for performance — no view allocation per frame.
-
-// The brand mark broadcasting: the Echo arc pairs ripple outward from the
-// center node — two staggered generations, 1.7s loop (design handoff §motion).
-// TimelineView drives the Canvas per-frame; withAnimation on @State does
-// NOTHING for Canvas (it doesn't interpolate) — the old version rendered a
-// static dot + "Nexus is thinking…" label (bug 2026-07-15). No text: the
-// mark itself is the wait state.
+// The Echo Ember mark, pulsing — the AI "thinking" / loading animation. Matches
+// the static EchoMark (same geometry + gradients) so the splash never fades into
+// a different-looking loader. Motion per BRAND.md §Echo pulse (1.8s loop): node
+// breathes, inner/outer arcs pulse opacity+scale on staggered delays, and a
+// ghost ripple expands. TimelineView drives the Canvas per-frame.
 struct EchoPulseView: View {
-    private static let period: Double = 1.7
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private static let period: Double = 1.8
 
     var body: some View {
-        TimelineView(.animation) { timeline in
-            Canvas { ctx, size in
-                let t = timeline.date.timeIntervalSinceReferenceDate
-                let cx = size.width / 2
-                let cy = size.height / 2
-
-                // Two staggered ripple generations of the mark's arc pairs
-                for generation in 0..<2 {
-                    let phase = ((t / Self.period) + Double(generation) * 0.5)
-                        .truncatingRemainder(dividingBy: 1)
-                    let radius = 5.5 + phase * 10.5
-                    let alpha = (1 - phase) * (generation == 0 ? 0.6 : 0.42)
-
-                    for side in [1.0, -1.0] {
-                        let mid: Double = side > 0 ? 0 : 180
-                        var arc = Path()
-                        arc.addArc(
-                            center: CGPoint(x: cx, y: cy),
-                            radius: radius,
-                            startAngle: .degrees(mid - 38),
-                            endAngle: .degrees(mid + 38),
-                            clockwise: false
-                        )
-                        ctx.stroke(
-                            arc,
-                            with: .color(.Nexus.accent.opacity(alpha)),
-                            style: StrokeStyle(lineWidth: 2, lineCap: .round)
-                        )
-                    }
-                }
-
-                // Center node — gentle breathing
-                let dotR = 3.4 + 0.7 * sin(t * 2 * .pi / 0.95)
-                var dot = Path()
-                dot.addEllipse(in: CGRect(x: cx - dotR, y: cy - dotR, width: dotR * 2, height: dotR * 2))
-                ctx.fill(dot, with: .color(.Nexus.accent.opacity(0.9)))
+        if reduceMotion {
+            EchoMark(size: 36)        // static mark when motion is reduced
+        } else {
+            TimelineView(.animation) { timeline in
+                Canvas { ctx, size in Self.draw(&ctx, size, timeline.date) }
+                    .frame(width: 36, height: 36)
             }
-            .frame(width: 36, height: 36)
+        }
+    }
+
+    /// Keyframe interpolation with smoothstep easing between stops.
+    private static func kf(_ x: Double, _ stops: [(Double, Double)]) -> Double {
+        let p = x - floor(x)
+        for i in 0..<(stops.count - 1) {
+            let (p0, v0) = stops[i]; let (p1, v1) = stops[i + 1]
+            if p >= p0 && p <= p1 {
+                let u = (p - p0) / max(p1 - p0, 1e-6)
+                return v0 + (v1 - v0) * (u * u * (3 - 2 * u))
+            }
+        }
+        return stops.last!.1
+    }
+
+    private static func draw(_ ctx: inout GraphicsContext, _ size: CGSize, _ date: Date) {
+        let s = size.width / 48.0
+        let t = date.timeIntervalSinceReferenceDate
+        let p = (t / period).truncatingRemainder(dividingBy: 1)
+        func shifted(_ delay: Double) -> Double {
+            let v = (p - delay / period).truncatingRemainder(dividingBy: 1)
+            return v < 0 ? v + 1 : v
+        }
+
+        var innerL = Path(); innerL.addArc(center: CGPoint(x: 26.05 * s, y: 24 * s), radius: 11 * s, startAngle: .degrees(226.6), endAngle: .degrees(133.4), clockwise: true)
+        var innerR = Path(); innerR.addArc(center: CGPoint(x: 21.95 * s, y: 24 * s), radius: 11 * s, startAngle: .degrees(313.4), endAngle: .degrees(46.6), clockwise: false)
+        var outerL = Path(); outerL.addArc(center: CGPoint(x: 23.298 * s, y: 24 * s), radius: 17.5 * s, startAngle: .degrees(236), endAngle: .degrees(124), clockwise: true)
+        var outerR = Path(); outerR.addArc(center: CGPoint(x: 24.702 * s, y: 24 * s), radius: 17.5 * s, startAngle: .degrees(304), endAngle: .degrees(56), clockwise: false)
+
+        let ember = GraphicsContext.Shading.linearGradient(
+            Gradient(stops: [.init(color: Color(hex: "#7054AB"), location: 0), .init(color: Color(hex: "#B8569C"), location: 0.55), .init(color: Color(hex: "#E8776A"), location: 1)]),
+            startPoint: CGPoint(x: 12 * s, y: 10 * s), endPoint: CGPoint(x: 36 * s, y: 38 * s))
+        let outer = GraphicsContext.Shading.linearGradient(
+            Gradient(stops: [.init(color: Color(hex: "#9A5BB5"), location: 0), .init(color: Color(hex: "#F09A78"), location: 1)]),
+            startPoint: CGPoint(x: 10 * s, y: 8 * s), endPoint: CGPoint(x: 38 * s, y: 40 * s))
+        let center = CGPoint(x: 24 * s, y: 24 * s)
+
+        func layer(_ scale: Double, _ opacity: Double, _ draw: (inout GraphicsContext) -> Void) {
+            ctx.drawLayer { l in
+                l.opacity = opacity
+                l.translateBy(x: center.x, y: center.y); l.scaleBy(x: scale, y: scale); l.translateBy(x: -center.x, y: -center.y)
+                draw(&l)
+            }
+        }
+
+        // Ghost ripple (behind) — expanding third pair.
+        let pg = shifted(0.5)
+        let ghostOp = kf(pg, [(0, 0), (0.4, 0.5), (0.8, 0), (1, 0)])
+        if ghostOp > 0.01 {
+            var gL = Path(); gL.addArc(center: CGPoint(x: 22.6 * s, y: 24 * s), radius: 21 * s, startAngle: .degrees(236), endAngle: .degrees(124), clockwise: true)
+            var gR = Path(); gR.addArc(center: CGPoint(x: 25.4 * s, y: 24 * s), radius: 21 * s, startAngle: .degrees(304), endAngle: .degrees(56), clockwise: false)
+            layer(kf(pg, [(0, 0.9), (1, 1.06)]), ghostOp) { l in
+                l.stroke(gL, with: outer, style: StrokeStyle(lineWidth: 1.6 * s, lineCap: .round))
+                l.stroke(gR, with: outer, style: StrokeStyle(lineWidth: 1.6 * s, lineCap: .round))
+            }
+        }
+
+        // Outer arcs (delay .32), base opacity 0.6.
+        let po = shifted(0.32)
+        layer(kf(po, [(0, 0.94), (0.35, 1.04), (1, 1)]), 0.6 * kf(po, [(0, 0.35), (0.35, 1), (0.7, 0.5), (1, 0.35)])) { l in
+            l.stroke(outerL, with: outer, style: StrokeStyle(lineWidth: 2.4 * s, lineCap: .round))
+            l.stroke(outerR, with: outer, style: StrokeStyle(lineWidth: 2.4 * s, lineCap: .round))
+        }
+
+        // Inner arcs (delay .12).
+        let pin = shifted(0.12)
+        layer(kf(pin, [(0, 0.94), (0.35, 1.04), (1, 1)]), kf(pin, [(0, 0.35), (0.35, 1), (0.7, 0.5), (1, 0.35)])) { l in
+            l.stroke(innerL, with: ember, style: StrokeStyle(lineWidth: 3.2 * s, lineCap: .round))
+            l.stroke(innerR, with: ember, style: StrokeStyle(lineWidth: 3.2 * s, lineCap: .round))
+        }
+
+        // Pearl node — breathing.
+        let dotR = 4.4 * s
+        let node = Path(ellipseIn: CGRect(x: 24 * s - dotR, y: 24 * s - dotR, width: dotR * 2, height: dotR * 2))
+        let pearl = GraphicsContext.Shading.radialGradient(
+            Gradient(stops: [.init(color: Color(hex: "#CDB8FF"), location: 0), .init(color: Color(hex: "#7E5CC4"), location: 0.45), .init(color: Color(hex: "#4B2F86"), location: 1)]),
+            center: CGPoint(x: 22.68 * s, y: 22.24 * s), startRadius: 0, endRadius: 6.6 * s)
+        layer(kf(p, [(0, 1), (0.3, 1.22), (0.6, 0.94), (1, 1)]), 1) { l in
+            l.fill(node, with: pearl)
+            let hl = Path(ellipseIn: CGRect(x: (22.7 - 1.4) * s, y: (22.5 - 0.9) * s, width: 2.8 * s, height: 1.8 * s))
+            l.fill(hl, with: .color(.white.opacity(0.75)))
         }
     }
 }

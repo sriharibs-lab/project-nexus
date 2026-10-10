@@ -85,6 +85,7 @@ app.include_router(feedback.router, prefix="/v1")
 app.include_router(ingest.router, prefix="/v1")
 app.include_router(collections.router, prefix="/v1")
 app.include_router(items.router, prefix="/v1")
+app.include_router(items.retry_router, prefix="/v1")  # POST /v1/items/{id}/retry
 app.include_router(research.router, prefix="/v1")
 app.include_router(briefing.router, prefix="/v1")
 app.include_router(search.router, prefix="/v1")

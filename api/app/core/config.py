@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     # (quiz, paper). gpt-oss-120b = OpenAI open-weights; swap here to retune.
     fireworks_text_model: str = "accounts/fireworks/models/gpt-oss-120b"
 
+    # fal.ai — poster artifact image generation (fal-ai/flux/schnell).
+    # Gate: set FAL_KEY on Render; when empty, poster creation returns 502
+    # "poster generation not configured (FAL_KEY)".
+    fal_key: str = ""
+
     # Cloudflare R2 / S3-compatible object storage (1A-008)
     # Gate: create the bucket and set these vars before 1E submission.
     # Fallback: if any of these are empty, raw_content stays in Postgres TEXT.

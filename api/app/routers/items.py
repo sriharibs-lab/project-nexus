@@ -199,3 +199,83 @@ async def delete_item(
             await db.delete(item)
 
     await db.commit()
+
+
+# ── Retry (collection-agnostic: POST /v1/items/{item_id}/retry) ──────────────
+
+retry_router = APIRouter(prefix="/items", tags=["items"])
+
+
+@retry_router.post("/{item_id}/retry", response_model=ItemDetailResponse)
+async def retry_item(
+    item_id: uuid.UUID,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ItemDetailResponse:
+    """
+    Re-queue a FAILED item for ingestion. Flips the row back to `pending`,
+    clears the recorded error and enqueues the same job the ingest router
+    enqueues. 404 if the item isn't the caller's; 409 unless it is `failed`.
+    """
+    from app.queue.ingestion import enqueue_item
+
+    user = await _resolve_user(current_user["supabase_id"], db)
+    result = await db.execute(
+        select(Item)
+        .options(selectinload(Item.tags))
+        .where(Item.id == item_id, Item.user_id == user.id)
+    )
+    item = result.scalar_one_or_none()
+    if item is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
+    if item.ingest_status != IngestStatus.failed:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Only failed items can be retried (status={item.ingest_status.value})",
+        )
+
+    # The worker wires the item into this collection; use the one it lives in.
+    link = await db.execute(
+        select(collection_items.c.collection_id)
+        .where(collection_items.c.item_id == item.id)
+        .order_by(collection_items.c.created_at.asc())
+        .limit(1)
+    )
+    collection_id = link.scalar_one_or_none()
+    if collection_id is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
+
+    item.ingest_status = IngestStatus.pending
+    meta = dict(item.metadata_ or {})
+    meta.pop("error", None)
+    item.metadata_ = meta
+    await db.commit()
+
+    await enqueue_item(
+        url=item.url,
+        content_type=item.content_type.value,
+        user_id=str(user.id),
+        collection_id=str(collection_id),
+        item_id=str(item.id),
+    )
+    # Reload after commit: expired columns (updated_at) must not lazy-load
+    # outside the async greenlet.
+    reloaded = await db.execute(
+        select(Item).options(selectinload(Item.tags)).where(Item.id == item.id)
+    )
+    item = reloaded.scalar_one()
+
+    return ItemDetailResponse(
+        id=item.id,
+        user_id=item.user_id,
+        url=item.url,
+        title=item.title,
+        content_type=item.content_type,
+        raw_content=item.raw_content,
+        summary=item.summary,
+        insights=item.insights,
+        tags=[t.name for t in item.tags],
+        ingest_status=item.ingest_status,
+        created_at=item.created_at,
+        updated_at=item.updated_at,
+    )

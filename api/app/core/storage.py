@@ -129,3 +129,64 @@ async def delete_raw_content(key: str) -> None:
         logger.info("R2 delete ok key=%s", key)
     except Exception as exc:
         logger.warning("R2 delete failed key=%s exc=%s", key, exc)
+
+
+# ---------------------------------------------------------------------------
+# Supabase Storage — public `media` bucket (artifact audio + poster images)
+# ---------------------------------------------------------------------------
+
+_MEDIA_BUCKET = "media"
+
+
+def _media_headers(content_type: str | None = None) -> dict:
+    from app.core.config import settings
+
+    headers = {
+        "apikey": settings.supabase_service_role_key,
+        "Authorization": f"Bearer {settings.supabase_service_role_key}",
+    }
+    if content_type:
+        headers["Content-Type"] = content_type
+    return headers
+
+
+def public_media_url(path: str) -> str:
+    from app.core.config import settings
+
+    return f"{settings.supabase_url}/storage/v1/object/public/{_MEDIA_BUCKET}/{path}"
+
+
+async def upload_public(path: str, data: bytes, content_type: str) -> str:
+    """
+    Upload bytes to the public Supabase Storage bucket `media` at `path`
+    (upsert) and return the public URL. Raises on any non-2xx response.
+    Allowed MIME types on the bucket: audio/mpeg, image/jpeg, image/png, image/webp.
+    """
+    import httpx
+
+    from app.core.config import settings
+
+    url = f"{settings.supabase_url}/storage/v1/object/{_MEDIA_BUCKET}/{path}"
+    headers = {**_media_headers(content_type), "x-upsert": "true"}
+    async with httpx.AsyncClient(timeout=120) as client:
+        resp = await client.post(url, headers=headers, content=data)
+    if resp.status_code < 200 or resp.status_code >= 300:
+        raise RuntimeError(f"storage upload failed {resp.status_code}: {resp.text[:300]}")
+    logger.info("media upload ok path=%s bytes=%d", path, len(data))
+    return public_media_url(path)
+
+
+async def delete_public(path: str) -> None:
+    """Best-effort delete of a `media` bucket object (used by artifact deletion)."""
+    import httpx
+
+    from app.core.config import settings
+
+    url = f"{settings.supabase_url}/storage/v1/object/{_MEDIA_BUCKET}/{path}"
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.delete(url, headers=_media_headers())
+        if resp.status_code not in (200, 204, 404):
+            logger.warning("media delete → %s path=%s", resp.status_code, path)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("media delete failed path=%s exc=%s", path, exc)

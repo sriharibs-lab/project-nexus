@@ -29,7 +29,7 @@ Core thesis: The entire product is an AI harness — tools, skills, and memory b
 
 ## App IA (locked; tabs revised 2026-07-10)
 - Collections are the root. No global library.
-- Each Collection has three tabs: **Ask** (AI chat, default landing) + **Create** (artifact studio: audio summary, infographic, quiz, paper) + **Sources** (links)
+- Each Collection has three tabs: **Ask** (AI chat, default landing) + **Create** (artifact studio: audio overview, infographic, poster, quiz — Report retired 2026-10-09; legacy `paper` artifacts stay readable) + **Sources** (links)
 - Creation: "Research a topic" (AI-seeded) | "Start with a link" (manual)
 - Saving a link always prompts to assign to a collection — no inbox
 - Full terminology table: SPEC.md §5a

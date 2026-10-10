@@ -1,0 +1,55 @@
+{
+  "numbers": {
+    "title": "Nvidia's 2024 by the numbers — a very long title that must be truncated",
+    "subtitle": "Data center demand drove a record year",
+    "layout": "numbers",
+    "theme": "ocean",
+    "icon": "cpu.fill",
+    "hero": {"value": "$60.9B", "label": "FY2024 revenue"},
+    "numbers": [
+      {"value": "$60.9B", "label": "FY2024 revenue", "icon": "banknote.fill", "pct": 100},
+      {"value": "126%", "label": "YoY growth", "icon": "chart.line.uptrend.xyaxis", "pct": null},
+      {"value": "$47.5B", "label": "Data center revenue", "icon": "not.a.real.symbol", "pct": 78.4},
+      {"value": "", "label": "dropped: empty value"},
+      {"value": "3", "label": "x", "pct": 250},
+      {"value": "4", "label": "y", "pct": -5},
+      {"value": "5", "label": "z"},
+      {"value": "6", "label": "overflow — 7th item dropped"}
+    ],
+    "takeaway": "One customer segment now dwarfs everything else Nvidia sells, and growth is still accelerating fast."
+  },
+  "timeline": {
+    "title": "Picasso",
+    "layout": "timeline",
+    "theme": "mauve",
+    "icon": "paintpalette.fill",
+    "hero": null,
+    "timeline": [
+      {"when": "1881", "what": "Born in Málaga, Spain", "icon": "star.fill"},
+      {"when": "1907", "what": "Paints Les Demoiselles d'Avignon, launching Cubism with Braque"},
+      {"when": "1937–1939 Spanish Civil War", "what": "Guernica"},
+      {"what": "no when — kept"},
+      {"when": "1973"}
+    ],
+    "takeaway": "x"
+  },
+  "comparison": {
+    "title": "Rust vs Go",
+    "subtitle": "s",
+    "layout": "comparison",
+    "theme": "forest",
+    "icon": "bolt.fill",
+    "comparison": {
+      "a": "Rust", "b": "Go",
+      "rows": [
+        {"aspect": "Memory safety", "a": "Compile-time ownership", "b": "GC", "edge": "a"},
+        {"aspect": "Learning curve", "a": "Steep", "b": "Gentle", "edge": "b"},
+        {"aspect": "Concurrency", "a": "async + threads", "b": "goroutines", "edge": "neither"},
+        {"a": "no aspect — dropped", "b": "x"}
+      ]
+    },
+    "takeaway": "t"
+  },
+  "bad_layout": {"title": "x", "layout": "pie"},
+  "empty_numbers": {"title": "x", "layout": "numbers", "numbers": []}
+}

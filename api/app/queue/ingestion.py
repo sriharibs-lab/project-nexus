@@ -35,6 +35,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal
 from app.core.telemetry import record_error
+from app.core.urltitle import humanize_url_title
 from app.models.ai_telemetry import AiTelemetry
 from app.models.collection import Collection
 from app.models.embedding import Embedding
@@ -507,6 +508,10 @@ async def _process_job(
             logger.exception("Job failed %s: %s", job_id, exc)
             item.ingest_status = IngestStatus.failed
             item.metadata_ = {**(item.metadata_ or {}), "error": str(exc)}
+            # A failed row with no title renders as a raw URL in Sources — give
+            # it a humanized name derived from the URL path instead.
+            if not (item.title or "").strip():
+                item.title = humanize_url_title(url)[:500]
             await db.commit()
             await record_error(
                 source="ingest", error_type=type(exc).__name__, message=str(exc)[:500],

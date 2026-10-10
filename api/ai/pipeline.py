@@ -790,34 +790,174 @@ async def generate_paper(
     )
 
 
+_INFO_ICONS = frozenset({
+    "sparkles", "bolt.fill", "brain.head.profile", "chart.line.uptrend.xyaxis", "chart.bar.fill",
+    "clock.fill", "calendar", "globe", "person.2.fill", "person.3.fill", "building.2.fill",
+    "banknote.fill", "dollarsign.circle.fill", "cpu.fill", "leaf.fill", "heart.fill", "flame.fill",
+    "drop.fill", "book.fill", "graduationcap.fill", "lightbulb.fill", "star.fill", "trophy.fill",
+    "flag.fill", "map.fill", "airplane", "car.fill", "music.note", "film.fill", "paintpalette.fill",
+    "camera.fill", "gamecontroller.fill", "cross.case.fill", "pills.fill", "fork.knife", "cart.fill",
+    "shippingbox.fill", "antenna.radiowaves.left.and.right", "network", "lock.fill",
+    "exclamationmark.triangle.fill", "checkmark.seal.fill", "arrow.up.right", "arrow.down.right",
+    "scalemass.fill", "hourglass", "atom", "sun.max.fill", "moon.fill",
+})
+_INFO_THEMES = frozenset({"plum", "ember", "ocean", "forest", "amber"})
+_INFO_LAYOUTS = {"numbers", "timeline", "comparison"}
+
 _INFOGRAPHIC_SYSTEM = """\
-You distill a set of sources into a tight, factual infographic. Return ONLY a \
-JSON object (no prose, no markdown fence) of this exact shape:
+You distill a set of sources into a tight, factual infographic spec that is \
+rendered natively on a phone. Return ONLY a JSON object (no prose, no markdown \
+fence) of this exact shape:
 {
   "title": "short punchy title (<= 48 chars)",
   "subtitle": "one-line framing (<= 90 chars)",
   "layout": "numbers" | "timeline" | "comparison",
-  "numbers":    [{"value": "50,000+", "label": "works created"}],
-  "timeline":   [{"when": "1881", "what": "Born in Málaga, Spain"}],
-  "comparison": {"a": "Option A", "b": "Option B", "rows": [{"aspect": "Cost", "a": "...", "b": "..."}]}
+  "theme": "plum" | "ember" | "ocean" | "forest" | "amber",
+  "icon": "<one SF Symbol name from the allowed list>",
+  "hero": {"value": "<= 12 chars", "label": "<= 40 chars"} | null,
+  "numbers":    [{"value": "<= 12 chars", "label": "<= 40 chars", "icon": "<allowed>", "pct": 0-100 | null}],
+  "timeline":   [{"when": "<= 12 chars", "what": "<= 64 chars", "icon": "<allowed>"}],
+  "comparison": {"a": "<= 22 chars", "b": "<= 22 chars", "rows": [{"aspect": "<= 24", "a": "<= 36", "b": "<= 36", "edge": "a" | "b" | null}]},
+  "takeaway": "<= 110 chars — the so-what in one sentence"
 }
 Rules:
 - Include ONLY the array/object matching "layout"; omit the others.
-- Base every value STRICTLY on the sources — never invent figures. Prefer \
-concrete numbers/dates. If a number isn't in the sources, don't fabricate one.
-- numbers: 4-6 items, each value short (a figure, %, rank, or year).
-- timeline: 4-7 chronological items, "what" <= 70 chars.
-- comparison: 2 sides, 3-5 rows, cells <= 40 chars.
+- Base every value STRICTLY on the sources — never invent figures, dates or \
+claims. Prefer concrete numbers/dates. If a number isn't in the sources, don't \
+fabricate one.
+- theme: pick the one that fits the subject's mood (plum = ideas/tech/culture, \
+ember = energy/sport/conflict, ocean = science/finance/calm, forest = nature/\
+health/growth, amber = history/food/warmth).
+- icon: one symbol for the whole piece; item icons may differ. Use ONLY names \
+from the allowed list: """ + ", ".join(sorted(_INFO_ICONS)) + """.
+- hero: the single most striking figure from the sources, or null if none.
+- numbers: 3-6 items. "pct" = relative magnitude 0-100 for a bar ONLY when the \
+values are directly comparable (same unit); otherwise null.
+- timeline: 4-6 chronological items. "when" is a year or "Mar 2024" — never a \
+range longer than 12 chars.
+- comparison: 2 sides, 3-5 rows. "edge" = which side is stronger on that aspect \
+if the sources say so, else null.
 - Choose the layout that best fits the content unless one is requested."""
 
-_INFO_LAYOUTS = {"numbers", "timeline", "comparison"}
+
+def _isolate_json(raw: str) -> str:
+    """Trim narration around a JSON object (gpt-oss sometimes talks around it)."""
+    raw = (raw or "").strip()
+    start, end = raw.find("{"), raw.rfind("}")
+    if start != -1 and end > start:
+        return raw[start:end + 1]
+    return raw
 
 
-async def generate_infographic(collection_name: str, context: str, kind: str = "auto") -> ArtifactResult:
-    """Extract a grounded, structured infographic spec from a collection's sources.
+def _s(value, limit: int) -> str:
+    """Stringify + trim + truncate a model-provided scalar."""
+    if value is None:
+        return ""
+    return str(value).strip()[:limit]
+
+
+def _icon(value, default: str = "sparkles") -> str:
+    v = str(value or "").strip()
+    return v if v in _INFO_ICONS else default
+
+
+def _pct(value) -> int | None:
+    if isinstance(value, bool) or value is None:
+        return None
+    try:
+        n = int(round(float(value)))
+    except (TypeError, ValueError):
+        return None
+    return min(max(n, 0), 100)
+
+
+def validate_infographic(data: dict, collection_name: str) -> dict:
+    """Strictly validate/truncate a model-produced infographic v2 spec.
+
+    Pure (no I/O) so it can be unit-tested with fixture JSON. Raises ValueError
+    when the layout is missing or the matching section has no usable rows.
+    """
+    if not isinstance(data, dict):
+        raise ValueError("infographic generation returned a non-object")
+    layout = data.get("layout")
+    if layout not in _INFO_LAYOUTS:
+        raise ValueError("infographic generation returned no valid layout")
+
+    theme = str(data.get("theme") or "").strip()
+    content: dict = {
+        "title": _s(data.get("title"), 48) or collection_name[:48],
+        "subtitle": _s(data.get("subtitle"), 90),
+        "layout": layout,
+        "theme": theme if theme in _INFO_THEMES else "plum",
+        "icon": _icon(data.get("icon")),
+        "hero": None,
+        "takeaway": _s(data.get("takeaway"), 110),
+    }
+    hero = data.get("hero")
+    if isinstance(hero, dict) and _s(hero.get("value"), 12):
+        content["hero"] = {"value": _s(hero.get("value"), 12), "label": _s(hero.get("label"), 40)}
+
+    if layout == "numbers":
+        rows = [
+            {
+                "value": _s(r.get("value"), 12),
+                "label": _s(r.get("label"), 40),
+                "icon": _icon(r.get("icon"), content["icon"]),
+                "pct": _pct(r.get("pct")),
+            }
+            for r in (data.get("numbers") or []) if isinstance(r, dict) and _s(r.get("value"), 12)
+        ]
+        if not rows:
+            raise ValueError("infographic numbers layout returned no items")
+        content["numbers"] = rows[:6]
+    elif layout == "timeline":
+        rows = [
+            {
+                "when": _s(r.get("when"), 12),
+                "what": _s(r.get("what"), 64),
+                "icon": _icon(r.get("icon"), content["icon"]),
+            }
+            for r in (data.get("timeline") or []) if isinstance(r, dict) and _s(r.get("what"), 64)
+        ]
+        if not rows:
+            raise ValueError("infographic timeline layout returned no items")
+        content["timeline"] = rows[:6]
+    else:  # comparison
+        comp = data.get("comparison") or {}
+        if not isinstance(comp, dict):
+            comp = {}
+        rows = []
+        for r in comp.get("rows") or []:
+            if not isinstance(r, dict) or not _s(r.get("aspect"), 24):
+                continue
+            edge = r.get("edge")
+            rows.append({
+                "aspect": _s(r.get("aspect"), 24),
+                "a": _s(r.get("a"), 36),
+                "b": _s(r.get("b"), 36),
+                "edge": edge if edge in ("a", "b") else None,
+            })
+        if not rows:
+            raise ValueError("infographic comparison layout returned no rows")
+        content["comparison"] = {
+            "a": _s(comp.get("a"), 22) or "A",
+            "b": _s(comp.get("b"), 22) or "B",
+            "rows": rows[:5],
+        }
+    return content
+
+
+async def generate_infographic(
+    collection_name: str,
+    context: str,
+    kind: str = "auto",
+    instructions: str | None = None,
+) -> ArtifactResult:
+    """Extract a grounded, structured infographic (v2) spec from a collection's sources.
 
     Rendered natively on-device (crisp text/numbers) rather than as an AI image.
-    `kind` ∈ {auto, numbers, timeline, comparison}.
+    `kind` ∈ {auto, numbers, timeline, comparison}; `instructions` is optional
+    user free text (≤ 300 chars) appended to the request.
     """
     model = settings.fireworks_text_model
     layout_hint = (
@@ -825,69 +965,338 @@ async def generate_infographic(collection_name: str, context: str, kind: str = "
         if kind in _INFO_LAYOUTS
         else "Pick the layout that best fits the content."
     )
-    user = f"Collection: {collection_name}\n\nSOURCES:\n{context}\n\n{layout_hint}\nProduce the infographic JSON."
+    user = f"Collection: {collection_name}\n\nSOURCES:\n{context}\n\n{layout_hint}\n"
+    instructions = (instructions or "").strip()[:300]
+    if instructions:
+        user += f"User instructions: {instructions}\n"
+    user += "Produce the infographic JSON."
     resp = await _fireworks.chat.completions.create(
         model=model,
         messages=[{"role": "system", "content": _INFOGRAPHIC_SYSTEM}, {"role": "user", "content": user}],
-        max_tokens=1200,
+        max_tokens=1600,
         temperature=0.3,
     )
     inp, out = _fw_usage(resp)
-    raw = (resp.choices[0].message.content or "").strip()
-    start, end = raw.find("{"), raw.rfind("}")
-    if start != -1 and end > start:
-        raw = raw[start:end + 1]
+    raw = _isolate_json(resp.choices[0].message.content or "")
     try:
         data = json.loads(raw)
     except json.JSONDecodeError:
         raise ValueError("infographic generation returned invalid JSON")
 
-    layout = data.get("layout")
-    if layout not in _INFO_LAYOUTS:
-        raise ValueError("infographic generation returned no valid layout")
-
-    content: dict = {
-        "title": str(data.get("title", collection_name)).strip()[:80],
-        "subtitle": str(data.get("subtitle", "")).strip()[:120],
-        "layout": layout,
-    }
-    if layout == "numbers":
-        rows = [
-            {"value": str(r.get("value", "")).strip()[:16], "label": str(r.get("label", "")).strip()[:48]}
-            for r in (data.get("numbers") or []) if r.get("value")
-        ]
-        if not rows:
-            raise ValueError("infographic numbers layout returned no items")
-        content["numbers"] = rows[:6]
-    elif layout == "timeline":
-        rows = [
-            {"when": str(r.get("when", "")).strip()[:20], "what": str(r.get("what", "")).strip()[:80]}
-            for r in (data.get("timeline") or []) if r.get("what")
-        ]
-        if not rows:
-            raise ValueError("infographic timeline layout returned no items")
-        content["timeline"] = rows[:7]
-    else:  # comparison
-        comp = data.get("comparison") or {}
-        rows = [
-            {"aspect": str(r.get("aspect", "")).strip()[:40],
-             "a": str(r.get("a", "")).strip()[:48],
-             "b": str(r.get("b", "")).strip()[:48]}
-            for r in (comp.get("rows") or []) if r.get("aspect")
-        ]
-        if not rows:
-            raise ValueError("infographic comparison layout returned no rows")
-        content["comparison"] = {
-            "a": str(comp.get("a", "A")).strip()[:28],
-            "b": str(comp.get("b", "B")).strip()[:28],
-            "rows": rows[:5],
-        }
-
+    content = validate_infographic(data, collection_name)
     return ArtifactResult(
         kind="info",
         title=content["title"][:300],
         content=content,
         model=model,
+        input_tokens=inp,
+        output_tokens=out,
+    )
+
+
+# ── Audio overview (solo narrator) ─────────────────────────────────────────
+
+_AUDIO_VOICES = {"thalia", "orion", "asteria", "arcas"}
+_AUDIO_LENGTH_WORDS = {"short": 250, "standard": 450, "long": 700}
+_DEEPGRAM_CHUNK_CHARS = 1800  # Deepgram Speak caps text at 2000 chars/request
+
+_AUDIO_SYSTEM = """\
+You write the script for a short spoken audio overview of a collection of saved \
+sources, read by a single warm, conversational narrator. Rules:
+- Ground EVERYTHING in the provided sources only. Never invent facts.
+- Plain spoken prose: no markdown, no headers, no bullet symbols, no stage \
+directions, no "[Source N]" tokens, no URLs. Write numbers so they read aloud \
+well (say "about two thirds" or "nineteen ninety-eight", not "2/3" or "1998").
+- Open with one line naming the collection. Walk through the three to five most \
+important ideas across the sources. Note where the sources disagree. End with \
+a one-sentence takeaway.
+- Short sentences; contractions are fine. Sound like a smart friend, not a \
+newsreader.
+Return ONLY a JSON object (no prose, no markdown fence) of this shape:
+{"title": "<= 60 chars", "script": "the full narration as one string"}"""
+
+
+def split_for_tts(text: str, limit: int = _DEEPGRAM_CHUNK_CHARS) -> list[str]:
+    """Split narration into ≤ `limit`-char chunks on sentence boundaries."""
+    import re
+
+    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text.strip()) if s.strip()]
+    chunks: list[str] = []
+    cur = ""
+    for sent in sentences:
+        # A single pathological sentence longer than the limit is hard-wrapped.
+        while len(sent) > limit:
+            if cur:
+                chunks.append(cur)
+                cur = ""
+            cut = sent.rfind(" ", 0, limit)
+            cut = cut if cut > 0 else limit
+            chunks.append(sent[:cut].strip())
+            sent = sent[cut:].strip()
+        if not cur:
+            cur = sent
+        elif len(cur) + 1 + len(sent) <= limit:
+            cur = f"{cur} {sent}"
+        else:
+            chunks.append(cur)
+            cur = sent
+    if cur:
+        chunks.append(cur)
+    return chunks
+
+
+def _parse_audio_output(raw_text: str, collection_name: str) -> tuple[str, str]:
+    """{"title","script"} → (title, script). Lenient: scripts are multi-paragraph and
+    gpt-oss emits literal newlines inside the JSON string (strict JSON forbids them);
+    if the JSON still won't parse, the plain text is the script."""
+    import re
+
+    raw = _isolate_json(raw_text)
+    data = None
+    try:
+        data = json.loads(raw, strict=False)
+    except json.JSONDecodeError:
+        pass
+    if isinstance(data, dict):
+        script = str(data.get("script") or "").strip()
+        title = _s(data.get("title"), 60)
+    else:
+        text = raw_text.strip()
+        if text.startswith("{"):
+            # Looks like JSON but didn't parse: pull the script string out by hand.
+            m = re.search(r'"script"\s*:\s*"(.*)"\s*}?\s*$', text, re.S)
+            script = (m.group(1) if m else "").replace('\\"', '"').replace("\\n", "\n").strip()
+            t = re.search(r'"title"\s*:\s*"([^"]{1,60})"', text)
+            title = t.group(1).strip() if t else ""
+        else:
+            script, title = text, ""
+    # Spoken prose only — strip any markdown/citation residue the model left in.
+    script = re.sub(r"\[Source \d+\]", "", script)
+    script = re.sub(r"^[#*\-\s]+", "", script, flags=re.M)
+    script = re.sub(r"\*\*", "", script)
+    script = re.sub(r"[ \t]+", " ", script).strip()
+    if len(script.split()) < 20:
+        raise ValueError("audio script generation returned no usable script")
+    return (title or f"Audio overview — {collection_name}"[:60], script)
+
+
+def _deepgram_tts_sync(text: str, model: str) -> bytes:
+    from deepgram import DeepgramClient
+
+    api_key = os.environ.get("DEEPGRAM_API_KEY", "")
+    if not api_key:
+        raise RuntimeError("audio generation not configured (DEEPGRAM_API_KEY)")
+    client = DeepgramClient(api_key=api_key)
+    try:
+        return b"".join(client.speak.v1.audio.generate(text=text, model=model, encoding="mp3"))
+    except Exception as exc:  # surface auth problems explicitly
+        msg = str(exc)
+        status_code = getattr(exc, "status_code", None)
+        if status_code == 401 or "INVALID_AUTH" in msg or "401" in msg:
+            raise RuntimeError(f"deepgram auth failed (401 INVALID_AUTH): {msg[:200]}") from exc
+        raise
+
+
+async def synthesize_speech(script: str, voice: str) -> tuple[bytes, str]:
+    """TTS the whole script via Deepgram Aura-2, chunked; returns (mp3_bytes, model)."""
+    model = f"aura-2-{voice}-en"
+    chunks = split_for_tts(script)
+    if not chunks:
+        raise ValueError("audio script is empty")
+    parts: list[bytes] = []
+    for chunk in chunks:  # sequential keeps order + stays under rate limits
+        parts.append(await asyncio.to_thread(_deepgram_tts_sync, chunk, model))
+    audio = b"".join(parts)
+    if not audio:
+        raise ValueError("deepgram returned no audio")
+    return audio, model
+
+
+async def generate_audio(
+    collection_name: str,
+    context: str,
+    artifact_id: str,
+    voice: str = "thalia",
+    length: str = "standard",
+) -> ArtifactResult:
+    """Script (Fireworks) → TTS (Deepgram Aura-2) → upload to Supabase `media`."""
+    from app.core.storage import upload_public
+
+    text_model = settings.fireworks_text_model
+    voice = voice if voice in _AUDIO_VOICES else "thalia"
+    target_words = _AUDIO_LENGTH_WORDS.get(length, _AUDIO_LENGTH_WORDS["standard"])
+    user = (
+        f"Collection: {collection_name}\n\nSOURCES:\n{context}\n\n"
+        f"Target length — about {target_words} words.\nWrite the narration JSON now."
+    )
+    resp = await _fireworks.chat.completions.create(
+        model=text_model,
+        messages=[{"role": "system", "content": _AUDIO_SYSTEM}, {"role": "user", "content": user}],
+        max_tokens=int(target_words * 2.2) + 1200,  # headroom for gpt-oss reasoning
+        temperature=0.6,
+    )
+    inp, out = _fw_usage(resp)
+    title, script = _parse_audio_output(resp.choices[0].message.content or "", collection_name)
+
+    audio, tts_model = await synthesize_speech(script, voice)
+    url = await upload_public(f"audio/{artifact_id}.mp3", audio, "audio/mpeg")
+
+    words = len(script.split())
+    return ArtifactResult(
+        kind="audio",
+        title=title,
+        content={
+            "audio_url": url,
+            "duration_s": int(round(words / 2.6)),
+            "script": script,
+            "voice": voice,
+            "words": words,
+        },
+        model=f"{text_model}+{tts_model}",
+        input_tokens=inp,
+        output_tokens=out,
+    )
+
+
+# ── Poster (AI image + native text overlay) ────────────────────────────────
+
+_POSTER_STYLES = {
+    "editorial": "flat geometric editorial illustration, muted sophisticated palette, clean vector shapes",
+    "abstract": "abstract composition of soft shapes and smooth gradients, no recognizable objects",
+    "photo": "cinematic photographic still, shallow depth of field, natural light, film grain",
+    "illustration": "hand-drawn textured illustration, visible brush and pencil texture, warm paper grain",
+}
+_POSTER_SYSTEM = """\
+You art-direct a poster for a collection of saved sources. Return ONLY a JSON \
+object (no prose, no markdown fence) of this exact shape:
+{"headline": "<= 42 chars", "subline": "<= 90 chars", "image_prompt": "..."}
+Rules:
+- headline: punchy, specific, grounded in what the sources actually say — never \
+generic. subline: one grounded line of context.
+- image_prompt: describe a striking, minimal, premium poster illustration that \
+embodies the collection's subject. ONE dominant subject. Generous empty negative \
+space in the lower third of the frame (text is overlaid there). Restrained \
+palette of two or three colours. Explicitly include: "no text, no letters, no \
+words, no watermark, no logos". Describe lighting, composition and mood \
+concretely. 40-90 words.
+- Never fabricate facts for the headline or subline."""
+FAL_FLUX_SCHNELL_URL = "https://fal.run/fal-ai/flux/schnell"
+FAL_IMAGE_MODEL = "fal-ai/flux/schnell"
+
+
+def build_fal_request(prompt: str) -> tuple[str, dict, dict]:
+    """(url, headers, json_body) for a fal.ai flux/schnell call — pure, for tests."""
+    fal_key = os.environ.get("FAL_KEY") or settings.fal_key
+    if not fal_key:
+        raise RuntimeError("poster generation not configured (FAL_KEY)")
+    return (
+        FAL_FLUX_SCHNELL_URL,
+        {"Authorization": f"Key {fal_key}", "Content-Type": "application/json"},
+        {
+            "prompt": prompt,
+            "image_size": "portrait_4_3",
+            "num_inference_steps": 4,
+            "num_images": 1,
+            "enable_safety_checker": True,
+            "output_format": "jpeg",
+        },
+    )
+
+
+async def generate_poster_brief(
+    collection_name: str,
+    context: str,
+    style: str = "editorial",
+    instructions: str | None = None,
+) -> tuple[dict, int, int]:
+    """Fireworks half of poster generation: {headline, subline, image_prompt, style}."""
+    text_model = settings.fireworks_text_model
+    style = style if style in _POSTER_STYLES else "editorial"
+    user = (
+        f"Collection: {collection_name}\n\nSOURCES:\n{context}\n\n"
+        f"Visual style — {_POSTER_STYLES[style]}.\n"
+    )
+    instructions = (instructions or "").strip()[:300]
+    if instructions:
+        user += f"User instructions (apply to the image prompt verbatim): {instructions}\n"
+    user += "Return the poster JSON now."
+    resp = await _fireworks.chat.completions.create(
+        model=text_model,
+        messages=[{"role": "system", "content": _POSTER_SYSTEM}, {"role": "user", "content": user}],
+        # gpt-oss-120b reasons before answering; a small budget returns empty content.
+        max_tokens=2000,
+        temperature=0.7,
+    )
+    inp, out = _fw_usage(resp)
+    raw = _isolate_json(resp.choices[0].message.content or "")
+    if not raw:
+        raise ValueError("poster brief generation returned empty content")
+    try:
+        data = json.loads(raw, strict=False)
+    except json.JSONDecodeError:
+        raise ValueError("poster brief generation returned invalid JSON")
+    if not isinstance(data, dict):
+        raise ValueError("poster brief generation returned a non-object")
+    headline = _s(data.get("headline"), 42)
+    image_prompt = str(data.get("image_prompt") or "").strip()
+    if not headline or not image_prompt:
+        raise ValueError("poster brief generation returned no headline/prompt")
+    # Belt and braces: the style + no-text guard must be in the final prompt.
+    prompt = f"{image_prompt} {_POSTER_STYLES[style]}. No text, no letters, no words, no watermark, no logos."
+    if instructions:
+        prompt += f" {instructions}"
+    return (
+        {"headline": headline, "subline": _s(data.get("subline"), 90), "prompt": prompt, "style": style},
+        inp,
+        out,
+    )
+
+
+async def generate_poster(
+    collection_name: str,
+    context: str,
+    artifact_id: str,
+    style: str = "editorial",
+    instructions: str | None = None,
+) -> ArtifactResult:
+    """Brief (Fireworks) → image (fal.ai flux/schnell) → re-upload to Supabase `media`."""
+    import httpx
+
+    from app.core.storage import upload_public
+
+    # Fail fast before spending Fireworks tokens if the image provider is unset.
+    if not (os.environ.get("FAL_KEY") or settings.fal_key):
+        raise RuntimeError("poster generation not configured (FAL_KEY)")
+
+    brief, inp, out = await generate_poster_brief(collection_name, context, style, instructions)
+    url, headers, body = build_fal_request(brief["prompt"])
+    async with httpx.AsyncClient(timeout=120) as client:
+        resp = await client.post(url, headers=headers, json=body)
+        if resp.status_code < 200 or resp.status_code >= 300:
+            raise RuntimeError(f"fal image generation failed {resp.status_code}: {resp.text[:300]}")
+        images = (resp.json() or {}).get("images") or []
+        if not images or not images[0].get("url"):
+            raise ValueError("fal image generation returned no image")
+        img = images[0]
+        img_resp = await client.get(img["url"])
+        if img_resp.status_code != 200 or not img_resp.content:
+            raise RuntimeError(f"fal image download failed {img_resp.status_code}")
+        image_bytes = img_resp.content
+
+    public_url = await upload_public(f"posters/{artifact_id}.jpg", image_bytes, "image/jpeg")
+    return ArtifactResult(
+        kind="poster",
+        title=brief["headline"],
+        content={
+            "image_url": public_url,
+            "headline": brief["headline"],
+            "subline": brief["subline"],
+            "prompt": brief["prompt"],
+            "style": brief["style"],
+            "width": int(img.get("width") or 0),
+            "height": int(img.get("height") or 0),
+        },
+        model=f"{settings.fireworks_text_model}+{FAL_IMAGE_MODEL}",
         input_tokens=inp,
         output_tokens=out,
     )

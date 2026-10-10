@@ -191,7 +191,7 @@ struct ItemDetailView: View {
     // MARK: - Title
 
     private var titleSection: some View {
-        Text(vm.displayItem.title ?? vm.displayItem.url)
+        Text(vm.displayItem.displayTitle)
             .font(.Nexus.headingMedium)
             .foregroundColor(.Nexus.ink)
             .kerning(NexusKerning.tighter)
@@ -227,7 +227,63 @@ struct ItemDetailView: View {
             )
         } else if vm.displayItem.ingestStatus == .processing {
             processingPlaceholder(label: "Generating summary…")
+        } else if vm.displayItem.ingestStatus == .failed {
+            failedCard
+        } else if vm.displayItem.ingestStatus == .pending {
+            processingPlaceholder(label: vm.didRetry ? "Queued — trying again…" : "Queued for reading…")
         }
+    }
+
+    // MARK: - Failed state (bot-blocked / unreachable page)
+
+    private var failedCard: some View {
+        VStack(alignment: .leading, spacing: NexusSpacing.md) {
+            HStack(alignment: .top, spacing: NexusSpacing.sm) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.Nexus.destructive)
+                    .padding(.top, 1)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Couldn't read this page")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.Nexus.ink)
+                    Text("The site may block automated readers, or it was unreachable. You can retry, or open the original.")
+                        .font(.Nexus.bodySmall)
+                        .foregroundColor(.Nexus.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            HStack(spacing: NexusSpacing.sm) {
+                Button {
+                    Haptics.impact(.light)
+                    Task { await vm.retry() }
+                } label: {
+                    HStack(spacing: 6) {
+                        if vm.isRetrying { ProgressView().controlSize(.small).tint(.Nexus.onInk) }
+                        else { Image(systemName: "arrow.clockwise") }
+                        Text("Try again")
+                    }
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.Nexus.onInk)
+                    .padding(.horizontal, 14).padding(.vertical, 9)
+                    .background(Color.Nexus.ink)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .disabled(vm.isRetrying)
+                if let msg = vm.retryError {
+                    Text(msg).font(.Nexus.caption).foregroundColor(.Nexus.destructive)
+                }
+            }
+        }
+        .padding(NexusSpacing.standard)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.Nexus.destructive.opacity(0.06))
+        .clipShape(RoundedRectangle(cornerRadius: NexusRadius.base))
+        .overlay(
+            RoundedRectangle(cornerRadius: NexusRadius.base)
+                .stroke(Color.Nexus.destructive.opacity(0.18), lineWidth: NexusBorder.hair)
+        )
     }
 
     // MARK: - Key insights block
@@ -356,7 +412,9 @@ struct ItemDetailView: View {
                     Image(systemName: "text.page.slash")
                         .font(.system(size: 14, weight: .regular))
                         .foregroundColor(.Nexus.ghost)
-                    Text("Full text not yet extracted. Open the original source to read.")
+                    Text(vm.displayItem.ingestStatus == .failed
+                         ? "No text could be extracted from this page."
+                         : "Full text not yet extracted. Open the original source to read.")
                         .font(.Nexus.bodySmall)
                         .foregroundColor(.Nexus.ghost)
                         .fixedSize(horizontal: false, vertical: true)
@@ -627,6 +685,9 @@ final class ItemDetailViewModel: ObservableObject {
     @Published private(set) var error: APIError?
     /// True when content is being served from the on-disk offline cache (no live network hit).
     @Published private(set) var isFromCache = false
+    @Published private(set) var isRetrying = false
+    @Published private(set) var didRetry = false
+    @Published private(set) var retryError: String?
 
     var wordCount: Int? {
         guard let text = fullContent else { return nil }
@@ -641,6 +702,21 @@ final class ItemDetailViewModel: ObservableObject {
         // Populate fullContent immediately if it was already on the item (e.g. coming
         // from a future list endpoint that includes raw_content).
         self.fullContent = item.rawContent
+    }
+
+    /// Re-queue a failed source. On success the item flips to `pending` and the
+    /// hero shows a queued placeholder; the Sources list refreshes on its own poll.
+    func retry() async {
+        guard !isRetrying else { return }
+        isRetrying = true; retryError = nil
+        defer { isRetrying = false }
+        do {
+            displayItem = try await APIClient.shared.retryItem(id: displayItem.id)
+            didRetry = true
+            Haptics.notify(.success)
+        } catch {
+            retryError = "Couldn't retry just now."
+        }
     }
 
     func fetchFullContent() async {

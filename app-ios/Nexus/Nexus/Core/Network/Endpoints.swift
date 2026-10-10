@@ -44,6 +44,7 @@ enum Endpoint {
     case trending          // GET /v1/trending — live topic chips for FRE (no auth)
     case artifacts(collectionId: UUID) // GET list / POST create — Create tab
     case artifact(id: UUID)            // DELETE /v1/artifacts/{id}
+    case itemRetry(itemId: UUID)       // POST /v1/items/{id}/retry — re-queue a failed source
 
     var path: String {
         switch self {
@@ -80,6 +81,8 @@ enum Endpoint {
             return "/v1/collections/\(cid.uuidString.lowercased())/artifacts"
         case .artifact(let id):
             return "/v1/artifacts/\(id.uuidString.lowercased())"
+        case .itemRetry(let id):
+            return "/v1/items/\(id.uuidString.lowercased())/retry"
         }
     }
 

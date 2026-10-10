@@ -317,11 +317,16 @@ private struct MessageBubble: View {
     // chip resolved (device dogfood #B).
     private var strippedContent: String {
         var s = message.content
+        // Only HORIZONTAL whitespace is ever collapsed — newlines carry the
+        // markdown structure (headings, bullets, paragraphs). The old `\s{2,}`
+        // flattened "\n\n" into a space and turned every answer into one run-on
+        // paragraph with literal "##" in it (feedback 2026-10-09).
         let subs: [(String, String)] = [
-            (#"\s*\[Sources?[^\]]*\]"#, ""),   // any [Source ...] citation token
-            (#"\(\s*[,;]?\s*\)"#, ""),          // empty "()" / "( , )" left behind
-            (#"\s+([.,;:!?])"#, "$1"),          // space before punctuation
-            (#"\s{2,}"#, " "),                   // collapsed double spaces
+            (#"[ \t]*\[Sources?[^\]]*\]"#, ""),  // any [Source ...] citation token
+            (#"\([ \t]*[,;]?[ \t]*\)"#, ""),     // empty "()" / "( , )" left behind
+            (#"[ \t]+([.,;:!?])"#, "$1"),        // space before punctuation
+            (#"[ \t]{2,}"#, " "),                 // collapsed double spaces
+            (#"\n{3,}"#, "\n\n"),                 // never more than one blank line
         ]
         for (pattern, template) in subs {
             guard let rx = try? NSRegularExpression(pattern: pattern) else { continue }
@@ -349,6 +354,8 @@ struct AssistantMarkdown: View {
         case bullet(String)
         case numbered(String, index: String)
         case paragraph(String)
+        case rule
+        case table(header: [String], rows: [[String]])
 
         var id: String {
             switch self {
@@ -356,6 +363,8 @@ struct AssistantMarkdown: View {
             case .bullet(let t): return "b:\(t)"
             case .numbered(let t, let i): return "n\(i):\(t)"
             case .paragraph(let t): return "p:\(t)"
+            case .rule: return "hr"
+            case .table(let h, let r): return "t:\(h.joined(separator: "|")):\(r.count)"
             }
         }
     }
@@ -398,6 +407,33 @@ struct AssistantMarkdown: View {
                         .kerning(-0.2)
                         .lineSpacing(6)
                         .foregroundColor(.Nexus.ink)
+                case .rule:
+                    Rectangle().fill(Color.Nexus.hair).frame(height: 1).padding(.vertical, 4)
+                case .table(let header, let rows):
+                    // Phones can't fit a real table; render each row as a
+                    // compact card: first cell as the row label, the rest as
+                    // "Header: value" lines. Never show raw pipes.
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(rows.indices, id: \.self) { r in
+                            VStack(alignment: .leading, spacing: 3) {
+                                if let first = rows[r].first {
+                                    inline(first)
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundColor(.Nexus.ink)
+                                }
+                                ForEach(Array(rows[r].dropFirst().enumerated()), id: \.offset) { c, cell in
+                                    let h = header.count > c + 1 ? header[c + 1] : ""
+                                    (Text(h.isEmpty ? "" : "\(h): ").font(.system(size: 13.5, weight: .medium)).foregroundColor(.Nexus.muted)
+                                     + inline(cell).font(.system(size: 13.5)).foregroundColor(.Nexus.ink))
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 12).padding(.vertical, 9)
+                            .background(Color.Nexus.surface2.opacity(0.6))
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        }
+                    }
+                    .padding(.vertical, 2)
                 }
             }
         }
@@ -433,10 +469,38 @@ struct AssistantMarkdown: View {
             paragraph = []
         }
 
+        var tableHeader: [String]? = nil
+        var tableRows: [[String]] = []
+        func flushTable() {
+            if let h = tableHeader, !tableRows.isEmpty { result.append(.table(header: h, rows: tableRows)) }
+            else if let h = tableHeader { result.append(.paragraph(h.joined(separator: " · "))) }
+            tableHeader = nil; tableRows = []
+        }
+        func tableCells(_ line: String) -> [String] {
+            var s = Substring(line)
+            if s.hasPrefix("|") { s = s.dropFirst() }
+            if s.hasSuffix("|") { s = s.dropLast() }
+            return s.split(separator: "|", omittingEmptySubsequences: false)
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+        }
+
         for rawLine in content.components(separatedBy: "\n") {
             let line = rawLine.trimmingCharacters(in: .whitespaces)
+            // Markdown table rows: "| a | b |". The "|---|---|" separator is dropped.
+            if line.hasPrefix("|") && line.count > 1 {
+                flushParagraph()
+                let cells = tableCells(line)
+                if cells.allSatisfy({ $0.allSatisfy { $0 == "-" || $0 == ":" } && !$0.isEmpty }) { continue }
+                if tableHeader == nil { tableHeader = cells } else { tableRows.append(cells) }
+                continue
+            } else if tableHeader != nil {
+                flushTable()
+            }
             if line.isEmpty {
                 flushParagraph()
+            } else if line.count >= 3 && line.allSatisfy({ $0 == "-" || $0 == "*" || $0 == "_" }) {
+                flushParagraph()
+                result.append(.rule)
             } else if let match = line.wholeMatch(of: Self.headingRx) {
                 flushParagraph()
                 result.append(.heading(String(match.2), level: match.1.count))
@@ -450,6 +514,7 @@ struct AssistantMarkdown: View {
                 paragraph.append(line)
             }
         }
+        flushTable()
         flushParagraph()
         return result
     }

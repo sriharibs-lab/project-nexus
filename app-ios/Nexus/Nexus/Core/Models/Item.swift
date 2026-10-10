@@ -42,4 +42,26 @@ struct Item: Codable, Identifiable, Hashable {
 
         var isReady: Bool { self == .completed }
     }
+
+    /// Title for display: the extracted title, else a humanized form of the URL
+    /// ("Live Cricket Score", "example.com") — never the raw URL (feedback
+    /// 2026-10-09: a bot-blocked page showed its full URL as the headline).
+    var displayTitle: String { title?.isEmpty == false ? title! : Item.humanizeURLTitle(url) }
+
+    static func humanizeURLTitle(_ raw: String) -> String {
+        guard let u = URL(string: raw) else { return raw }
+        let segments = u.pathComponents.filter { $0 != "/" && !$0.isEmpty }
+        for seg in segments.reversed() {
+            var s = seg
+            if let dot = s.lastIndex(of: "."), s.distance(from: dot, to: s.endIndex) <= 6 { s = String(s[..<dot]) }
+            let words = s.split(whereSeparator: { $0 == "-" || $0 == "_" || $0 == "+" })
+                .map(String.init)
+                .filter { !$0.isEmpty && !$0.allSatisfy(\.isNumber) }
+            if words.count >= 1, words.joined().count >= 3 {
+                return words.map { $0.prefix(1).uppercased() + $0.dropFirst() }.joined(separator: " ")
+            }
+        }
+        let host = (u.host ?? raw).replacingOccurrences(of: "www.", with: "")
+        return host
+    }
 }

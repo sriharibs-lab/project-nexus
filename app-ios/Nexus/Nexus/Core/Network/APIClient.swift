@@ -102,6 +102,11 @@ final class APIClient {
         try await get(.item(collectionId: collectionId, itemId: itemId))
     }
 
+    /// Re-queue a failed source for extraction. Returns the item (status → pending).
+    func retryItem(id itemId: UUID) async throws -> Item {
+        try await post(.itemRetry(itemId: itemId), body: EmptyBody())
+    }
+
     /// Delete a saved source from a collection.
     /// Calls DELETE /v1/collections/{collectionId}/items/{itemId}.
     /// The backend returns 204 No Content on success.
@@ -496,3 +501,6 @@ private struct AnyEncodable: Encodable {
     init(_ wrapped: any Encodable) { _encode = wrapped.encode }
     func encode(to encoder: Encoder) throws { try _encode(encoder) }
 }
+
+/// Body for POST endpoints that take no payload (encodes as `{}`).
+struct EmptyBody: Encodable {}

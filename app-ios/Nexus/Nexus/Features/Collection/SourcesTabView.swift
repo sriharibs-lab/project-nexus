@@ -141,7 +141,7 @@ struct SourceCard: View {
             ContentTypeIconBadge(contentType: item.contentType, size: 34)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(item.title ?? item.url)
+                Text(item.displayTitle)
                     .font(.system(size: 15.5, weight: .semibold))
                     .kerning(-0.2)
                     .foregroundColor(.Nexus.ink)

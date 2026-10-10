@@ -253,7 +253,7 @@ private struct SearchResultRow: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 HStack(alignment: .top) {
-                    Text(item.title ?? item.url)
+                    Text(item.title ?? Item.humanizeURLTitle(item.url))
                         .font(.Nexus.labelMedium)
                         .foregroundColor(.Nexus.ink)
                         .lineLimit(2)

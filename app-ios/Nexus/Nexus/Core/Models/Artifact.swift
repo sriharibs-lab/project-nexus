@@ -6,7 +6,7 @@ import Foundation
 struct Artifact: Codable, Identifiable, Equatable {
     let id: UUID
     let collectionId: UUID
-    let kind: String          // "quiz" | "paper" | "info"
+    let kind: String          // "quiz" | "paper" | "info" | "audio" | "poster"
     let title: String
     let status: String        // "ready" | "failed"
     let content: ArtifactContent?
@@ -18,30 +18,65 @@ struct Artifact: Codable, Identifiable, Equatable {
 
 /// Free-form artifact payload. Fields are all-optional because the shape
 /// depends on `kind`:
-///   quiz  → questions
-///   paper → markdown + outline
-///   info  → title/subtitle/layout + numbers | timeline | comparison
+///   quiz   → questions
+///   paper  → markdown + outline (legacy; no longer creatable)
+///   info   → title/subtitle/layout/theme/icon/hero/takeaway + numbers | timeline | comparison
+///   audio  → audioUrl/durationS/script/voice/words
+///   poster → imageUrl/headline/subline/prompt/style/width/height
 struct ArtifactContent: Codable, Equatable {
     var questions: [QuizQuestion]?
     var markdown: String?
     var outline: [String]?
-    // infographic
+    // infographic (v2)
     var title: String?
     var subtitle: String?
     var layout: String?            // numbers | timeline | comparison
+    var theme: String?             // plum | ember | ocean | forest | amber
+    var icon: String?              // SF Symbol name (validated server-side)
+    var hero: InfoHero?
+    var takeaway: String?
     var numbers: [InfoNumber]?
     var timeline: [InfoTimelineItem]?
     var comparison: InfoComparison?
+    // audio overview
+    var audioUrl: String?
+    var durationS: Int?
+    var script: String?
+    var voice: String?
+    var words: Int?
+    // poster
+    var imageUrl: String?
+    var headline: String?
+    var subline: String?
+    var prompt: String?
+    var style: String?
+    var width: Int?
+    var height: Int?
 }
 
-struct InfoNumber: Codable, Equatable { let value: String; let label: String }
-struct InfoTimelineItem: Codable, Equatable { let when: String; let what: String }
+struct InfoHero: Codable, Equatable { let value: String; let label: String }
+struct InfoNumber: Codable, Equatable {
+    let value: String
+    let label: String
+    var icon: String? = nil
+    var pct: Double? = nil         // 0–100 relative magnitude for a bar; nil = no bar
+}
+struct InfoTimelineItem: Codable, Equatable {
+    let when: String
+    let what: String
+    var icon: String? = nil
+}
 struct InfoComparison: Codable, Equatable {
     let a: String
     let b: String
     let rows: [InfoComparisonRow]
 }
-struct InfoComparisonRow: Codable, Equatable { let aspect: String; let a: String; let b: String }
+struct InfoComparisonRow: Codable, Equatable {
+    let aspect: String
+    let a: String
+    let b: String
+    var edge: String? = nil        // "a" | "b" | nil — which side is stronger
+}
 
 struct QuizQuestion: Codable, Equatable, Identifiable {
     var id: String { q }
@@ -56,9 +91,11 @@ struct QuizQuestion: Codable, Equatable, Identifiable {
 struct ArtifactOptions: Encodable {
     var numQuestions: Int? = nil
     var difficulty: String? = nil     // easy | medium | hard
-    var length: String? = nil         // brief | standard | indepth
-    var style: String? = nil          // explainer | academic | executive
+    var length: String? = nil         // quiz/paper: brief | standard | indepth · audio: short | standard | long
+    var style: String? = nil          // poster: editorial | abstract | photo | illustration
     var infoKind: String? = nil       // auto | numbers | timeline | comparison
+    var instructions: String? = nil   // info / poster: free-text steer (≤ 300 chars)
+    var voice: String? = nil          // audio: thalia | orion | asteria | arcas
 }
 
 struct ArtifactCreateRequest: Encodable {

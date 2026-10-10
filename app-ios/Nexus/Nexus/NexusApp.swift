@@ -122,8 +122,14 @@ private struct RootView: View {
             let kindArg = args.firstIndex(of: "-kind").flatMap { i in
                 i + 1 < args.count ? args[i + 1] : nil
             } ?? "quiz"
-            let kind: ArtifactKind = kindArg == "report" ? .paper : kindArg == "info" ? .info : .quiz
+            let kind = ArtifactKind(rawValue: kindArg) ?? .quiz
             return AnyView(CreateWizardPreview.make(kind: kind))
+        case "create":
+            return AnyView(CreateTabPreview.make(empty: args.contains("-empty")))
+        case "audio":
+            return AnyView(AudioOverviewPreview.make())
+        case "poster":
+            return AnyView(PosterPreview.make())
         case "infographic":
             let layout = args.firstIndex(of: "-layout").flatMap { i in
                 i + 1 < args.count ? args[i + 1] : nil

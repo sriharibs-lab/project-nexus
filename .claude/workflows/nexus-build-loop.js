@@ -11,7 +11,7 @@ export const meta = {
   ],
 }
 
-const ROOT = '/Users/srihari/Documents/Projects/Project Nexus'
+const ROOT = process.cwd()  // run from the repo root
 
 // ── Shared decision schema ─────────────────────────────────────────────────
 // decisions[] appears on Architect, SWE, and Review outputs.
@@ -189,7 +189,7 @@ if (arch.health === 'RED') {
 The Architect flagged RED. Write ${ROOT}/CHECKPOINT.md (status: action_required).
 Blocking issue: ${arch.brief_markdown}
 Append to ${ROOT}/AGENT_LOG.md.
-Send Gmail draft to srihari.scorp@gmail.com, subject: "🚨 ACTION NEEDED: [Nexus Build] Architect RED — decision required".`,
+Send Gmail draft to <owner-email>, subject: "🚨 ACTION NEEDED: [Nexus Build] Architect RED — decision required".`,
     { schema: ALM_SCHEMA }
   )
   return { health: 'RED', brief: arch.brief_markdown }
@@ -221,7 +221,7 @@ if (plan.eligible.length === 0) {
     `Read ${ROOT}/.nbl/prompts/alm.md for your role.
 Write ${ROOT}/CHECKPOINT.md and append to ${ROOT}/AGENT_LOG.md.
 Gated tasks: ${JSON.stringify(plan.gated)}
-Send Gmail draft to srihari.scorp@gmail.com: "[Nexus Build] No tasks available — gates pending".`,
+Send Gmail draft to <owner-email>: "[Nexus Build] No tasks available — gates pending".`,
     { schema: ALM_SCHEMA }
   )
   return { plan, gated: plan.gated }
@@ -416,7 +416,7 @@ Gated tasks: ${JSON.stringify(plan.gated)}
 Architect health: ${arch.health}
 All decisions this cycle: ${JSON.stringify(allDecisions, null, 2)}
 Project root: ${ROOT}
-Report recipient: srihari.scorp@gmail.com`,
+Report recipient: <owner-email>`,
   { schema: ALM_SCHEMA }
 )
 

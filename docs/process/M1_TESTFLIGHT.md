@@ -2,7 +2,7 @@
 
 **Goal:** a functioning Nexus build on Srihari's iPhone via internal TestFlight, hitting a **live deployed backend** (not the Mac's LAN IP). Internal only — no Beta App Review, no legal pages, no polish bar. That's Milestone 2.
 
-**Live backend:** **https://nexus-api-bwrh.onrender.com** ✅ (Render, smoke-tested green 2026-07-18: `/health` DB-connected, prod-config confirmed). The deploy bottleneck is **cleared** — remaining work is Apple signing + upload.
+**Live backend:** **https://<your-render-service>.onrender.com** ✅ (Render, smoke-tested green 2026-07-18: `/health` DB-connected, prod-config confirmed). The deploy bottleneck is **cleared** — remaining work is Apple signing + upload.
 
 _Owner key:_ 🤖 Claude · 🙋 Srihari · 🤝 together · Last updated: 2026-07-18
 

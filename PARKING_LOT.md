@@ -22,3 +22,10 @@ Review before TestFlight submission.
 - [ ] **Queue worker: run as separate process** — in-process worker wedges under uvicorn --reload and dies silently on startup errors (now logged loudly). Move to Procfile `worker:` before TestFlight. (added 2026-07-11)
 - [ ] **Research URL quality** — ~half of Claude-suggested source URLs 404/block (hallucinated or bot-blocked); shows as "Failed" sources. Improve research prompt to prefer stable/canonical URLs + consider URL validation pass before yielding. (added 2026-07-11)
 - [ ] **Dark mode design pass** — dark palette exists in tokens.css but is undesigned/buggy; prototype forces light (`color-scheme: light` + disabled media query in tokens.css). Design dark properly (CLAUDE.md: deep gray, same restraint) then re-enable. Srihari also noted checking Claude's design system for dark bg reference (BUILD_PLAN decision log 2026-06-13). (added 2026-07-09)
+
+## Public-repo follow-ups (added 2026-11-08, repo going public)
+- `api/tests/ui/*.py` regex-over-Swift tests: ~160 fail from content drift (now path-portable). Decide: delete or rewrite as XCTest. `tests/tokens/test_0A_tok_css.py` skip-marked (Phase-0 contract).
+- Full `pytest` has 3 collection errors (`test_jina_1d005`, `test_collections_chat`, `test_1f007_trending`) and ~129 failures. Suite needs a triage pass before README can claim green.
+- GitHub Actions variable `API_BASE_URL` must be set on the repo (workflows no longer hardcode the Render host).
+- `pyproject.toml` pins pgqueuer `^0.16` while `requirements.txt` pins 1.1.1 — reconcile.
+- Capture `docs/screenshots/` (Simulator, light + dark) for README.

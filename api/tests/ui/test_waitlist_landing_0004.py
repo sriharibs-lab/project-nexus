@@ -14,6 +14,7 @@ Strategy:
 """
 
 from __future__ import annotations
+import pathlib as _pl; _REPO_ROOT = str(_pl.Path(__file__).resolve().parents[3])  # repo root, portable
 
 import json
 import os
@@ -27,7 +28,7 @@ from unittest.mock import MagicMock, patch
 # File paths
 # ---------------------------------------------------------------------------
 WORKTREE = Path(
-    "/Users/srihari/Documents/Projects/Project Nexus"
+    _REPO_ROOT + ""
     "/.claude/worktrees/wf_5f2d3d42-857-9"
 )
 PAGE_TSX = WORKTREE / "prototype/src/app/page.tsx"

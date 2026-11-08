@@ -17,6 +17,7 @@ Covered test hints:
 """
 
 from __future__ import annotations
+import pathlib as _pl; _REPO_ROOT = str(_pl.Path(__file__).resolve().parents[3])  # repo root, portable
 
 import os
 import re
@@ -26,8 +27,8 @@ import unittest
 # File paths — worktree first, fall back to main tree after merge
 # --------------------------------------------------------------------------- #
 
-_WORKTREE = "/Users/srihari/Documents/Projects/Project Nexus/.claude/worktrees/wf_1f4481b5-545-11"
-_MAIN     = "/Users/srihari/Documents/Projects/Project Nexus"
+_WORKTREE = _REPO_ROOT + "/.claude/worktrees/wf_1f4481b5-545-11"
+_MAIN     = _REPO_ROOT + ""
 
 
 def _wt(rel: str) -> str:

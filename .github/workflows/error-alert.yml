@@ -24,7 +24,7 @@ jobs:
         env:
           ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
         run: |
-          URL="https://nexus-api-bwrh.onrender.com/v1/admin/errors/summary?hours=1"
+          URL="${{ vars.API_BASE_URL }}/v1/admin/errors/summary?hours=1"
           THRESHOLD=5
 
           if [ -z "$ADMIN_TOKEN" ]; then

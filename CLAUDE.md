@@ -65,7 +65,7 @@ Core thesis: The entire product is an AI harness — tools, skills, and memory b
 ## Autonomous Build System (NBL — designed, not yet built)
 - 6-agent loop: Architect → Planner → SWE → Test → Review → ALM
 - **Architect** is the strategic CTO agent — steers direction, weighs alternatives, flags risks
-- Plan: `/Users/srihari/.claude/plans/whimsical-bubbling-kitten.md`
+- Plan: local Claude plan file (not in repo); see docs/process/ and .nbl/ for the operational version
 - When building: read the plan file first; don't implement without it
 
 ## Key Files

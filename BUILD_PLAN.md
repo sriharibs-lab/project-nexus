@@ -51,7 +51,7 @@ cycle_policy:
 ## Phase 1 — MVP (Target: T+10 weeks)
 
 ### 1A — Backend Foundation (Weeks 1–3)
-- [x] Supabase project setup (auth, DB) — project yrzsbkljaqtwtbzeoirs, live <!-- nbl:id=1A-001 status=done -->
+- [x] Supabase project setup (auth, DB) — project <ref>, live <!-- nbl:id=1A-001 status=done -->
 - [x] PostgreSQL schema: users, items, tags, embeddings, feedback, ai_telemetry, performance_logs, audit_logs — migrations 0001+0002 live <!-- nbl:id=1A-002 status=done -->
 - [x] pgvector extension + OpenAI text-embedding-3-small — wired in ingestion pipeline <!-- nbl:id=1A-003 status=done -->
 - [x] FastAPI skeleton: auth (JWKS/ES256), items CRUD, feedback, ingest — live <!-- nbl:id=1A-004 status=done -->

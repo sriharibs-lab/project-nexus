@@ -189,7 +189,7 @@ function AccountSheet() {
 
       <SectionLabel>Account</SectionLabel>
       <Card>
-        <Row icon="envelope" label="Email" value="srihari.scorp@gmail.com" />
+        <Row icon="envelope" label="Email" value="you@example.com" />
         <Row icon="sparkle" label="Subscription" value="Free · Beta" trailing="chevron" onClick={() => {}} last />
       </Card>
 

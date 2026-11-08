@@ -59,3 +59,9 @@ DerivedData/
 *.ipa
 *.dSYM.zip
 *.dSYM
+
+# ── Local agent / tooling state ───────────────────────────
+xcuserdata/
+.claude/worktrees/
+.nbl/
+.claude/settings.local.json

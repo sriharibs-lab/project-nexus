@@ -18,12 +18,13 @@ Covered test hints:
 """
 
 from __future__ import annotations
+import pathlib as _pl; _REPO_ROOT = str(_pl.Path(__file__).resolve().parents[3])  # repo root, portable
 
 import os
 import re
 import unittest
 
-_WORKTREE = "/Users/srihari/Documents/Projects/Project Nexus/.claude/worktrees/wf_8d637bae-96e-3/app-ios/Nexus/Nexus"
+_WORKTREE = _REPO_ROOT + "/.claude/worktrees/wf_8d637bae-96e-3/app-ios/Nexus/Nexus"
 
 ACCOUNT_VIEW_PATH = os.path.join(_WORKTREE, "Features/Settings/AccountView.swift")
 AUTH_MANAGER_PATH = os.path.join(_WORKTREE, "Core/Auth/AuthManager.swift")

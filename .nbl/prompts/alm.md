@@ -90,7 +90,7 @@ within a few seconds, skip this step immediately and proceed to Step 6. Do NOT r
 Do NOT stall. The prior steps are the mandatory work; this is just a notification.
 
 If Gmail is available, call `mcp__claude_ai_Gmail__create_draft` with:
-- To: srihari.scorp@gmail.com
+- To: <owner-email>
 - Subject:
   - If status is `✅ Clean`: `✅ [Nexus Build] <N> done — ready for next cycle (<date>)`
   - If status is `⚠️ Review recommended`: `⚠️ [Nexus Build] <N> done, review recommended (<date>)`

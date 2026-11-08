@@ -20,7 +20,7 @@ jobs:
     steps:
       - name: Ping /health (with cold-start retries)
         run: |
-          URL="https://nexus-api-bwrh.onrender.com/health"
+          URL="${{ vars.API_BASE_URL }}/health"
           for i in 1 2 3 4; do
             code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 70 "$URL") || code=000
             echo "attempt $i -> HTTP $code"

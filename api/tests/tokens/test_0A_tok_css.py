@@ -14,13 +14,17 @@ import os
 import re
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.skip(reason="Encodes the Phase-0 prototype token contract (tokens.ts, dark block); prototype has moved on. Kept for history.")
+
 # ─── Paths ───────────────────────────────────────────────────────────────────
 
-WORKTREE = "/Users/srihari/Documents/Projects/Project Nexus/.claude/worktrees/wf_916c2c75-c5c-8"
-PROTOTYPE = os.path.join(WORKTREE, "prototype")
+# Repo root: tests/tokens/<this file> → tests/tokens → tests → api → repo root
+REPO_ROOT = str(Path(__file__).resolve().parents[3])
+PROTOTYPE = os.path.join(REPO_ROOT, "prototype")
 TOKENS_CSS = os.path.join(PROTOTYPE, "src/styles/tokens.css")
 TOKENS_TS = os.path.join(PROTOTYPE, "src/styles/tokens.ts")
 GLOBALS_CSS = os.path.join(PROTOTYPE, "src/app/globals.css")

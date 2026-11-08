@@ -15,6 +15,7 @@ Covered test_hints:
 """
 
 from __future__ import annotations
+import pathlib as _pl; _REPO_ROOT = str(_pl.Path(__file__).resolve().parents[3])  # repo root, portable
 
 import os
 import re
@@ -24,7 +25,7 @@ import unittest
 # File paths
 # --------------------------------------------------------------------------- #
 
-_MAIN = "/Users/srihari/Documents/Projects/Project Nexus"
+_MAIN = _REPO_ROOT + ""
 
 HOME_VIEW         = os.path.join(_MAIN, "app-ios/Nexus/Nexus/Features/Home/HomeView.swift")
 HOME_VM           = os.path.join(_MAIN, "app-ios/Nexus/Nexus/Features/Home/HomeViewModel.swift")

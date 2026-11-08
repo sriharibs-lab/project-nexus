@@ -18,6 +18,7 @@ No iOS simulator required — pure Python text inspection of Swift sources.
 """
 
 from __future__ import annotations
+import pathlib as _pl; _REPO_ROOT = str(_pl.Path(__file__).resolve().parents[3])  # repo root, portable
 
 import os
 import re
@@ -27,8 +28,8 @@ import unittest
 # Paths
 # ---------------------------------------------------------------------------
 
-_WORKTREE = "/Users/srihari/Documents/Projects/Project Nexus/.claude/worktrees/wf_5a6a2270-719-9"
-_MAIN = "/Users/srihari/Documents/Projects/Project Nexus"
+_WORKTREE = _REPO_ROOT + "/.claude/worktrees/wf_5a6a2270-719-9"
+_MAIN = _REPO_ROOT + ""
 
 
 def _wt(rel: str) -> str:

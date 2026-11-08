@@ -18,6 +18,7 @@ Covered test hints:
 """
 
 from __future__ import annotations
+import pathlib as _pl; _REPO_ROOT = str(_pl.Path(__file__).resolve().parents[3])  # repo root, portable
 
 import os
 import re
@@ -25,7 +26,7 @@ import unittest
 
 # The 1C-004 features live in the worktree. We try the worktree first,
 # then fall back to the checked-in file so the test can run after merge.
-_WORKTREE_PATH = "/Users/srihari/Documents/Projects/Project Nexus/.claude/worktrees/wf_6d3e19bb-b4b-9/nexus-design-system-extracted/design_handoff_nexus_ios/collection-view.jsx"
+_WORKTREE_PATH = _REPO_ROOT + "/.claude/worktrees/wf_6d3e19bb-b4b-9/nexus-design-system-extracted/design_handoff_nexus_ios/collection-view.jsx"
 _MAIN_PATH = os.path.join(
     os.path.dirname(__file__),
     "../../..",

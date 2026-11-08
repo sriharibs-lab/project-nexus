@@ -116,6 +116,9 @@ struct AuthView: View {
                     .padding(.horizontal, 34)
 
                 #if DEBUG
+                // Hidden when launched with `-screenshot` so README/App Store
+                // captures from the simulator harness show the real footer.
+                if !ProcessInfo.processInfo.arguments.contains("-screenshot") {
                 Button("Continue (dev)") { vm.devBypass() }
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.Nexus.ghost)
@@ -127,6 +130,7 @@ struct AuthView: View {
                     .font(.system(size: 9, design: .monospaced))
                     .foregroundColor(.Nexus.ghost.opacity(0.7))
                     .padding(.top, 4)
+                }
                 #endif
 
                 Spacer().frame(height: NexusSpacing.safeBottom)

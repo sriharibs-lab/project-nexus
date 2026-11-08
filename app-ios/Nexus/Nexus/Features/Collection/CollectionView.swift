@@ -32,6 +32,14 @@ struct CollectionView: View {
         _selectedTab = State(initialValue: initialTab)
     }
 
+    #if DEBUG
+    /// Preview harness: `-preview collection` with seeded sources (no API).
+    init(collection: NexusCollection, initialTab: String, previewItems: [Item]) {
+        _vm = StateObject(wrappedValue: CollectionViewModel(collection: collection, previewItems: previewItems))
+        _selectedTab = State(initialValue: initialTab)
+    }
+    #endif
+
     var body: some View {
         ZStack(alignment: .bottom) {
             NexusBackground()

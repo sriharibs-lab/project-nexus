@@ -101,7 +101,7 @@ private struct RootView: View {
             } ?? "ask"
             return AnyView(
                 NavigationStack {
-                    CollectionView(collection: .previewSample, initialTab: tab)
+                    CollectionView(collection: .previewSample, initialTab: tab, previewItems: Item.previewList)
                 }
             )
         case "auth":
@@ -205,6 +205,35 @@ extension NexusCollection {
                 sourceCount: count,
                 createdAt: Date().addingTimeInterval(-86_400),
                 updatedAt: Date().addingTimeInterval(-3_600)
+            )
+        }
+    }
+}
+
+extension Item {
+    /// Sources-tab sample set for `-preview collection` (never hits the API).
+    static var previewList: [Item] {
+        let rows: [(String, String, Item.ContentType, Item.IngestStatus, [String])] = [
+            ("https://stratechery.com/2025/the-ai-platform-shift/", "The AI Platform Shift", .article, .completed, ["platforms", "strategy"]),
+            ("https://www.youtube.com/watch?v=dQw4w9WgXcQ", "Every model is becoming a platform", .youtube, .completed, ["video", "keynote"]),
+            ("https://www.latent.space/p/agents-are-the-new-apps", "Agents are the new apps", .podcast, .completed, ["agents", "podcast"]),
+            ("https://x.com/karpathy/status/1800000000000000000", "On software 3.0 and the shrinking app layer", .thread, .completed, ["software 3.0"]),
+            ("https://openai.com/index/introducing-the-platform", "Introducing the platform", .announcement, .completed, ["launch"]),
+            ("https://www.ben-evans.com/benedictevans/2025/ai-eats-the-world", "AI eats the world", .blog, .processing, []),
+        ]
+        return rows.enumerated().map { i, r in
+            Item(
+                id: UUID(),
+                userId: UUID(),
+                url: r.0,
+                title: r.1,
+                contentType: r.2,
+                summary: nil,
+                insights: nil,
+                tags: r.4,
+                ingestStatus: r.3,
+                createdAt: Date().addingTimeInterval(Double(-3_600 * (i + 1))),
+                updatedAt: Date().addingTimeInterval(Double(-3_600 * (i + 1)))
             )
         }
     }

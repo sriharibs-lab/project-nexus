@@ -45,6 +45,16 @@ final class CollectionViewModel: ObservableObject {
         self.collection = collection
     }
 
+    #if DEBUG
+    /// Simulator preview harness: seed sample sources, never hit the API.
+    private var isPreview = false
+    convenience init(collection: NexusCollection, previewItems: [Item]) {
+        self.init(collection: collection)
+        items = previewItems
+        isPreview = true
+    }
+    #endif
+
     deinit {
         pollTask?.cancel()
     }
@@ -52,6 +62,9 @@ final class CollectionViewModel: ObservableObject {
     // MARK: - Load sources
 
     func load() async {
+        #if DEBUG
+        guard !isPreview else { return }
+        #endif
         isLoading = true
         defer { isLoading = false }
         do {

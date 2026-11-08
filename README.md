@@ -4,7 +4,18 @@ AI-native content curation for iPhone: save links, ask questions, create from wh
 
 **Status:** In TestFlight (build 17). Source-available — see [LICENSE](LICENSE).
 
-<!-- screenshots: docs/screenshots/*.png -->
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/01-auth.png" width="240" alt="Sign in"><br><sub>Sign in</sub></td>
+    <td align="center"><img src="docs/screenshots/02-home.png" width="240" alt="Home: collections"><br><sub>Home</sub></td>
+    <td align="center"><img src="docs/screenshots/03-ask.png" width="240" alt="Collection: Ask tab"><br><sub>Ask</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/04-create.png" width="240" alt="Collection: Create tab"><br><sub>Create</sub></td>
+    <td align="center"><img src="docs/screenshots/05-sources.png" width="240" alt="Collection: Sources tab"><br><sub>Sources</sub></td>
+    <td align="center"><img src="docs/screenshots/06-ask-dark.png" width="240" alt="Ask tab in dark mode"><br><sub>Dark mode</sub></td>
+  </tr>
+</table>
 
 ## What it is
 

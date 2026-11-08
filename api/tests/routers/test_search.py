@@ -82,12 +82,12 @@ class TestConfigFireworks(unittest.TestCase):
             "config.py must declare fireworks_api_key setting",
         )
 
-    def test_fireworks_configured_property(self):
+    def test_embedding_configured_property(self):
         source = self._load_config_source()
         self.assertIn(
-            "fireworks_configured",
+            "embedding_configured",
             source,
-            "config.py must expose a fireworks_configured property",
+            "config.py must expose an embedding_configured property (was fireworks_configured)",
         )
 
 

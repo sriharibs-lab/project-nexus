@@ -1,14 +1,21 @@
 """
-Tests for ai/pipeline.py — compute_embedding stub.
+Tests for ai/pipeline.py — compute_embedding (Fireworks nomic-embed-text-v1.5).
 
-Covers hint 12:
-  from ai.pipeline import compute_embedding; import asyncio;
-  r = asyncio.run(compute_embedding('test'));
-  assert r.dimensions == 768; assert r.model == 'nomic-ai/nomic-embed-text-v1.5'
+These make a real embeddings call, so the whole module is skipped unless
+FIREWORKS_API_KEY is set (api/.env is loaded by app.core.config).
 """
 import asyncio
 import math
+import os
+
 import pytest
+
+from app.core.config import settings  # loads .env
+
+pytestmark = pytest.mark.skipif(
+    not (os.getenv("FIREWORKS_API_KEY") or settings.fireworks_api_key),
+    reason="requires FIREWORKS_API_KEY (live Fireworks embeddings call)",
+)
 
 
 def test_compute_embedding_importable():
@@ -17,7 +24,7 @@ def test_compute_embedding_importable():
 
 
 def test_compute_embedding_returns_768_dims():
-    """compute_embedding stub returns a 768-dimension vector."""
+    """compute_embedding returns a 768-dimension vector."""
     from ai.pipeline import compute_embedding
 
     result = asyncio.run(compute_embedding("test"))
@@ -25,7 +32,7 @@ def test_compute_embedding_returns_768_dims():
 
 
 def test_compute_embedding_model_name():
-    """compute_embedding stub reports the correct model name."""
+    """compute_embedding reports the correct model name."""
     from ai.pipeline import compute_embedding
 
     result = asyncio.run(compute_embedding("test"))
@@ -46,16 +53,19 @@ def test_compute_embedding_unit_normalized():
 
     result = asyncio.run(compute_embedding("hello world"))
     magnitude = math.sqrt(sum(v * v for v in result.vector))
-    assert abs(magnitude - 1.0) < 1e-5
+    # nomic-embed returns float32-rounded normalized vectors; |1 - norm| is ~2e-4.
+    assert abs(magnitude - 1.0) < 1e-2
 
 
 def test_compute_embedding_deterministic():
-    """Same input produces same embedding (hash-based stub)."""
+    """Same input produces (near-)identical embeddings. Fireworks is not bit-exact
+    across calls (float32 noise ~1e-4), so compare by cosine similarity."""
     from ai.pipeline import compute_embedding
 
     r1 = asyncio.run(compute_embedding("same input"))
     r2 = asyncio.run(compute_embedding("same input"))
-    assert r1.vector == r2.vector
+    cosine = sum(a * b for a, b in zip(r1.vector, r2.vector))
+    assert cosine > 0.999, f"embeddings drifted: cosine={cosine}"
 
 
 def test_compute_embedding_different_inputs_differ():

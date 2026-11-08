@@ -162,3 +162,16 @@ Tasks completed: 1G-007 (Apple Sign-In JWT exchange — server-side RS256 identi
 Tasks blocked: 1G-004 (HomeView new-collection choice sheet — request_changes; two-row choice sheet never implemented, SSE coalesce fix missing from handleSSEEvent; retry required), SSE-field-test (dual-key fix fabricated by SWE — APIClient.swift still had single-key check; fix applied in 1G-006 merge; task closed)
 Gated (waiting on human): 1C-011 (Daily Briefing iOS UI — add APNs key to api/.env)
 Commit SHA: be9834c
+
+---
+
+## Test-suite retirement — 2026-11-08
+The NBL loop's Test agent wrote most of `api/tests/` as **regex checks over source files** (Swift views, JSX, CSS tokens, even Python routers) against the snapshot of the day. Once Srihari iterated the UI by hand those assertions rotted: ~160 `tests/ui/*.py` failures with no bug behind any of them. Retired today:
+
+- `api/tests/ui/` (10 files, Swift/JSX regex) and `api/tests/tokens/test_0A_tok_css.py` (Phase-0 prototype token contract, already skip-marked). They were process artifacts proving an agent had done a task, not a regression suite. Swift coverage belongs in an XCTest target (PARKING_LOT).
+- Python tests asserting code that no longer exists: `tests/queue/test_ingestion_timing_1d005.py` (pre-pgqueuer worker), `tests/alembic/test_migration_0002.py` (`0002_add_collections` was superseded by the 0003 many-to-many rewrite), `tests/models/test_collection_status_1d002.py` (draft/active status was never built; migration 0007 became `items.r2_key`), and stale classes in `test_save.py` (the `/v1/save` router that never shipped, "uppercase enum bug" tests asserting a fixed bug, asyncio.Queue fallback), `test_auth.py` (`_extract_email_from_jwt`, `AuthTokenResponse`, Supabase id_token exchange — Apple flow is covered by `test_auth_apple_1g007.py`), `test_storage_1a008.py` (a 30-module stub tower exec'ing `ingestion.py`), `test_collections_chat.py` (`_build_messages` helpers inlined into `_stream_chat`).
+- Rewritten against current code: `test_1f007_trending.py` (Wikipedia + HN + Haiku curation, not Google Trends RSS), `test_pipeline.py` (AsyncAnthropic `_client`; sha256 embedding stub is gone), `test_content_type.py` (8 values incl. `youtube`), `test_search.py` (`embedding_configured`).
+- Root cause of the three collection errors was **cross-module `sys.modules` pollution**: test files stubbed `app`, `app.models.item`, `sqlalchemy` globally and never cleaned up. `tests/conftest.py` now snapshots/repairs `sys.modules` around each module's collection and run (conservatively — evicting real C-extension modules segfaults).
+- `tests/ai/test_pipeline_embedding.py` makes a live Fireworks call; it now skips without `FIREWORKS_API_KEY` and compares vectors by cosine (Fireworks is not bit-exact between calls).
+
+Result: `cd api && uv run pytest -q` → **340 passed, 52 skipped**. Honest reading of the skips: only ~6 are env/version gates; **45 are `test_ingest`/`test_research`/`test_search` TestClient classes whose own `sys.modules` stub towers no longer assemble** (`AsyncSessionLocal`, `app.core.telemetry`), so they `skipTest` instead of running — same at the previous commit, so not a regression, but those endpoints have no HTTP-level coverage today. The lesson for the next NBL cycle: the Test agent must write behavioural tests (`TestClient` + fixtures), never source-text assertions.

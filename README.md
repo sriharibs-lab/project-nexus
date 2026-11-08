@@ -63,8 +63,8 @@ Mechanical work runs through an autonomous build loop: **Architect → Planner �
 - **Research streams as SSE**: `searching` → one `source` event per result → `done` with the collection id (`api/app/routers/research.py`). Chat streams `sources` → `chunk` → `done`.
 - **Spring easing baked to CSS `linear()`** from a k=200 / c=15.5 / ζ≈0.55 simulation (`motion.json`); no rAF springs.
 - **Research runs on Haiku by default** after an A/B (~50% cheaper); `web_search` capped at 6 calls.
-- **Worker polls instead of LISTEN/NOTIFY** — Supabase's pooler does not relay notifications. `pgqueuer` is pinned to 1.1.1 in `api/requirements.txt` (what Render installs; `pyproject.toml` still says `^0.16`) after a floating version crash-looped the worker.
-- 271 commits, 38 backend test files, ~23k lines of Python including tests (~9k app code).
+- **Worker polls instead of LISTEN/NOTIFY** — Supabase's pooler does not relay notifications. `pgqueuer` is pinned to 1.1.1 in both `api/requirements.txt` (what Render installs) and `api/pyproject.toml` after a floating version crash-looped the worker.
+- 271 commits, 24 backend test files (`cd api && uv run pytest -q` → 340 passed, 52 skipped; most skips are legacy router TestClient classes whose stubs no longer assemble — see PARKING_LOT), ~9k lines of app Python.
 
 ## Repository map
 

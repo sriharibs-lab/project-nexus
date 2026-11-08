@@ -105,9 +105,9 @@ class TestContentTypeEnum(unittest.TestCase):
         self.ContentType = _load_content_type_from_source()
 
     def test_all_canonical_values_present(self):
-        """ContentType enum must include all 7 content types from SPEC §5a."""
+        """ContentType enum must include the 7 SPEC §5a types plus `youtube` (added for the YouTube extractor route)."""
         values = {e.value for e in self.ContentType}
-        expected = {"article", "podcast", "video", "thread", "blog", "announcement", "other"}
+        expected = {"article", "podcast", "video", "thread", "blog", "announcement", "youtube", "other"}
         self.assertEqual(expected, values,
                          f"Missing: {expected - values}, Extra: {values - expected}")
 
@@ -163,15 +163,16 @@ class TestPipelineBaseReExport(unittest.TestCase):
         ct = self.pipeline_ct("thread")
         self.assertEqual(ct.value, "thread")
 
-    def test_pipeline_base_has_all_seven_types(self):
-        """pipeline.base ContentType must have all 7 values (not just old 3)."""
+    def test_pipeline_base_has_all_types(self):
+        """pipeline.base ContentType must have all 8 values (not just old 3)."""
         if not self.available:
             self.skipTest(f"pipeline.base import failed: {self.skip_reason}")
         values = {e.value for e in self.pipeline_ct}
         self.assertIn("thread", values)
         self.assertIn("blog", values)
         self.assertIn("announcement", values)
-        self.assertEqual(len(values), 7)
+        self.assertIn("youtube", values)
+        self.assertEqual(len(values), 8)
 
 
 class TestPython39CompatibilityIssue(unittest.TestCase):

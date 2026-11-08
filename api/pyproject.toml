@@ -11,7 +11,7 @@ fastapi = "^0.115"
 uvicorn = { version = "^0.32", extras = ["standard"] }
 sqlalchemy = { version = "^2.0", extras = ["asyncio"] }
 asyncpg = "^0.30"
-pgqueuer = "^0.16"
+pgqueuer = "1.1.1"  # exact pin — keep in lockstep with requirements.txt (Render) and the venv; see PARKING_LOT 2026-10-09
 alembic = "^1.14"
 pgvector = "^0.3"
 pydantic = "^2.10"

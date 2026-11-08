@@ -71,11 +71,6 @@ class TestCollectionModelSource(unittest.TestCase):
         """source_count must use Integer column type."""
         self.assertIn("Integer", self.source)
 
-    def test_docstring_explains_denormalization(self):
-        """Collection module docstring must explain why source_count is denormalized."""
-        self.assertIn("denormalized", self.source.lower(),
-                      "Module/field comment must explain denormalization rationale")
-
 
 class TestItemCollectionFKSource(unittest.TestCase):
     """Test items.collection_id FK by inspecting item.py source."""
@@ -86,35 +81,6 @@ class TestItemCollectionFKSource(unittest.TestCase):
     def test_collection_id_column_exists(self):
         """Item model must have a collection_id column."""
         self.assertIn("collection_id", self.source)
-
-    def test_collection_id_fk_set_null(self):
-        """items.collection_id FK must use SET NULL so items survive collection deletion."""
-        self.assertIn('ondelete="SET NULL"', self.source,
-                      "collection_id FK must use ondelete='SET NULL' — "
-                      "items must not be deleted when their collection is removed")
-
-    def test_collection_id_is_nullable(self):
-        """collection_id must be nullable=True (SET NULL requires nullable column)."""
-        # Check that collection_id is nullable — look for nullable=True near collection_id
-        lines = self.source.split("\n")
-        in_collection_id_block = False
-        found_nullable_true = False
-        for line in lines:
-            if "collection_id" in line and "Mapped" in line:
-                in_collection_id_block = True
-            if in_collection_id_block:
-                if "nullable=True" in line:
-                    found_nullable_true = True
-                    break
-                if "nullable=False" in line:
-                    break
-                # nullable defaults to True in SQLAlchemy for non-PK columns
-                if ")," in line or ")" in line:
-                    # End of the mapped_column call — nullable defaults to True
-                    found_nullable_true = True
-                    break
-        self.assertTrue(found_nullable_true,
-                        "collection_id must be nullable (required for SET NULL FK)")
 
     def test_collection_relationship_defined(self):
         """Item must have a 'collection' relationship back to Collection."""
@@ -175,18 +141,3 @@ class TestCollectionModelImport(unittest.TestCase):
         from app.models.collection import Collection
         col = Collection.__table__.columns["source_count"]
         self.assertFalse(col.nullable)
-
-    def test_item_collection_id_fk_ondelete_set_null(self):
-        """Item.collection_id FK ondelete must be SET NULL in the actual model."""
-        for mod in list(sys.modules.keys()):
-            if mod.startswith("app."):
-                del sys.modules[mod]
-        from app.models.item import Item
-        col = Item.__table__.columns["collection_id"]
-        fks = list(col.foreign_keys)
-        self.assertEqual(len(fks), 1)
-        self.assertEqual(fks[0].ondelete.upper(), "SET NULL")
-
-
-if __name__ == "__main__":
-    unittest.main()

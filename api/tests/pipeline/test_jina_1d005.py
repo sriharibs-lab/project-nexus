@@ -14,31 +14,10 @@ Coverage:
 import asyncio
 import inspect
 import os
-import sys
-import types
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-# ---------------------------------------------------------------------------
-# Minimal stubs so pipeline/jina.py can be imported without app.models.*
-# ---------------------------------------------------------------------------
-
-def _setup_stubs() -> None:
-    """
-    pipeline/jina.py imports ContentType from pipeline/base.py (NOT app.models.item).
-    pipeline/base.py defines its own ContentType with uppercase members (ARTICLE, VIDEO, etc).
-    We do not need to stub app.models.item for jina tests — base.py is self-contained.
-    We only ensure the app.* module hierarchy exists so import machinery doesn't error.
-    """
-    for mod in ["app", "app.models", "app.models.item"]:
-        sys.modules.setdefault(mod, types.ModuleType(mod))
-
-
-_setup_stubs()
-
-# Now we can safely import
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../"))
-from pipeline.jina import extract, _get_timeout  # noqa: E402
+from pipeline.jina import extract, _get_timeout
 
 
 class TestJinaIsAsync(unittest.TestCase):

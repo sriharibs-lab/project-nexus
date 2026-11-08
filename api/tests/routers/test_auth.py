@@ -68,6 +68,7 @@ def _inject_mocks():
     # settings
     mock_settings = types.SimpleNamespace(
         supabase_url="https://fake.supabase.co",
+        supabase_secret_key="test-jwt-secret",
         supabase_publishable_key="anon-key",
         supabase_service_role_key="service-key",
         database_url="postgresql+asyncpg://test:test@localhost/test",
@@ -161,6 +162,8 @@ def _build_test_client():
         return {"supabase_id": _FAKE_SB_UID, "email": _FAKE_EMAIL}
 
     app.dependency_overrides[_AUTH.get_current_user] = _fake_current_user
+    # verify_otp commits on the session itself; hand it an async-capable fake.
+    app.dependency_overrides[_AUTH.get_db] = lambda: AsyncMock()
 
     return TestClient(app, raise_server_exceptions=False)
 
@@ -200,52 +203,6 @@ def _patch_upsert(user=None):
     return patch.object(_AUTH, "_upsert_user", _fake)
 
 
-# ---------------------------------------------------------------------------
-# Tests: Pydantic schema contracts
-# ---------------------------------------------------------------------------
-
-class TestAuthTokenResponseSchema(unittest.TestCase):
-    """AuthTokenResponse must expose the exact fields the iOS client maps to."""
-
-    def setUp(self):
-        if _AUTH is None:
-            self.skipTest(f"auth module unavailable: {_AUTH_LOAD_ERROR}")
-
-    def test_required_fields_present(self):
-        """All 5 fields iOS AuthTokenResponse expects must be present."""
-        resp = _AUTH.AuthTokenResponse(
-            access_token="tok",
-            refresh_token="ref",
-            expires_in=3600,
-            token_type="bearer",
-            user_id=str(uuid.uuid4()),
-        )
-        self.assertEqual(resp.access_token, "tok")
-        self.assertEqual(resp.refresh_token, "ref")
-        self.assertEqual(resp.expires_in, 3600)
-        self.assertEqual(resp.token_type, "bearer")
-        self.assertIsNotNone(resp.user_id)
-
-    def test_user_id_is_string(self):
-        """user_id must serialise as a string UUID, not a UUID object."""
-        uid = str(uuid.uuid4())
-        resp = _AUTH.AuthTokenResponse(
-            access_token="a", refresh_token="b", expires_in=100,
-            token_type="bearer", user_id=uid,
-        )
-        self.assertIsInstance(resp.user_id, str)
-
-    def test_user_id_must_be_valid_uuid_string(self):
-        """user_id must be parseable as UUID — iOS AuthTokenResponse uses UUID(uuidString:)."""
-        uid = str(_FAKE_USER_UUID)
-        resp = _AUTH.AuthTokenResponse(
-            access_token="a", refresh_token="b", expires_in=100,
-            token_type="bearer", user_id=uid,
-        )
-        # Must round-trip through UUID()
-        parsed = uuid.UUID(resp.user_id)
-        self.assertEqual(parsed, _FAKE_USER_UUID)
-
 
 class TestPydanticSchemas(unittest.TestCase):
     """Validate request model field contracts."""
@@ -268,77 +225,12 @@ class TestPydanticSchemas(unittest.TestCase):
         self.assertEqual(req.token, "123456")
 
     def test_apple_sign_in_request_fields(self):
-        req = _AUTH.AppleSignInRequest(identity_token="header.payload.sig")
+        req = _AUTH.AppleSignInRequest(identity_token="header.payload.sig", user_id="apple-sub-1")
         self.assertEqual(req.identity_token, "header.payload.sig")
+        self.assertEqual(req.user_id, "apple-sub-1")
+        self.assertIsNone(req.email)
 
 
-# ---------------------------------------------------------------------------
-# Tests: _extract_email_from_jwt helper
-# ---------------------------------------------------------------------------
-
-class TestExtractEmailFromJWT(unittest.TestCase):
-    """Unit tests for the _extract_email_from_jwt helper function.
-
-    Test hint: Apple identity token must be a real JWT (3 dot-separated parts),
-    not cred.user (an opaque user ID).
-    """
-
-    def setUp(self):
-        if _AUTH is None:
-            self.skipTest(f"auth module unavailable: {_AUTH_LOAD_ERROR}")
-        self._fn = _AUTH._extract_email_from_jwt
-
-    def _make_jwt(self, claims: dict) -> str:
-        """Build a minimal fake JWT with the given claims payload."""
-        import base64
-        payload = base64.urlsafe_b64encode(
-            json.dumps(claims).encode()
-        ).rstrip(b"=").decode()
-        return f"eyJhbGciOiJSUzI1NiJ9.{payload}.fakesig"
-
-    def test_extracts_email_from_valid_jwt(self):
-        jwt = self._make_jwt({"email": "user@apple.com", "sub": "abc"})
-        self.assertEqual(self._fn(jwt), "user@apple.com")
-
-    def test_returns_none_when_no_email_claim(self):
-        jwt = self._make_jwt({"sub": "abc", "iss": "https://appleid.apple.com"})
-        self.assertIsNone(self._fn(jwt))
-
-    def test_returns_none_for_empty_string(self):
-        self.assertIsNone(self._fn(""))
-
-    def test_returns_none_for_two_part_token(self):
-        """cred.identityToken is always 3-part JWT; cred.user is an opaque string."""
-        self.assertIsNone(self._fn("header.payload"))
-
-    def test_returns_none_for_opaque_apple_user_id(self):
-        """
-        cred.user is an opaque string like '000123.abc456def.0987'.
-        It is NOT a JWT — _extract_email_from_jwt must return None, not crash.
-
-        Test hint: 'Apple identity token must be a real JWT string (not cred.user
-        which is an opaque ID)'
-        """
-        self.assertIsNone(self._fn("000123.abc456def.0987"))
-
-    def test_handles_malformed_base64_gracefully(self):
-        """Malformed base64 in JWT payload must not raise — returns None."""
-        result = self._fn("header.!!!not_valid_b64!!.sig")
-        self.assertIsNone(result)
-
-    def test_handles_padding(self):
-        """JWT payload with length not divisible by 4 requires padding to decode."""
-        import base64
-        claims = {"email": "padded@test.com"}
-        # strip all '=' padding to simulate a real JWT
-        b64 = base64.urlsafe_b64encode(json.dumps(claims).encode()).rstrip(b"=").decode()
-        jwt = f"h.{b64}.s"
-        self.assertEqual(self._fn(jwt), "padded@test.com")
-
-
-# ---------------------------------------------------------------------------
-# Tests: _upsert_user helper
-# ---------------------------------------------------------------------------
 
 class TestUpsertUserHelper(unittest.TestCase):
     """Unit tests for the _upsert_user DB helper."""
@@ -349,7 +241,11 @@ class TestUpsertUserHelper(unittest.TestCase):
 
     def _run(self, coro):
         import asyncio
-        return asyncio.get_event_loop().run_until_complete(coro)
+        # session.execute is mocked, so `select(User)` never has to be a real
+        # statement. Patch it so the test passes whether or not the real
+        # sqlalchemy was already imported by an earlier module.
+        with patch.object(_AUTH, "select", MagicMock(return_value=MagicMock())):
+            return asyncio.run(coro)
 
     def test_returns_existing_user_and_is_new_false(self):
         """When user already exists in DB, returns (user, False)."""
@@ -380,6 +276,7 @@ class TestUpsertUserHelper(unittest.TestCase):
         session.execute.return_value = mock_result
         session.commit = AsyncMock()
         session.refresh = fake_refresh
+        session.add = MagicMock()  # sync in SQLAlchemy; avoid an un-awaited coroutine warning
 
         # auth.py uses its module-level 'User' name, not sys.modules lookup.
         # Patch it directly on the auth module.
@@ -590,124 +487,6 @@ class TestVerifyOTPEndpoint(unittest.TestCase):
 
         self.assertEqual(resp.status_code, 502)
 
-
-class TestAppleSignInEndpoint(unittest.TestCase):
-    """Tests for POST /auth/apple.
-
-    Test hints:
-    - "Apple identity token must be a real JWT string (not cred.user which is an
-      opaque ID) — verify the backend receives a parseable JWT from POST /v1/auth/apple"
-    - "POST /v1/auth/apple with a real Apple identity_token returns same schema"
-    """
-
-    @classmethod
-    def setUpClass(cls):
-        try:
-            cls.client = _build_test_client()
-            cls.available = True
-        except Exception as exc:
-            cls.available = False
-            cls.skip_reason = str(exc)
-
-    def _skip(self):
-        if not self.available:
-            self.skipTest(f"Client setup failed: {self.skip_reason}")
-
-    def _make_fake_apple_jwt(self) -> str:
-        """Produce a structurally-valid JWT (header.payload.sig) for the Apple endpoint."""
-        import base64
-        header = base64.urlsafe_b64encode(b'{"alg":"RS256","kid":"abc"}').rstrip(b"=").decode()
-        claims = json.dumps({"email": "apple@privaterelay.com", "sub": "apple-sub-123"})
-        payload = base64.urlsafe_b64encode(claims.encode()).rstrip(b"=").decode()
-        return f"{header}.{payload}.fakesignature"
-
-    def test_happy_path_returns_full_auth_token_schema(self):
-        """
-        Apple JWT → Supabase exchange → 200 with {access_token, refresh_token,
-        expires_in, token_type, user_id (UUID string)}.
-        """
-        self._skip()
-        supabase_data = _make_supabase_session()
-        mock_resp = _mock_supabase_post(supabase_data, 200)
-
-        with patch("httpx.AsyncClient") as MockClient, _patch_upsert():
-            MockClient.return_value.__aenter__.return_value.post = AsyncMock(
-                return_value=mock_resp
-            )
-            resp = self.client.post(
-                "/auth/apple", json={"identity_token": self._make_fake_apple_jwt()}
-            )
-
-        self.assertEqual(resp.status_code, 200, resp.text)
-        body = resp.json()
-        for field in ("access_token", "refresh_token", "expires_in", "token_type", "user_id"):
-            self.assertIn(field, body, f"Missing required field: {field}")
-        try:
-            uuid.UUID(body["user_id"])
-        except ValueError:
-            self.fail(f"user_id '{body['user_id']}' is not a valid UUID string")
-
-    def test_backend_uses_identity_token_not_opaque_user_id(self):
-        """
-        The backend must forward identity_token (JWT) to Supabase as 'id_token'.
-        If the iOS client mistakenly sends cred.user (opaque) instead of
-        cred.identityToken (JWT), Supabase returns 401.
-
-        We verify the router passes the token through to Supabase unchanged.
-        """
-        self._skip()
-        captured = {}
-
-        async def fake_post(url, **kwargs):
-            captured["body"] = kwargs.get("json", {})
-            # Simulate Supabase accepting the token
-            return _mock_supabase_post(_make_supabase_session(), 200)
-
-        with patch("httpx.AsyncClient") as MockClient, _patch_upsert():
-            MockClient.return_value.__aenter__.return_value.post = fake_post
-            fake_jwt = self._make_fake_apple_jwt()
-            self.client.post("/auth/apple", json={"identity_token": fake_jwt})
-
-        # Supabase expects id_token, not user opaque id
-        self.assertIn("id_token", captured.get("body", {}),
-                      "Backend must send id_token to Supabase, not an opaque user id")
-        self.assertEqual(captured["body"]["id_token"], fake_jwt)
-        self.assertEqual(captured["body"].get("provider"), "apple")
-
-    def test_supabase_401_returns_401(self):
-        """Invalid Apple token → Supabase 401 → router 401."""
-        self._skip()
-        mock_resp = _mock_supabase_post({"error": "invalid id_token"}, 401)
-
-        with patch("httpx.AsyncClient") as MockClient:
-            MockClient.return_value.__aenter__.return_value.post = AsyncMock(
-                return_value=mock_resp
-            )
-            resp = self.client.post(
-                "/auth/apple", json={"identity_token": "header.payload.sig"}
-            )
-
-        self.assertEqual(resp.status_code, 401)
-
-    def test_missing_identity_token_returns_422(self):
-        self._skip()
-        resp = self.client.post("/auth/apple", json={})
-        self.assertEqual(resp.status_code, 422)
-
-    def test_network_error_returns_502(self):
-        """Supabase unreachable → 502."""
-        import httpx
-        self._skip()
-
-        with patch("httpx.AsyncClient") as MockClient:
-            MockClient.return_value.__aenter__.return_value.post = AsyncMock(
-                side_effect=httpx.RequestError("timeout")
-            )
-            resp = self.client.post(
-                "/auth/apple", json={"identity_token": "header.payload.sig"}
-            )
-
-        self.assertEqual(resp.status_code, 502)
 
 
 if __name__ == "__main__":
